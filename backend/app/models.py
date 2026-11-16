@@ -54,7 +54,23 @@ class Listing(Base):
     moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    client_sync_id: Mapped[str | None] = mapped_column(String(36), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    images: Mapped[list["ListingImage"]] = relationship(back_populates="listing", cascade="all, delete-orphan")
+
+
+class ListingImage(Base):
+    __tablename__ = "listing_images"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    listing_id: Mapped[str] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"), index=True)
+    client_image_id: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(80), nullable=False, default="image/jpeg")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    listing: Mapped[Listing] = relationship(back_populates="images")
 
 
 class Inquiry(Base):
