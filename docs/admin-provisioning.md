@@ -14,24 +14,18 @@ Administrator privileges are never assigned by public registration and there is 
 From the `backend/` directory on the trusted host:
 
 ```bash
-python -m app.admin_cli grant \
-  --phone "+2519XXXXXXXX" \
-  --confirm-phone "+2519XXXXXXXX" \
-  --operator "approved-operator-id"
+python -m app.admin_cli grant --operator "approved-operator-id"
 ```
 
-The phone number must match the confirmation value exactly. The command only grants access to an existing account. It does not create accounts, disclose passwords, or issue tokens.
+The command prompts for the target account's phone number and requires the operator to enter it a second time. The phone number is not placed in shell history or process arguments. The command only grants access to an existing account; it does not create accounts, disclose passwords, or issue tokens.
 
 ## Revoke access
 
 ```bash
-python -m app.admin_cli revoke \
-  --phone "+2519XXXXXXXX" \
-  --confirm-phone "+2519XXXXXXXX" \
-  --operator "approved-operator-id"
+python -m app.admin_cli revoke --operator "approved-operator-id"
 ```
 
-The command refuses to revoke the last active administrator. Provisioning changes and their audit records are committed in the same database transaction.
+The command uses the same interactive confirmation. It refuses to revoke the last active administrator. Provisioning changes and their audit records are committed in the same database transaction.
 
 ## Audit and operational controls
 
