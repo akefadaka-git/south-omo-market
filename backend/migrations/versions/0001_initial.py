@@ -28,6 +28,17 @@ def upgrade() -> None:
         sa.Column("name_en", sa.String(120), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()))
     op.create_index("ix_categories_slug", "categories", ["slug"], unique=True)
+    categories = sa.table("categories",
+        sa.column("id", sa.String(36)), sa.column("slug", sa.String(80)),
+        sa.column("name_en", sa.String(120)), sa.column("is_active", sa.Boolean()))
+    op.bulk_insert(categories, [
+        {"id": "00000000-0000-4000-8000-000000000001", "slug": "livestock", "name_en": "Livestock", "is_active": True},
+        {"id": "00000000-0000-4000-8000-000000000002", "slug": "agriculture", "name_en": "Agriculture", "is_active": True},
+        {"id": "00000000-0000-4000-8000-000000000003", "slug": "food-groceries", "name_en": "Food and groceries", "is_active": True},
+        {"id": "00000000-0000-4000-8000-000000000004", "slug": "shops-products", "name_en": "Shops and products", "is_active": True},
+        {"id": "00000000-0000-4000-8000-000000000005", "slug": "services", "name_en": "Services", "is_active": True},
+        {"id": "00000000-0000-4000-8000-000000000006", "slug": "property-equipment-rentals", "name_en": "Property, equipment and rentals", "is_active": True},
+    ])
     op.create_table("listings",
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("seller_id", sa.String(36), sa.ForeignKey("seller_profiles.id"), nullable=False),
