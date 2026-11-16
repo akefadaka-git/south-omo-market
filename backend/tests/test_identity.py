@@ -163,9 +163,9 @@ def test_only_admin_can_approve_pending_listing() -> None:
     })
     assert registered.status_code == 201
     db = TestingSession()
-    admin = db.query(models.User).filter_by(phone_number="+251900000102").one()
-    admin.is_admin = True
-    db.commit()
+    from app.admin_cli import set_admin_role
+    admin = set_admin_role(db, "+251900000102", grant=True)
+    assert admin.is_admin is True
     db.close()
     admin_token = client.post("/api/v1/auth/login", json={
         "phone_number": "+251900000102",
@@ -183,3 +183,147 @@ def test_only_admin_can_approve_pending_listing() -> None:
     assert decision.status_code == 200
     assert decision.json()["status"] == "published"
     assert client.get(f"/api/v1/listings/{listing_id}").status_code == 200
+
+    from app.models import AuditEvent
+    event = db.query(AuditEvent).filter_by(
+        resource_type="listing", resource_id=listing_id,
+        action="listing.moderation.approved",
+    ).one()
+    assert event.actor_id == admin.id
+    assert event.event_metadata["new_status"] == "published"
+    history = client.get(
+        "/api/v1/admin/audit-events",
+        headers=admin_headers,
+        params={"resource_type": "listing", "resource_id": listing_id},
+    )
+    assert history.status_code == 200
+    assert history.json()[0]["action"] == "listing.moderation.approved"
+    assert client.get("/api/v1/admin/audit-events", headers=seller_headers).status_code == 403
+
+
+def test_admin_provisioning_is_out_of_band_and_last_admin_is_protected() -> None:
+    from app.admin_cli import set_admin_role
+
+    registered = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000201",
+        "display_name": "Provisioning Target",
+        "password": "synthetic-test-password-201",
+    })
+    assert registered.status_code == 201
+    db = TestingSession()
+    target = db.query(models.User).filter_by(phone_number="+251900000201").one()
+    assert target.is_admin is False
+    assert client.post("/api/v1/admin/provision", json={"phone_number": target.phone_number}).status_code == 404
+
+    provisioned = set_admin_role(db, target.phone_number, grant=True)
+    assert provisioned.is_admin is True
+    from app.models import AuditEvent
+    grant_event = db.query(AuditEvent).filter_by(
+        resource_id=target.id, action="admin.access.granted"
+    ).one()
+    assert grant_event.actor_id is None
+    try:
+        set_admin_role(db, target.phone_number, grant=False)
+        assert False, "The last active administrator must not be revocable"
+    except ValueError as error:
+        assert "last active administrator" in str(error)
+    assert db.get(models.User, target.id).is_admin is True
+    db.close()
+
+
+def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
+    seller_registration = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000301",
+        "display_name": "Inbox Seller",
+        "password": "synthetic-test-password-301",
+    })
+    assert seller_registration.status_code == 201
+    seller_token = client.post("/api/v1/auth/login", json={
+        "phone_number": "+251900000301",
+        "password": "synthetic-test-password-301",
+    }).json()["access_token"]
+    seller_headers = {"Authorization": f"Bearer {seller_token}"}
+    profile = client.post("/api/v1/sellers/me", headers=seller_headers, json={
+        "public_name": "Inbox Seller Shop", "location_label": "Koybe",
+    })
+    assert profile.status_code == 201
+
+    category_id = "00000000-0000-4000-8000-000000000001"
+    db = TestingSession()
+    if db.get(Category, category_id) is None:
+        db.add(Category(id=category_id, slug="livestock", name_en="Livestock", is_active=True))
+        db.commit()
+    db.close()
+    listing = client.post("/api/v1/listings", headers=seller_headers, json={
+        "category_id": category_id, "title": "Published synthetic goats",
+        "description": "Inbox test listing", "price_minor": 45000,
+        "location_label": "Koybe",
+    })
+    assert listing.status_code == 201
+    listing_id = listing.json()["id"]
+    db = TestingSession()
+    db.get(models.Listing, listing_id).status = "published"
+    db.commit()
+    db.close()
+
+    buyer_registration = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000302",
+        "display_name": "Inbox Buyer",
+        "password": "synthetic-test-password-302",
+    })
+    assert buyer_registration.status_code == 201
+    buyer_token = client.post("/api/v1/auth/login", json={
+        "phone_number": "+251900000302",
+        "password": "synthetic-test-password-302",
+    }).json()["access_token"]
+    buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
+    created = client.post("/api/v1/inquiries", headers=buyer_headers, json={
+        "listing_id": listing_id, "message": "Is this item available?",
+    })
+    assert created.status_code == 201
+    inquiry_id = created.json()["id"]
+
+    inbox = client.get("/api/v1/inquiries/inbox", headers=seller_headers)
+    assert inbox.status_code == 200
+    assert len(inbox.json()) == 1
+    assert inbox.json()[0]["buyer_contact"] == "+251900000302"
+    assert inbox.json()[0]["status"] == "open"
+
+    mine = client.get("/api/v1/inquiries/mine", headers=buyer_headers)
+    assert mine.status_code == 200
+    assert mine.json()[0]["id"] == inquiry_id
+    assert "buyer_contact" not in mine.json()[0]
+
+    assert client.patch(
+        f"/api/v1/inquiries/{inquiry_id}/status",
+        headers=buyer_headers, json={"status": "closed"},
+    ).status_code == 403
+    changed = client.patch(
+        f"/api/v1/inquiries/{inquiry_id}/status",
+        headers=seller_headers, json={"status": "read"},
+    )
+    assert changed.status_code == 200
+    assert changed.json()["status"] == "read"
+    closed = client.patch(
+        f"/api/v1/inquiries/{inquiry_id}/status",
+        headers=seller_headers, json={"status": "closed"},
+    )
+    assert closed.status_code == 200
+    filtered = client.get(
+        "/api/v1/inquiries/inbox", headers=seller_headers, params={"status": "closed"}
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()[0]["id"] == inquiry_id
+
+    outsider_registration = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000303",
+        "display_name": "Inbox Outsider",
+        "password": "synthetic-test-password-303",
+    })
+    assert outsider_registration.status_code == 201
+    outsider_token = client.post("/api/v1/auth/login", json={
+        "phone_number": "+251900000303",
+        "password": "synthetic-test-password-303",
+    }).json()["access_token"]
+    outsider_headers = {"Authorization": f"Bearer {outsider_token}"}
+    assert client.get("/api/v1/inquiries/inbox", headers=outsider_headers).status_code == 403
