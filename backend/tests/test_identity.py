@@ -220,6 +220,11 @@ def test_admin_provisioning_is_out_of_band_and_last_admin_is_protected() -> None
     assert target.is_admin is False
     assert client.post("/api/v1/admin/provision", json={"phone_number": target.phone_number}).status_code == 404
 
+    try:
+        set_admin_role(db, target.phone_number, grant=True, operator=" ")
+        assert False, "Blank operator identifiers must be rejected"
+    except ValueError as error:
+        assert "Operator identifier is required" in str(error)
     provisioned = set_admin_role(db, target.phone_number, grant=True, operator="synthetic-test-operator")
     assert provisioned.is_admin is True
     from app.models import AuditEvent
@@ -267,6 +272,9 @@ def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
     })
     assert listing.status_code == 201
     listing_id = listing.json()["id"]
+    assert client.post("/api/v1/inquiries", headers=seller_headers, json={
+        "listing_id": listing_id, "message": "Self inquiry must be blocked",
+    }).status_code == 404
     db = TestingSession()
     db.get(models.Listing, listing_id).status = "published"
     db.commit()
@@ -333,3 +341,12 @@ def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
     }).json()["access_token"]
     outsider_headers = {"Authorization": f"Bearer {outsider_token}"}
     assert client.get("/api/v1/inquiries/inbox", headers=outsider_headers).status_code == 403
+    outsider_profile = client.post("/api/v1/sellers/me", headers=outsider_headers, json={
+        "public_name": "Different Seller", "location_label": "Jinka",
+    })
+    assert outsider_profile.status_code == 201
+    assert client.get("/api/v1/inquiries/inbox", headers=outsider_headers).json() == []
+    assert client.patch(
+        f"/api/v1/inquiries/{inquiry_id}/status",
+        headers=outsider_headers, json={"status": "closed"},
+    ).status_code == 404
