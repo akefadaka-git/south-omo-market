@@ -164,7 +164,7 @@ def test_only_admin_can_approve_pending_listing() -> None:
     assert registered.status_code == 201
     db = TestingSession()
     from app.admin_cli import set_admin_role
-    admin = set_admin_role(db, "+251900000102", grant=True)
+    admin = set_admin_role(db, "+251900000102", grant=True, operator="synthetic-test-operator")
     assert admin.is_admin is True
     db.close()
     admin_token = client.post("/api/v1/auth/login", json={
@@ -215,15 +215,16 @@ def test_admin_provisioning_is_out_of_band_and_last_admin_is_protected() -> None
     assert target.is_admin is False
     assert client.post("/api/v1/admin/provision", json={"phone_number": target.phone_number}).status_code == 404
 
-    provisioned = set_admin_role(db, target.phone_number, grant=True)
+    provisioned = set_admin_role(db, target.phone_number, grant=True, operator="synthetic-test-operator")
     assert provisioned.is_admin is True
     from app.models import AuditEvent
     grant_event = db.query(AuditEvent).filter_by(
         resource_id=target.id, action="admin.access.granted"
     ).one()
     assert grant_event.actor_id is None
+    assert grant_event.event_metadata["operator"] == "synthetic-test-operator"
     try:
-        set_admin_role(db, target.phone_number, grant=False)
+        set_admin_role(db, target.phone_number, grant=False, operator="synthetic-test-operator")
         assert False, "The last active administrator must not be revocable"
     except ValueError as error:
         assert "last active administrator" in str(error)
