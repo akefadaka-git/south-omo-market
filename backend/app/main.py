@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.routers import categories, health, identity, inquiries, listings, sellers
+from app.routers import admin, categories, health, identity, inquiries, listings, sellers
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0")
@@ -9,7 +9,7 @@ app.include_router(identity.router, prefix=settings.api_v1_prefix, tags=["identi
 app.include_router(categories.router, prefix=settings.api_v1_prefix, tags=["categories"])
 app.include_router(sellers.router, prefix=settings.api_v1_prefix, tags=["sellers"])
 app.include_router(listings.router, prefix=settings.api_v1_prefix, tags=["listings"])
-app.include_router(inquiries.router, prefix=settings.api_v1_prefix, tags=["inquiries"])
+app.include_router(inquiries.router, prefix=settings.api_v1_prefix, tags=["inquiries"])\napp.include_router(admin.router, prefix=settings.api_v1_prefix)
 
 @app.get("/", include_in_schema=False)
 def root() -> dict[str, str]:
