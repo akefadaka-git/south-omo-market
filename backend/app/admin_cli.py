@@ -41,19 +41,18 @@ def set_admin_role(db: Session, phone_number: str, grant: bool, operator: str) -
 def main() -> None:
     parser = argparse.ArgumentParser(description="Provision South Omo Market administrator access")
     parser.add_argument("action", choices=("grant", "revoke"))
-    parser.add_argument("--phone", required=True, help="Phone number of an already-registered account")
-    parser.add_argument(
-        "--confirm-phone", required=True,
-        help="Repeat the exact phone number to confirm this privileged operation",
-    )
     parser.add_argument("--operator", required=True, help="Authenticated operator identifier for the audit record")
     args = parser.parse_args()
-    if args.phone != args.confirm_phone:
-        parser.error("--phone and --confirm-phone must match exactly")
+    phone_number = input("Phone number of the existing account: ").strip()
+    confirmation = input("Re-enter the exact phone number to confirm: ").strip()
+    if not phone_number or phone_number != confirmation:
+        parser.error("Phone number confirmation did not match")
 
     with Session(get_engine()) as db:
         try:
-            user = set_admin_role(db, args.phone, grant=args.action == "grant", operator=args.operator)
+            user = set_admin_role(
+                db, phone_number, grant=args.action == "grant", operator=args.operator
+            )
         except ValueError as error:
             parser.error(str(error))
     state = "granted" if args.action == "grant" else "revoked"
