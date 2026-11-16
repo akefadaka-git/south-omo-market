@@ -8,7 +8,7 @@ from app.core.database import get_engine
 from app.models import AuditEvent, User
 
 
-def set_admin_role(db: Session, phone_number: str, grant: bool) -> User:
+def set_admin_role(db: Session, phone_number: str, grant: bool, operator: str) -> User:
     user = db.scalar(select(User).where(User.phone_number == phone_number).with_for_update())
     if user is None:
         raise ValueError("No account exists for the supplied phone number")
@@ -31,7 +31,7 @@ def set_admin_role(db: Session, phone_number: str, grant: bool) -> User:
         action="admin.access.granted" if grant else "admin.access.revoked",
         resource_type="user",
         resource_id=user.id,
-        event_metadata={"provisioning_method": "trusted_cli"},
+        event_metadata={"provisioning_method": "trusted_cli", "operator": operator},
     ))
     db.commit()
     db.refresh(user)
@@ -46,13 +46,14 @@ def main() -> None:
         "--confirm-phone", required=True,
         help="Repeat the exact phone number to confirm this privileged operation",
     )
+    parser.add_argument("--operator", required=True, help="Authenticated operator identifier for the audit record")
     args = parser.parse_args()
     if args.phone != args.confirm_phone:
         parser.error("--phone and --confirm-phone must match exactly")
 
     with Session(get_engine()) as db:
         try:
-            user = set_admin_role(db, args.phone, grant=args.action == "grant")
+            user = set_admin_role(db, args.phone, grant=args.action == "grant", operator=args.operator)
         except ValueError as error:
             parser.error(str(error))
     state = "granted" if args.action == "grant" else "revoked"
