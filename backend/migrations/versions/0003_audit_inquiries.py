@@ -24,6 +24,19 @@ def upgrade() -> None:
     op.create_index("ix_audit_events_resource_type", "audit_events", ["resource_type"])
     op.create_index("ix_audit_events_resource_id", "audit_events", ["resource_id"])
     op.create_index("ix_audit_events_created_at", "audit_events", ["created_at"])
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute("""
+            CREATE FUNCTION reject_audit_event_mutation() RETURNS trigger AS $
+            BEGIN
+                RAISE EXCEPTION 'audit_events are append-only';
+            END;
+            $ LANGUAGE plpgsql
+        """)
+        op.execute("""
+            CREATE TRIGGER audit_events_append_only
+            BEFORE UPDATE OR DELETE ON audit_events
+            FOR EACH ROW EXECUTE FUNCTION reject_audit_event_mutation()
+        """)
 
     # Nullable for records created before buyer account linkage was introduced.
     op.add_column("inquiries", sa.Column(
@@ -45,6 +58,9 @@ def downgrade() -> None:
     op.drop_column("inquiries", "read_at")
     op.drop_column("inquiries", "status")
     op.drop_column("inquiries", "buyer_user_id")
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute("DROP TRIGGER IF EXISTS audit_events_append_only ON audit_events")
+        op.execute("DROP FUNCTION IF EXISTS reject_audit_event_mutation()")
     op.drop_index("ix_audit_events_created_at", table_name="audit_events")
     op.drop_index("ix_audit_events_resource_id", table_name="audit_events")
     op.drop_index("ix_audit_events_resource_type", table_name="audit_events")
