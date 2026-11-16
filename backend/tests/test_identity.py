@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -46,7 +46,7 @@ def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
     db = TestingSession()
     category_id = "00000000-0000-4000-8000-000000000001"
     if db.get(Category, category_id) is None:
-        db.add(Category(id=category_id, slug="test-livestock", name_en="Test livestock", is_active=True))
+        db.add(Category(\n            id=category_id, slug="test-livestock", name_en="Test livestock", is_active=True\n        ))
         db.commit()
     db.close()
 
