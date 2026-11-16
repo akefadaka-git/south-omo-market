@@ -99,3 +99,25 @@ def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
 
     public = client.get(f"/api/v1/listings/{listing_id}")
     assert public.status_code == 404
+
+    other_registration = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000003",
+        "display_name": "Other Synthetic Seller",
+        "password": "synthetic-password-789",
+    })
+    assert other_registration.status_code == 201
+    other_token = client.post("/api/v1/auth/login", json={
+        "phone_number": "+251900000003",
+        "password": "synthetic-password-789",
+    }).json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    other_profile = client.post("/api/v1/sellers/me", headers=other_headers, json={
+        "public_name": "Other Seller",
+        "location_label": "Jinka",
+    })
+    assert other_profile.status_code == 201
+    assert client.get("/api/v1/listings/my", headers=other_headers).json() == []
+    hidden = client.patch(f"/api/v1/listings/{listing_id}", headers=other_headers, json={
+        "title": "Cross-seller modification",
+    })
+    assert hidden.status_code == 404
