@@ -212,6 +212,11 @@ def test_admin_provisioning_is_out_of_band_and_last_admin_is_protected() -> None
     assert registered.status_code == 201
     db = TestingSession()
     target = db.query(models.User).filter_by(phone_number="+251900000201").one()
+    # Isolate the last-admin invariant from accounts created by other tests.
+    db.query(models.User).filter(models.User.is_admin.is_(True)).update(
+        {models.User.is_admin: False}, synchronize_session=False
+    )
+    db.commit()
     assert target.is_admin is False
     assert client.post("/api/v1/admin/provision", json={"phone_number": target.phone_number}).status_code == 404
 
