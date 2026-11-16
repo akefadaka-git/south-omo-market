@@ -29,6 +29,9 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "audit_events" not in inspector.get_table_names()
         inquiry_columns = {column["name"] for column in inspector.get_columns("inquiries")}
         assert "buyer_user_id" not in inquiry_columns
+
+        command.downgrade(config, "base")
+        assert not {"users", "listings", "inquiries"} & set(inspect(engine).get_table_names())
         engine.dispose()
     finally:
         get_settings.cache_clear()
