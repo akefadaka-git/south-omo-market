@@ -272,13 +272,13 @@ def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
     })
     assert listing.status_code == 201
     listing_id = listing.json()["id"]
-    assert client.post("/api/v1/inquiries", headers=seller_headers, json={
-        "listing_id": listing_id, "message": "Self inquiry must be blocked",
-    }).status_code == 404
     db = TestingSession()
     db.get(models.Listing, listing_id).status = "published"
     db.commit()
     db.close()
+    assert client.post("/api/v1/inquiries", headers=seller_headers, json={
+        "listing_id": listing_id, "message": "Self inquiry must be blocked",
+    }).status_code == 409
 
     buyer_registration = client.post("/api/v1/auth/register", json={
         "phone_number": "+251900000302",
