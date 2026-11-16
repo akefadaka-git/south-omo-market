@@ -41,7 +41,9 @@ def upgrade() -> None:
     # Nullable for records created before buyer account linkage was introduced.
     with op.batch_alter_table("inquiries") as batch:
         batch.add_column(sa.Column(
-            "buyer_user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+            "buyer_user_id", sa.String(36), sa.ForeignKey(
+                "users.id", ondelete="SET NULL", name="fk_inquiries_buyer_user_id_users"
+            ), nullable=True
         ))
         batch.add_column(sa.Column(
             "status", sa.String(16), nullable=False, server_default="open"
@@ -59,6 +61,7 @@ def downgrade() -> None:
         batch.drop_column("closed_at")
         batch.drop_column("read_at")
         batch.drop_column("status")
+        batch.drop_constraint("fk_inquiries_buyer_user_id_users", type_="foreignkey")
         batch.drop_column("buyer_user_id")
     if op.get_bind().dialect.name == "postgresql":
         op.execute("DROP TRIGGER IF EXISTS audit_events_append_only ON audit_events")
