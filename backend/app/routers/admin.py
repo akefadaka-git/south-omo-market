@@ -71,7 +71,7 @@ def decide_listing(
     listing.reviewed_at = datetime.now(timezone.utc)
     db.add(AuditEvent(
         actor_id=admin.id,
-        action=f"listing.moderation.{payload.decision}d",
+        action="listing.moderation.approved" if payload.decision == "approve" else "listing.moderation.rejected",
         resource_type="listing",
         resource_id=listing.id,
         event_metadata={
