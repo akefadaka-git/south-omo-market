@@ -9,6 +9,8 @@ from app.models import AuditEvent, User
 
 
 def set_admin_role(db: Session, phone_number: str, grant: bool, operator: str) -> User:
+    if not operator.strip():
+        raise ValueError("Operator identifier is required")
     user = db.scalar(select(User).where(User.phone_number == phone_number).with_for_update())
     if user is None:
         raise ValueError("No account exists for the supplied phone number")
@@ -43,6 +45,8 @@ def main() -> None:
     parser.add_argument("action", choices=("grant", "revoke"))
     parser.add_argument("--operator", required=True, help="Authenticated operator identifier for the audit record")
     args = parser.parse_args()
+    if not args.operator.strip():
+        parser.error("--operator must not be blank")
     phone_number = input("Phone number of the existing account: ").strip()
     confirmation = input("Re-enter the exact phone number to confirm: ").strip()
     if not phone_number or phone_number != confirmation:
