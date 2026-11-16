@@ -9,7 +9,8 @@ app.include_router(identity.router, prefix=settings.api_v1_prefix, tags=["identi
 app.include_router(categories.router, prefix=settings.api_v1_prefix, tags=["categories"])
 app.include_router(sellers.router, prefix=settings.api_v1_prefix, tags=["sellers"])
 app.include_router(listings.router, prefix=settings.api_v1_prefix, tags=["listings"])
-app.include_router(inquiries.router, prefix=settings.api_v1_prefix, tags=["inquiries"])\napp.include_router(admin.router, prefix=settings.api_v1_prefix)
+app.include_router(inquiries.router, prefix=settings.api_v1_prefix, tags=["inquiries"])
+app.include_router(admin.router, prefix=settings.api_v1_prefix)
 
 @app.get("/", include_in_schema=False)
 def root() -> dict[str, str]:
