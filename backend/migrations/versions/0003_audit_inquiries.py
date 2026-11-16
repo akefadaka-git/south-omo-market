@@ -39,25 +39,27 @@ def upgrade() -> None:
         """)
 
     # Nullable for records created before buyer account linkage was introduced.
-    op.add_column("inquiries", sa.Column(
-        "buyer_user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    ))
-    op.add_column("inquiries", sa.Column(
-        "status", sa.String(16), nullable=False, server_default="open"
-    ))
-    op.add_column("inquiries", sa.Column("read_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("inquiries", sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True))
-    op.create_index("ix_inquiries_buyer_user_id", "inquiries", ["buyer_user_id"])
-    op.create_index("ix_inquiries_status", "inquiries", ["status"])
+    with op.batch_alter_table("inquiries") as batch:
+        batch.add_column(sa.Column(
+            "buyer_user_id", sa.String(36), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        ))
+        batch.add_column(sa.Column(
+            "status", sa.String(16), nullable=False, server_default="open"
+        ))
+        batch.add_column(sa.Column("read_at", sa.DateTime(timezone=True), nullable=True))
+        batch.add_column(sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True))
+        batch.create_index("ix_inquiries_buyer_user_id", ["buyer_user_id"])
+        batch.create_index("ix_inquiries_status", ["status"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_inquiries_status", table_name="inquiries")
-    op.drop_index("ix_inquiries_buyer_user_id", table_name="inquiries")
-    op.drop_column("inquiries", "closed_at")
-    op.drop_column("inquiries", "read_at")
-    op.drop_column("inquiries", "status")
-    op.drop_column("inquiries", "buyer_user_id")
+    with op.batch_alter_table("inquiries") as batch:
+        batch.drop_index("ix_inquiries_status")
+        batch.drop_index("ix_inquiries_buyer_user_id")
+        batch.drop_column("closed_at")
+        batch.drop_column("read_at")
+        batch.drop_column("status")
+        batch.drop_column("buyer_user_id")
     if op.get_bind().dialect.name == "postgresql":
         op.execute("DROP TRIGGER IF EXISTS audit_events_append_only ON audit_events")
         op.execute("DROP FUNCTION IF EXISTS reject_audit_event_mutation()")
