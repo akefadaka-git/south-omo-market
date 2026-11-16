@@ -26,11 +26,11 @@ def upgrade() -> None:
     op.create_index("ix_audit_events_created_at", "audit_events", ["created_at"])
     if op.get_bind().dialect.name == "postgresql":
         op.execute("""
-            CREATE FUNCTION reject_audit_event_mutation() RETURNS trigger AS $
+            CREATE FUNCTION reject_audit_event_mutation() RETURNS trigger AS $audit$
             BEGIN
                 RAISE EXCEPTION 'audit_events are append-only';
             END;
-            $ LANGUAGE plpgsql
+            $audit$ LANGUAGE plpgsql
         """)
         op.execute("""
             CREATE TRIGGER audit_events_append_only
