@@ -38,6 +38,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
       - run: ruff check app tests --select E9,F63,F7,F82
+      - name: Validate backup and restore script syntax
+        run: bash -n scripts/backup_restore.sh
       - run: pytest
       - name: Run PostgreSQL migration and audit-trigger integration tests
         run: pytest -q tests/test_postgres_integration.py
