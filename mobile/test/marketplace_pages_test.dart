@@ -107,7 +107,9 @@ void main() {
   testWidgets('buyer can register and send listing inquiry', (tester) async {
     var registered = false;
     var sent = false;
+    final calls = <String>[];
     final client = MockClient((request) async {
+      calls.add('${request.method} ${request.url.path}');
       if (request.url.path.endsWith('/listings/listing-2')) {
         return http.Response(jsonEncode({'id':'listing-2','title':'Synthetic maize','description':'Dry maize','price_minor':250000,'location':'Jinka','images':[]}), 200);
       }
@@ -143,7 +145,7 @@ void main() {
     await tester.tap(find.text('Register and continue'));
     await tester.pumpAndSettle();
     expect(registered, isTrue);
-    expect(sent, isTrue);
+    expect(sent, isTrue, reason: 'Requests: ${calls.join(' | ')}');
     expect(find.text('Your inquiry was sent to the seller.'), findsOneWidget);
     client.close();
   });
