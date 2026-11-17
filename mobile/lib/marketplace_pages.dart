@@ -165,7 +165,10 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         context: context,
         builder: (_) => BuyerAuthDialog(apiBaseUrl: widget.apiBaseUrl, client: widget.client),
       );
-      if (token == null) return;
+      if (token == null) {
+        if (mounted) setState(() => _error = 'Buyer sign-in was not completed. Please try again.');
+        return;
+      }
       final response = await widget.client.post(
         Uri.parse('${widget.apiBaseUrl}/inquiries'),
         headers: {
@@ -235,6 +238,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               Text('Contact seller', style: Theme.of(context).textTheme.titleLarge),
               const Text('Sign in or create a buyer account to send your inquiry. Your registered phone number is shared with the seller.'),
               TextField(
+                key: const Key('buyer-inquiry-message'),
                 controller: _messageController,
                 maxLines: 4,
                 maxLength: 2000,
@@ -620,7 +624,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
       if (response.statusCode != 200) throw Exception('Sign in failed (${response.statusCode}).');
       final token = (jsonDecode(response.body) as Map<String, dynamic>)['access_token'] as String?;
       if (token == null || token.isEmpty) throw Exception('The API did not return an access token.');
-      if (mounted) Navigator.of(context).pop(token);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop<String>(token);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -632,10 +636,10 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
   Widget build(BuildContext context) => AlertDialog(
     title: Text(_register ? 'Create buyer account' : 'Buyer sign in'),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      if (_register) TextField(controller: _name, decoration: const InputDecoration(labelText: 'Display name')),
-      TextField(controller: _phone, keyboardType: TextInputType.phone,
+      if (_register) TextField(key: const Key('buyer-display-name'), controller: _name, decoration: const InputDecoration(labelText: 'Display name')),
+      TextField(key: const Key('buyer-phone'), controller: _phone, keyboardType: TextInputType.phone,
         decoration: const InputDecoration(labelText: 'Phone number')),
-      TextField(controller: _password, obscureText: true,
+      TextField(key: const Key('buyer-password'), controller: _password, obscureText: true,
         decoration: const InputDecoration(labelText: 'Password (minimum 12 characters)')),
       if (_error != null) Padding(
         padding: const EdgeInsets.only(top: 8),
