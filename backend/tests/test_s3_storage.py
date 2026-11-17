@@ -10,7 +10,7 @@ from app.core.image_storage import S3ImageStorage
 
 
 @pytest.fixture
-def minio_storage():
+def s3_storage():
     endpoint = os.getenv("TEST_S3_ENDPOINT_URL")
     if not endpoint:
         pytest.skip("TEST_S3_ENDPOINT_URL is not configured")
@@ -53,11 +53,17 @@ def minio_storage():
         client=client,
     )
     yield storage, client, bucket
+    remaining = client.list_objects_v2(Bucket=bucket).get("Contents", [])
+    if remaining:
+        client.delete_objects(
+            Bucket=bucket,
+            Delete={"Objects": [{"Key": item["Key"]} for item in remaining]},
+        )
     client.delete_bucket(Bucket=bucket)
 
 
-def test_s3_compatible_adapter_round_trip_metadata_and_delete(minio_storage):
-    storage, client, bucket = minio_storage
+def test_s3_compatible_adapter_round_trip_metadata_and_delete(s3_storage):
+    storage, client, bucket = s3_storage
     payload = b"synthetic-normalized-jpeg-bytes"
     key = storage.save_jpeg("listing-integration-001", payload)
     assert key.startswith("listings/listing-integration-001/")
@@ -73,7 +79,7 @@ def test_s3_compatible_adapter_round_trip_metadata_and_delete(minio_storage):
         storage.read(key)
 
 
-def test_s3_adapter_rejects_path_traversal(minio_storage):
-    storage, _, _ = minio_storage
+def test_s3_adapter_rejects_path_traversal(s3_storage):
+    storage, _, _ = s3_storage
     with pytest.raises(ValueError):
         storage.read("listings/../../private/secret.jpg")
