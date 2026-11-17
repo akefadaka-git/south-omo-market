@@ -463,6 +463,30 @@ def test_listing_image_upload_validates_content_and_hides_private_images(tmp_pat
         )
         assert invalid.status_code == 415
 
+        oversized = client.post(
+            f"/api/v1/listings/{listing_id}/images",
+            headers=headers,
+            data={"client_image_id": str(uuid4())},
+            files={"file": ("oversized.png", b"x" * (5 * 1024 * 1024 + 1), "image/png")},
+        )
+        assert oversized.status_code == 413
+
+        for _ in range(4):
+            additional = client.post(
+                f"/api/v1/listings/{listing_id}/images",
+                headers=headers,
+                data={"client_image_id": str(uuid4())},
+                files={"file": ("synthetic.png", image_bytes, "image/png")},
+            )
+            assert additional.status_code == 201
+        over_limit = client.post(
+            f"/api/v1/listings/{listing_id}/images",
+            headers=headers,
+            data={"client_image_id": str(uuid4())},
+            files={"file": ("synthetic.png", image_bytes, "image/png")},
+        )
+        assert over_limit.status_code == 409
+
         db = TestingSession()
         db.get(models.Listing, listing_id).status = "published"
         db.commit()
