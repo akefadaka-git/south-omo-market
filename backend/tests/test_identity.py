@@ -494,7 +494,7 @@ def test_listing_image_upload_validates_content_and_hides_private_images(tmp_pat
         served = client.get(image["url"])
         assert served.status_code == 200
         assert served.headers["content-type"] == "image/jpeg"
-        assert served.content.startswith(b"\\xff\\xd8")
+        assert served.content.startswith(bytes.fromhex("ffd8"))
 
         _other_id, other_token = _register_seller("+251900000412")
         other_headers = {"Authorization": f"Bearer {other_token}"}
