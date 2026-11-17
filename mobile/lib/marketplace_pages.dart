@@ -10,10 +10,12 @@ class MarketplaceDiscoveryPage extends StatefulWidget {
     super.key,
     required this.apiBaseUrl,
     required this.client,
+    this.onSellerSignIn,
   });
 
   final String apiBaseUrl;
   final http.Client client;
+  final void Function(BuildContext context)? onSellerSignIn;
 
   @override
   State<MarketplaceDiscoveryPage> createState() => _MarketplaceDiscoveryPageState();
@@ -59,7 +61,13 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Discover listings'), actions: [
+    appBar: AppBar(title: const Text('South Omo Market'), actions: [
+      if (widget.onSellerSignIn != null)
+        IconButton(
+          tooltip: 'Seller sign in',
+          onPressed: () => widget.onSellerSignIn!(context),
+          icon: const Icon(Icons.storefront_outlined),
+        ),
       IconButton(tooltip: 'Refresh listings', onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh)),
     ]),
@@ -134,10 +142,56 @@ class ListingDetailPage extends StatefulWidget {
 
 class _ListingDetailPageState extends State<ListingDetailPage> {
   Map<String, dynamic>? _listing;
+  final _messageController = TextEditingController();
   String? _error;
+  String? _notice;
+  bool _sending = false;
 
   @override
   void initState() { super.initState(); _load(); }
+
+  @override
+  void dispose() { _messageController.dispose(); super.dispose(); }
+
+  Future<void> _sendInquiry() async {
+    final message = _messageController.text.trim();
+    if (message.isEmpty || message.length > 2000) {
+      setState(() => _error = 'Enter a message of up to 2,000 characters.');
+      return;
+    }
+    setState(() { _sending = true; _error = null; _notice = null; });
+    try {
+      final token = await showDialog<String>(
+        context: context,
+        builder: (_) => BuyerAuthDialog(apiBaseUrl: widget.apiBaseUrl, client: widget.client),
+      );
+      if (token == null) return;
+      final response = await widget.client.post(
+        Uri.parse('${widget.apiBaseUrl}/inquiries'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'listing_id': widget.listingId, 'message': message}),
+      );
+      if (response.statusCode == 409) {
+        throw Exception('You cannot inquire about your own listing.');
+      }
+      if (response.statusCode != 201) {
+        throw Exception(response.statusCode == 404
+          ? 'This listing is no longer available.'
+          : 'Your inquiry could not be sent (${response.statusCode}).');
+      }
+      if (mounted) {
+        _messageController.clear();
+        setState(() => _notice = 'Your inquiry was sent to the seller.');
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
 
   Future<void> _load() async {
     try {
@@ -177,6 +231,32 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   ),
                 ),
               Text(listing['description'] as String? ?? ''),
+              const SizedBox(height: 24),
+              Text('Contact seller', style: Theme.of(context).textTheme.titleLarge),
+              const Text('Sign in or create a buyer account to send your inquiry. Your registered phone number is shared with the seller.'),
+              TextField(
+                controller: _messageController,
+                maxLines: 4,
+                maxLength: 2000,
+                decoration: const InputDecoration(
+                  labelText: 'Your message',
+                  hintText: 'Ask about availability, condition or collection',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _sending ? null : _sendInquiry,
+                icon: const Icon(Icons.send),
+                label: Text(_sending ? 'Sending…' : 'Send inquiry'),
+              ),
+              if (_notice != null) Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_notice!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+              ),
+              if (_error != null) Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ),
             ]),
     );
   }
@@ -478,5 +558,97 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
         child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       ),
     ]),
+  );
+}
+
+
+class BuyerAuthDialog extends StatefulWidget {
+  const BuyerAuthDialog({super.key, required this.apiBaseUrl, required this.client});
+  final String apiBaseUrl;
+  final http.Client client;
+
+  @override
+  State<BuyerAuthDialog> createState() => _BuyerAuthDialogState();
+}
+
+class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
+  final _phone = TextEditingController();
+  final _name = TextEditingController();
+  final _password = TextEditingController();
+  bool _register = false;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _phone.dispose(); _name.dispose(); _password.dispose(); super.dispose();
+  }
+
+  Future<void> _authenticate() async {
+    if (_phone.text.trim().length < 7 || _password.text.length < 12 ||
+        (_register && _name.text.trim().isEmpty)) {
+      setState(() => _error = 'Enter a valid phone number, password (at least 12 characters), and display name when registering.');
+      return;
+    }
+    setState(() { _busy = true; _error = null; });
+    try {
+      final base = widget.apiBaseUrl;
+      if (_register) {
+        final created = await widget.client.post(
+          Uri.parse('$base/auth/register'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'phone_number': _phone.text.trim(),
+            'display_name': _name.text.trim(),
+            'password': _password.text,
+          }),
+        );
+        if (created.statusCode != 201) {
+          throw Exception(created.statusCode == 409
+            ? 'That phone number is already registered. Choose sign in.'
+            : 'Account registration failed (${created.statusCode}).');
+        }
+      }
+      final response = await widget.client.post(
+        Uri.parse('$base/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'phone_number': _phone.text.trim(),
+          'password': _password.text,
+        }),
+      );
+      if (response.statusCode != 200) throw Exception('Sign in failed (${response.statusCode}).');
+      final token = (jsonDecode(response.body) as Map<String, dynamic>)['access_token'] as String?;
+      if (token == null || token.isEmpty) throw Exception('The API did not return an access token.');
+      if (mounted) Navigator.of(context).pop(token);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(_register ? 'Create buyer account' : 'Buyer sign in'),
+    content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      if (_register) TextField(controller: _name, decoration: const InputDecoration(labelText: 'Display name')),
+      TextField(controller: _phone, keyboardType: TextInputType.phone,
+        decoration: const InputDecoration(labelText: 'Phone number')),
+      TextField(controller: _password, obscureText: true,
+        decoration: const InputDecoration(labelText: 'Password (minimum 12 characters)')),
+      if (_error != null) Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      ),
+    ])),
+    actions: [
+      TextButton(
+        onPressed: _busy ? null : () => setState(() { _register = !_register; _error = null; }),
+        child: Text(_register ? 'I already have an account' : 'Create account'),
+      ),
+      FilledButton(onPressed: _busy ? null : _authenticate,
+        child: Text(_busy ? 'Please wait…' : (_register ? 'Register and continue' : 'Sign in'))),
+    ],
   );
 }
