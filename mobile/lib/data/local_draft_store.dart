@@ -85,6 +85,11 @@ class LocalDraftStore {
     return _database!;
   }
 
+  Future<void> close() async {
+    await _database?.close();
+    _database = null;
+  }
+
   Future<void> saveDraft(Map<String, Object?> draft) async {
     final db = await database;
     final id = draft['id'];
