@@ -28,3 +28,14 @@ This is an implementation foundation, not a production-ready marketplace.
 - Legacy local drafts are retained during the SQLite schema upgrade. They receive a stable sync UUID and must be assigned an A1 category before they can sync.
 
 Verification includes synthetic API tests for image decoding/normalization, size and per-listing limits, unpublished-image privacy, image retry idempotency, offline draft replay/conflict handling, and SQLite migration upgrade/downgrade. CI also runs the complete Alembic chain against PostgreSQL 16, verifies the append-only audit trigger rejects UPDATE and DELETE, and exercises the S3 adapter with Moto's S3 API emulator. Moto verifies SDK/API contract behavior; it does not replace testing against the eventual production object-storage provider. Production bucket policy, credentials, backups, lifecycle/retention and restore remain unconfigured and require separate verification.
+
+
+## Mobile listing workflows and storage operations (A3)
+
+- The Android seller workspace now exposes published-listing discovery with category filtering and listing detail/photo views.
+- Sellers can review their own server-side listings, edit draft fields, upload photos to a draft, and submit a draft for moderation. Submitted/published listings are read-only in the seller editor.
+- First-time sellers are routed through profile setup after sign-in; the app checks the authenticated seller profile endpoint before opening the inbox.
+- Offline draft creation, local photo queueing and idempotent synchronization remain available. Sync creates drafts only; moderation remains required before public visibility.
+- Storage operations are documented in docs/storage-operations.md. The backup/restore script encrypts PostgreSQL dumps, copies listing objects to a separate backup bucket, verifies checksums, and refuses non-empty restore targets. It requires owner-managed provider credentials and passphrase custody.
+- The orphan-image scanner is dry-run by default, enforces a minimum seven-day grace period, compares storage keys with database metadata, and requires explicit --apply to delete candidates. It does not delete database records.
+- These safeguards are implemented and unit/syntax tested only. No production backup, restore, provider test, or orphan deletion has been executed. Production bucket policy, versioning/retention, credentials, monitoring, recovery objectives and a witnessed restore drill remain outstanding.
