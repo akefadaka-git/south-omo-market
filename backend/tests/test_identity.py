@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
+from app.core.rate_limit import limiter
 from app.main import app
 from app import models  # noqa: F401
 from app.models import Category
@@ -509,3 +510,17 @@ def test_listing_image_upload_validates_content_and_hides_private_images(tmp_pat
         ).status_code == 404
     finally:
         get_settings.cache_clear()
+
+
+def test_login_endpoint_enforces_ip_rate_limit() -> None:
+    limiter.reset()
+    payload = {
+        "phone_number": "+251900000099",
+        "password": "synthetic-password-123",
+    }
+    for _ in range(20):
+        response = client.post("/api/v1/auth/login", json=payload)
+        assert response.status_code == 401
+    blocked = client.post("/api/v1/auth/login", json=payload)
+    assert blocked.status_code == 429
+    limiter.reset()
