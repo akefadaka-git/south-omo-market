@@ -402,3 +402,82 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
       ]),
   );
 }
+
+
+class SellerProfileSetupPage extends StatefulWidget {
+  const SellerProfileSetupPage({
+    super.key,
+    required this.apiBaseUrl,
+    required this.accessToken,
+    required this.client,
+    required this.onComplete,
+  });
+
+  final String apiBaseUrl;
+  final String accessToken;
+  final http.Client client;
+  final VoidCallback onComplete;
+
+  @override
+  State<SellerProfileSetupPage> createState() => _SellerProfileSetupPageState();
+}
+
+class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
+  final _name = TextEditingController();
+  final _location = TextEditingController(text: 'Koybe');
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() { _name.dispose(); _location.dispose(); super.dispose(); }
+
+  Future<void> _createProfile() async {
+    if (_name.text.trim().length < 2 || _location.text.trim().length < 2) {
+      setState(() => _error = 'Enter a public seller name and location.');
+      return;
+    }
+    setState(() { _busy = true; _error = null; });
+    try {
+      final response = await widget.client.post(
+        Uri.parse('${widget.apiBaseUrl}/sellers/me'),
+        headers: {
+          'Authorization': 'Bearer ${widget.accessToken}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'public_name': _name.text.trim(),
+          'location_label': _location.text.trim(),
+        }),
+      );
+      if (response.statusCode != 201) {
+        throw Exception(response.statusCode == 409
+          ? 'A seller profile already exists. Sign out and sign in again.'
+          : 'Seller profile setup failed (${response.statusCode}).');
+      }
+      widget.onComplete();
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Set up seller profile')),
+    body: ListView(padding: const EdgeInsets.all(24), children: [
+      const Text('Create your seller profile before managing listings and inquiries.'),
+      TextField(controller: _name, decoration: const InputDecoration(labelText: 'Public seller name')),
+      TextField(controller: _location, decoration: const InputDecoration(labelText: 'Location')),
+      const SizedBox(height: 16),
+      FilledButton(
+        onPressed: _busy ? null : _createProfile,
+        child: Text(_busy ? 'Saving…' : 'Create seller profile'),
+      ),
+      if (_error != null) Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      ),
+    ]),
+  );
+}
