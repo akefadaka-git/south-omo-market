@@ -80,7 +80,7 @@ if [[ "$ACTION" == "backup" ]]; then
   aws "${aws_args[@]}" s3 sync "s3://$S3_BUCKET/listings/" \
     "$remote/$BACKUP_ID/objects/" --sse AES256 --only-show-errors
   write_object_inventory "$S3_BUCKET" "listings/" "$BACKUP_S3_BUCKET" \
-    "$BACKUP_S3_PREFIX/$BACKUP_ID/objects/listings/" "$tmp/objects.tsv"
+    "$BACKUP_S3_PREFIX/$BACKUP_ID/objects/" "$tmp/objects.tsv"
   object_count="$(wc -l < "$tmp/objects.tsv" | tr -d ' ')"
   objects_sha="$(sha256sum "$tmp/objects.tsv" | awk '{print $1}')"
   aws "${aws_args[@]}" s3 cp "$tmp/objects.tsv" \
