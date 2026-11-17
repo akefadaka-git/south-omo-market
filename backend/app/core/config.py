@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,6 +43,11 @@ class Settings(BaseSettings):
             self.s3_bucket, self.s3_access_key_id, self.s3_secret_access_key
         )):
             raise ValueError("S3 storage requires S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY")
+        if self.app_env == "production" and self.image_storage_backend == "s3":
+            if not self.s3_use_ssl:
+                raise ValueError("Production S3 storage requires S3_USE_SSL=true")
+            if self.s3_endpoint_url and urlparse(self.s3_endpoint_url).scheme != "https":
+                raise ValueError("Production S3_ENDPOINT_URL must use HTTPS")
         if min(self.max_listing_image_bytes, self.max_listing_images, self.max_listing_image_pixels) < 1:
             raise ValueError("Image upload limits must be positive")
         return self
