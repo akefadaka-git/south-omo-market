@@ -10,6 +10,8 @@ void main() {
   testWidgets('seller can sign in and manage an inquiry', (tester) async {
     var inquiryStatus = 'open';
     final client = MockClient((request) async {
+      if (request.url.path.endsWith('/categories')) return http.Response('[]', 200);
+      if (request.url.path.endsWith('/listings')) return http.Response('[]', 200);
       if (request.url.path.endsWith('/auth/login')) {
         return http.Response(
           jsonEncode({'access_token': 'synthetic-access-token'}),
@@ -57,6 +59,10 @@ void main() {
       apiBaseUrl: 'https://market.example.test/api/v1',
       client: client,
     ));
+    await tester.pumpAndSettle();
+    expect(find.text('South Omo Market'), findsOneWidget);
+    await tester.tap(find.byTooltip('Seller sign in'));
+    await tester.pumpAndSettle();
     expect(find.text('Seller sign in'), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('seller-phone')), '+251900000001');
@@ -101,6 +107,10 @@ void main() {
       apiBaseUrl: 'https://market.example.test/api/v1',
       client: client,
     ));
+    await tester.pumpAndSettle();
+    expect(find.text('South Omo Market'), findsOneWidget);
+    await tester.tap(find.byTooltip('Seller sign in'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('seller-phone')), '+251900000009');
     await tester.enterText(find.byKey(const Key('seller-password')), 'synthetic-test-password-123');
     await tester.tap(find.text('Sign in'));
