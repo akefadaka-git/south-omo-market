@@ -88,7 +88,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Draft cattle'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Updated synthetic cattle');
+    await tester.enterText(find.byType(TextField).first, 'Updated synthetic cattle');
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
     expect(patchCount, 1);
