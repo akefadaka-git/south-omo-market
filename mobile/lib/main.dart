@@ -405,6 +405,8 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
   final _location = TextEditingController(text: 'Koybe');
   String? _categoryId;
   String? _draftId;
+  String? _clientSyncId;
+  bool _selectedDraftSynced = false;
   List<Map<String, Object?>> _drafts = [];
   List<Map<String, Object?>> _images = [];
   bool _busy = false;
@@ -446,10 +448,15 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
       setState(() => _error = 'Enter a title, category, valid ETB price and location.');
       return;
     }
+    if (_selectedDraftSynced) {
+      setState(() => _error = 'A synchronized server draft cannot be edited offline. Start a new draft.');
+      return;
+    }
     final id = _draftId ?? _uuid.v4();
+    final syncId = _clientSyncId ?? id;
     await _store.saveDraft({
       'id': id,
-      'client_sync_id': id,
+      'client_sync_id': syncId,
       'category_id': _categoryId,
       'title': title,
       'description': _description.text.trim(),
@@ -462,6 +469,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
     if (!mounted) return;
     setState(() {
       _draftId = id;
+      _clientSyncId = syncId;
       _error = null;
       _message = 'Draft saved on this device. It has not been published.';
     });
@@ -472,7 +480,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
   Future<void> _loadImages() async {
     final id = _draftId;
     if (id == null) return;
-    final images = await _store.pendingImages(id);
+    final images = await _store.allImages(id);
     if (mounted) setState(() => _images = images);
   }
 
@@ -480,6 +488,10 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
     final id = _draftId;
     if (id == null) {
       setState(() => _error = 'Save the draft before adding photos.');
+      return;
+    }
+    if (_selectedDraftSynced) {
+      setState(() => _error = 'This server draft is synchronized and cannot be changed here.');
       return;
     }
     if (_images.length >= 5) {
@@ -526,6 +538,8 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
   void _startNewDraft() {
     setState(() {
       _draftId = null;
+      _clientSyncId = null;
+      _selectedDraftSynced = false;
       _title.clear();
       _description.clear();
       _price.clear();
@@ -609,10 +623,12 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
               title: Text(draft['title'] as String),
               subtitle: Text('${draft['location_label']} · ${draft['sync_state']}'
                 '${draft['last_error'] == null ? '' : '\n${draft['last_error']}'}'),
-              trailing: const Icon(Icons.cloud_upload_outlined),
+              trailing: Icon(draft['sync_state'] == 'synced' ? Icons.cloud_done : Icons.cloud_upload_outlined),
               onTap: () async {
                 setState(() {
                   _draftId = draft['id'] as String;
+                  _clientSyncId = draft['client_sync_id'] as String?;
+                  _selectedDraftSynced = draft['sync_state'] == 'synced';
                   _categoryId = draft['category_id'] as String?;
                   _title.text = draft['title'] as String;
                   _description.text = draft['description'] as String? ?? '';
