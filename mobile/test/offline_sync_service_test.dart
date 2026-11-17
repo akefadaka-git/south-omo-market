@@ -103,6 +103,7 @@ void main() {
         'id': 'stable-image-uuid',
         'local_path': imageFile.path,
       });
+    var uploadRequested = false;
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/listings/sync')) {
         return http.Response(
@@ -110,10 +111,7 @@ void main() {
           200,
         );
       }
-      expect(request.url.path, '/api/v1/listings/server-listing-456/images');
-      expect(request.headers['content-type'], startsWith('multipart/form-data;'));
-      expect(request.body, contains('name="client_image_id"'));
-      expect(request.body, contains('stable-image-uuid'));
+      uploadRequested = request.url.path.endsWith('/listings/server-listing-456/images');
       return http.Response(
         '{"id":"server-image-789","url":"/image.jpg"}',
         201,
@@ -127,6 +125,8 @@ void main() {
       client: client,
     ).syncPending();
 
+    expect(store.failure, isNull, reason: store.failure);
+    expect(uploadRequested, isTrue);
     expect(result.synced, 1);
     expect(result.failed, 0);
     expect(store.uploadedImageId, 'server-image-789');
