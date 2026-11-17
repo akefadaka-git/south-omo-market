@@ -12,6 +12,7 @@ def production_s3_settings(**overrides):
         "s3_bucket": "private-market-images",
         "s3_access_key_id": "synthetic-access-key",
         "s3_secret_access_key": SecretStr("synthetic-secret"),
+        "rate_limit_storage_uri": "rediss://rate-limit.example.test:6379/0",
     }
     values.update(overrides)
     return values
@@ -32,3 +33,7 @@ def test_production_s3_accepts_https_endpoint() -> None:
         s3_endpoint_url="https://objects.example.test"
     ))
     assert settings.s3_use_ssl is True
+
+def test_production_rejects_process_local_rate_limit_storage() -> None:
+    with pytest.raises(ValueError, match="shared Redis"):
+        Settings(**production_s3_settings(rate_limit_storage_uri="memory://"))
