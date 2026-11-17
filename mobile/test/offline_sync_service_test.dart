@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -19,6 +21,7 @@ class FakeDraftStore extends LocalDraftStore {
   final images = <Map<String, Object?>>[];
   String? syncedId;
   String? failure;
+  String? uploadedImageId;
 
   @override
   Future<List<Map<String, Object?>>> pendingDrafts() async => drafts;
@@ -37,7 +40,9 @@ class FakeDraftStore extends LocalDraftStore {
   }
 
   @override
-  Future<void> markImageUploaded(String id, String serverImageId) async {}
+  Future<void> markImageUploaded(String id, String serverImageId) async {
+    uploadedImageId = serverImageId;
+  }
 }
 
 void main() {
@@ -89,3 +94,45 @@ void main() {
     client.close();
   });
 }
+
+
+  test('offline sync uploads a queued image with its stable client image ID', () async {
+    final directory = await Directory.systemTemp.createTemp('market-sync-test');
+    final imageFile = File('${directory.path}/synthetic.jpg');
+    await imageFile.writeAsBytes([0xff, 0xd8, 0xff, 0xd9]);
+    final store = FakeDraftStore()
+      ..images.add({
+        'id': 'stable-image-uuid',
+        'local_path': imageFile.path,
+      });
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/listings/sync')) {
+        return http.Response(
+          '{"id":"server-listing-456","status":"draft","idempotent":false}',
+          200,
+        );
+      }
+      expect(request.url.path, '/api/v1/listings/server-listing-456/images');
+      expect(request, isA<http.MultipartRequest>());
+      final multipart = request as http.MultipartRequest;
+      expect(multipart.fields['client_image_id'], 'stable-image-uuid');
+      return http.Response(
+        '{"id":"server-image-789","url":"/image.jpg"}',
+        201,
+      );
+    });
+
+    final result = await OfflineSyncService(
+      apiBaseUrl: 'https://market.example.test/api/v1',
+      accessToken: 'synthetic-token',
+      store: store,
+      client: client,
+    ).syncPending();
+
+    expect(result.synced, 1);
+    expect(result.failed, 0);
+    expect(store.uploadedImageId, 'server-image-789');
+    expect(store.syncedId, 'server-listing-456');
+    await directory.delete(recursive: true);
+    client.close();
+  });
