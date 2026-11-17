@@ -107,6 +107,7 @@ void main() {
   testWidgets('buyer can register and send listing inquiry', (tester) async {
     var registered = false;
     var sent = false;
+    var authHeaderPresent = false;
     final calls = <String>[];
     final client = MockClient((request) async {
       calls.add('${request.method} ${request.url.path}');
@@ -121,11 +122,9 @@ void main() {
         return http.Response('{"access_token":"buyer-token"}', 200);
       }
       if (request.url.path.endsWith('/inquiries') && request.method == 'POST') {
-        expect(request.headers.entries.any((entry) => entry.key.toLowerCase() == 'authorization' && entry.value == 'Bearer buyer-token'), isTrue);
+        authHeaderPresent = request.headers.entries.any((entry) => entry.key.toLowerCase() == 'authorization' && entry.value == 'Bearer buyer-token');
         final body = jsonDecode(request.body) as Map<String, dynamic>;
-        expect(body['listing_id'], 'listing-2');
-        expect(body['message'], 'Is this available?');
-        sent = true;
+        sent = body['listing_id'] == 'listing-2' && body['message'] == 'Is this available?';
         return http.Response('{"id":"inquiry-1","status":"open"}', 201);
       }
       return http.Response('Not found', 404);
@@ -146,6 +145,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(registered, isTrue);
     expect(sent, isTrue, reason: 'Requests: ${calls.join(' | ')}');
+    expect(authHeaderPresent, isTrue);
     expect(find.text('Your inquiry was sent to the seller.'), findsOneWidget);
     client.close();
   });
