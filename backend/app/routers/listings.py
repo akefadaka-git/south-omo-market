@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.image_storage import LocalImageStorage
+from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
 from app.models import Category, Listing, ListingImage, SellerProfile, User
 
@@ -238,6 +238,7 @@ async def upload_listing_image(
     listing_id: str,
     client_image_id: UUID = Form(...),
     file: UploadFile = File(...),
+    storage: ListingImageStorage = Depends(get_image_storage),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
@@ -294,7 +295,6 @@ async def upload_listing_image(
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning):
         raise HTTPException(status_code=415, detail="Uploaded file is not a valid supported image") from None
 
-    storage = LocalImageStorage()
     key = storage.save_jpeg(listing.id, clean_bytes)
     record = ListingImage(
         listing_id=listing.id,
@@ -320,6 +320,7 @@ async def upload_listing_image(
 def get_public_listing_image(
     listing_id: str,
     image_id: str,
+    storage: ListingImageStorage = Depends(get_image_storage),
     db: Session = Depends(get_db),
 ) -> FileResponse:
     row = db.scalar(
@@ -334,7 +335,7 @@ def get_public_listing_image(
     if row is None:
         raise HTTPException(status_code=404, detail="Image not found")
     try:
-        path = LocalImageStorage().resolve(row.storage_key)
+        path = storage.resolve(row.storage_key)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Image not found") from None
     return FileResponse(path, media_type="image/jpeg", filename=f"{row.id}.jpg")
