@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -241,7 +241,16 @@ async def upload_listing_image(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
-    listing = _owned_listing(db, user, listing_id)
+    seller = db.scalar(select(SellerProfile).where(SellerProfile.user_id == user.id))
+    if seller is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    listing = db.scalar(
+        select(Listing).where(
+            Listing.id == listing_id, Listing.seller_id == seller.id
+        ).with_for_update()
+    )
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
     if listing.status != "draft":
         raise HTTPException(status_code=409, detail="Images can only be added to draft listings")
     image_key = str(client_image_id)
@@ -252,10 +261,9 @@ async def upload_listing_image(
         return _image_payload(existing)
 
     settings = get_settings()
-    current_count = db.scalar(
-        select(ListingImage.id).where(ListingImage.listing_id == listing.id)
-    )
-    image_count = len(listing.images)
+    image_count = db.scalar(
+        select(func.count(ListingImage.id)).where(ListingImage.listing_id == listing.id)
+    ) or 0
     if image_count >= settings.max_listing_images:
         raise HTTPException(status_code=409, detail="Listing image limit reached")
 
@@ -279,6 +287,8 @@ async def upload_listing_image(
             normalized.save(output, format="JPEG", quality=88, optimize=True)
             clean_bytes = output.getvalue()
             width, height = normalized.size
+            if len(clean_bytes) > settings.max_listing_image_bytes:
+                raise HTTPException(status_code=413, detail="Normalized image exceeds the upload size limit")
     except HTTPException:
         raise
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning):
