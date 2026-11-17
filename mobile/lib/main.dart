@@ -41,7 +41,15 @@ class SouthOmoMarketApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF356859)),
           useMaterial3: true,
         ),
-        home: MarketplaceHomePage(apiBaseUrl: apiBaseUrl, client: client),
+        home: MarketplaceDiscoveryPage(
+          apiBaseUrl: apiBaseUrl,
+          client: client ?? http.Client(),
+          onSellerSignIn: (context) => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => MarketplaceHomePage(apiBaseUrl: apiBaseUrl, client: client),
+            ),
+          ),
+        ),
       );
 }
 
