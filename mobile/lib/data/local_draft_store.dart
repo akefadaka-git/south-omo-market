@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 class LocalDraftStore {
   static const _databaseName = 'south_omo_market.db';
@@ -48,9 +49,20 @@ class LocalDraftStore {
           await db.execute("ALTER TABLE listing_drafts ADD COLUMN category_id TEXT");
           await db.execute("ALTER TABLE listing_drafts ADD COLUMN server_listing_id TEXT");
           await db.execute("ALTER TABLE listing_drafts ADD COLUMN last_error TEXT");
-          await db.execute(
-            "UPDATE listing_drafts SET client_sync_id = id WHERE client_sync_id IS NULL",
+          final legacyDrafts = await db.query(
+            'listing_drafts',
+            columns: ['id'],
+            where: 'client_sync_id IS NULL',
           );
+          const uuid = Uuid();
+          for (final draft in legacyDrafts) {
+            await db.update(
+              'listing_drafts',
+              {'client_sync_id': uuid.v4()},
+              where: 'id = ?',
+              whereArgs: [draft['id']],
+            );
+          }
           await db.execute('''
             CREATE TABLE listing_draft_images (
               id TEXT PRIMARY KEY,
@@ -110,6 +122,16 @@ class LocalDraftStore {
     return db.query(
       'listing_draft_images',
       where: 'draft_id = ? AND uploaded = 0',
+      whereArgs: [draftId],
+      orderBy: 'rowid ASC',
+    );
+  }
+
+  Future<List<Map<String, Object?>>> allImages(String draftId) async {
+    final db = await database;
+    return db.query(
+      'listing_draft_images',
+      where: 'draft_id = ?',
       whereArgs: [draftId],
       orderBy: 'rowid ASC',
     );
