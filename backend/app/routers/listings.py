@@ -2,7 +2,7 @@ from io import BytesIO
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -335,10 +335,14 @@ def get_public_listing_image(
     if row is None:
         raise HTTPException(status_code=404, detail="Image not found")
     try:
-        path = storage.resolve(row.storage_key)
+        content = storage.read(row.storage_key)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Image not found") from None
-    return FileResponse(path, media_type="image/jpeg", filename=f"{row.id}.jpg")
+    return Response(
+        content=content,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.post("/{listing_id}/submit", status_code=status.HTTP_200_OK)
