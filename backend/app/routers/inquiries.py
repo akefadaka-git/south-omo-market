@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -46,9 +46,10 @@ def _inquiry_payload(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-@limiter.limit("10/hour")
+@limiter.limit("20/hour")
 def create_inquiry(
     request: Request,
+    response: Response,
     payload: InquiryCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
