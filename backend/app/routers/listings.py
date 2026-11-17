@@ -322,7 +322,7 @@ def get_public_listing_image(
     image_id: str,
     storage: ListingImageStorage = Depends(get_image_storage),
     db: Session = Depends(get_db),
-) -> FileResponse:
+) -> Response:
     row = db.scalar(
         select(ListingImage)
         .join(Listing, ListingImage.listing_id == Listing.id)
