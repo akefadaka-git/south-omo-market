@@ -45,3 +45,7 @@ class LocalImageStorage:
         if not candidate.is_relative_to(self.root):
             raise ValueError("Invalid storage key")
         return candidate
+
+
+def get_image_storage() -> ListingImageStorage:
+    return LocalImageStorage()
