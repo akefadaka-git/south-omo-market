@@ -73,6 +73,9 @@ def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
         "location_label": "Koybe",
     })
     assert profile.status_code == 201
+    profile_read = client.get("/api/v1/sellers/me", headers=headers)
+    assert profile_read.status_code == 200
+    assert profile_read.json()["public_name"] == "Synthetic Livestock Seller"
 
     created = client.post("/api/v1/listings", headers=headers, json={
         "category_id": category_id,
