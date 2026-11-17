@@ -1,7 +1,14 @@
 from pathlib import Path
+from typing import Protocol
 from uuid import uuid4
 
 from app.core.config import get_settings
+
+
+class ListingImageStorage(Protocol):
+    def save_jpeg(self, listing_id: str, data: bytes) -> str: ...
+    def resolve(self, key: str) -> Path: ...
+    def delete(self, key: str) -> None: ...
 
 
 class LocalImageStorage:
