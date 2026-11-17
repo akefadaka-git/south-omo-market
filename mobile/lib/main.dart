@@ -67,6 +67,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
   late final bool _ownsClient;
   String? _accessToken;
   String? _error;
+  bool _needsSellerProfile = false;
   bool _busy = false;
 
   String get _baseUrl => widget.apiBaseUrl.replaceFirst(RegExp(r'/+$'), '');
@@ -109,9 +110,17 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
       if (token == null || token.isEmpty) {
         throw Exception('The API did not return an access token.');
       }
+      final profileResponse = await _client.get(
+        Uri.parse('$_baseUrl/sellers/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (profileResponse.statusCode != 200 && profileResponse.statusCode != 404) {
+        throw Exception('Could not verify seller profile.');
+      }
       if (!mounted) return;
       setState(() {
         _accessToken = token;
+        _needsSellerProfile = profileResponse.statusCode == 404;
         _passwordController.clear();
       });
     } catch (error) {
@@ -125,12 +134,20 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
   @override
   Widget build(BuildContext context) {
     final token = _accessToken;
+    if (token != null && _needsSellerProfile) {
+      return SellerProfileSetupPage(
+        apiBaseUrl: _baseUrl,
+        accessToken: token,
+        client: _client,
+        onComplete: () => setState(() => _needsSellerProfile = false),
+      );
+    }
     if (token != null) {
       return SellerInboxPage(
         apiBaseUrl: _baseUrl,
         accessToken: token,
         client: _client,
-        onLogout: () => setState(() => _accessToken = null),
+        onLogout: () => setState(() { _accessToken = null; _needsSellerProfile = false; }),
       );
     }
 
