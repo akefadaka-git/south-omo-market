@@ -38,7 +38,7 @@ Run the scanner from backend/ with the production environment loaded:
 
     python -m app.storage_maintenance --min-age-days 7
 
-The default is a dry run. It compares object keys/files under listings/ against listing_images.storage_key, and selects only unreferenced JPEG objects older than the grace period. Review the complete output and investigate every candidate before deletion. The minimum accepted grace period is seven days.
+The default is a dry run. It compares object keys/files under listings/ against listing_images.storage_key, and selects only unreferenced JPEG objects older than the grace period. Pause listing writes and image uploads before reviewing or applying a cleanup run to avoid races with concurrent uploads. Review the complete output and investigate every candidate before deletion. The minimum accepted grace period is seven days.
 
 Deletion requires an explicit second invocation:
 
