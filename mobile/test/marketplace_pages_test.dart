@@ -119,7 +119,7 @@ void main() {
         return http.Response('{"access_token":"buyer-token"}', 200);
       }
       if (request.url.path.endsWith('/inquiries') && request.method == 'POST') {
-        expect(request.headers['Authorization'], 'Bearer buyer-token');
+        expect(request.headers.entries.any((entry) => entry.key.toLowerCase() == 'authorization' && entry.value == 'Bearer buyer-token'), isTrue);
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         expect(body['listing_id'], 'listing-2');
         expect(body['message'], 'Is this available?');
