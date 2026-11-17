@@ -435,6 +435,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
 
   Future<void> _syncIfOnline() async {
     final results = await Connectivity().checkConnectivity();
+    if (!mounted) return;
     if (results.any((result) => result != ConnectivityResult.none)) {
       await _syncNow();
     }
