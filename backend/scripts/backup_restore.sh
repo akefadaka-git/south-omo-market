@@ -147,7 +147,7 @@ actual_sha="$(sha256sum "$tmp/database.dump" | awk '{print $1}')"
 
 # Never drop/clean a database. Restore only into a newly provisioned empty database.
 table_count="$(psql "$(pg_url "$RESTORE_DATABASE_URL")" -Atqc \
-  "SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND c.relkind IN ('r','p','v','m','S','f')) + (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema'))")"
+  "SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema' AND c.relkind IN ('r','p','v','m','S','f')) + (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema')) + (SELECT count(*) FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname NOT IN ('information_schema','public'))")"
 [[ "$table_count" == "0" ]] || {
   echo "Restore target database is not empty; restore aborted." >&2; exit 2;
 }
