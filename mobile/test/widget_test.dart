@@ -76,4 +76,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Status: read'), findsOneWidget);
   });
+  testWidgets('new account completes seller profile onboarding before inbox', (tester) async {
+    var profileCreated = false;
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/auth/login')) {
+        return http.Response(jsonEncode({'access_token': 'synthetic-token'}), 200);
+      }
+      if (request.url.path.endsWith('/sellers/me') && request.method == 'GET') {
+        return profileCreated
+          ? http.Response(jsonEncode({'id': 'seller-1'}), 200)
+          : http.Response('Not found', 404);
+      }
+      if (request.url.path.endsWith('/sellers/me') && request.method == 'POST') {
+        profileCreated = true;
+        return http.Response(jsonEncode({'id': 'seller-1'}), 201);
+      }
+      if (request.url.path.endsWith('/inquiries/inbox')) {
+        return http.Response('[]', 200);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(SouthOmoMarketApp(
+      apiBaseUrl: 'https://market.example.test/api/v1',
+      client: client,
+    ));
+    await tester.enterText(find.byKey(const Key('seller-phone')), '+251900000009');
+    await tester.enterText(find.byKey(const Key('seller-password')), 'synthetic-test-password-123');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Set up seller profile'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Public seller name'), 'Synthetic Shop');
+    await tester.enterText(find.widgetWithText(TextField, 'Location'), 'Koybe');
+    await tester.tap(find.text('Create seller profile'));
+    await tester.pumpAndSettle();
+    expect(profileCreated, isTrue);
+    expect(find.text('Seller inquiry inbox'), findsOneWidget);
+    client.close();
+  });
+
 }
