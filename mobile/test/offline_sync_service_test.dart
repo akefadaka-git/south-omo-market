@@ -93,8 +93,6 @@ void main() {
     expect(store.failure, contains('503'));
     client.close();
   });
-}
-
 
   test('offline sync uploads a queued image with its stable client image ID', () async {
     final directory = await Directory.systemTemp.createTemp('market-sync-test');
@@ -136,3 +134,4 @@ void main() {
     await directory.delete(recursive: true);
     client.close();
   });
+}
