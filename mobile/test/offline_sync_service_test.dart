@@ -97,7 +97,7 @@ void main() {
   test('offline sync uploads a queued image with its stable client image ID', () async {
     final directory = await Directory.systemTemp.createTemp('market-sync-test');
     final imageFile = File('${directory.path}/synthetic.jpg');
-    await imageFile.writeAsBytes([0xff, 0xd8, 0xff, 0xd9]);
+    await imageFile.writeAsBytes('synthetic image bytes'.codeUnits);
     final store = FakeDraftStore()
       ..images.add({
         'id': 'stable-image-uuid',
