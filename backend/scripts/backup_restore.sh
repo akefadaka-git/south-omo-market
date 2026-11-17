@@ -50,12 +50,21 @@ if [[ "$ACTION" == "backup" ]]; then
     "$remote/$BACKUP_ID/database.dump.gpg" --sse AES256 --only-show-errors
   aws "${aws_args[@]}" s3 sync "s3://$S3_BUCKET/listings/" \
     "$remote/$BACKUP_ID/objects/" --sse AES256 --only-show-errors
+  aws "${aws_args[@]}" s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix listings/ \
+    --query 'Contents[].[Key,Size]' --output text \
+    | awk '$1 != "None" { print $1 "\\t" $2 }' | sort > "$tmp/objects.tsv"
+  object_count="$(wc -l < "$tmp/objects.tsv" | tr -d ' ')"
+  objects_sha="$(sha256sum "$tmp/objects.tsv" | awk '{print $1}')"
+  aws "${aws_args[@]}" s3 cp "$tmp/objects.tsv" \
+    "$remote/$BACKUP_ID/objects.tsv" --sse AES256 --only-show-errors
 
   cat > "$tmp/manifest.txt" <<MANIFEST
 backup_id=$BACKUP_ID
 created_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 source_bucket=$S3_BUCKET
 database_dump_sha256=$dump_sha
+object_count=$object_count
+objects_manifest_sha256=$objects_sha
 repository_commit=${GITHUB_SHA:-unknown}
 MANIFEST
   aws "${aws_args[@]}" s3 cp "$tmp/manifest.txt" \
@@ -70,6 +79,17 @@ fi
 aws "${aws_args[@]}" s3 cp "$remote/$BACKUP_ID/manifest.txt" "$tmp/manifest.txt" --only-show-errors
 aws "${aws_args[@]}" s3 cp "$remote/$BACKUP_ID/database.dump.gpg" \
   "$tmp/database.dump.gpg" --only-show-errors
+aws "${aws_args[@]}" s3 cp "$remote/$BACKUP_ID/objects.tsv" \
+  "$tmp/objects.tsv" --only-show-errors
+expected_objects_sha="$(sed -n 's/^objects_manifest_sha256=//p' "$tmp/manifest.txt")"
+actual_objects_sha="$(sha256sum "$tmp/objects.tsv" | awk '{print $1}')"
+[[ "$expected_objects_sha" =~ ^[a-f0-9]{64}$ && "$actual_objects_sha" == "$expected_objects_sha" ]] || {
+  echo "Object inventory checksum mismatch; restore aborted." >&2; exit 2;
+}
+expected_object_count="$(sed -n 's/^object_count=//p' "$tmp/manifest.txt")"
+[[ "$expected_object_count" =~ ^[0-9]+$ && "$expected_object_count" == "$(wc -l < "$tmp/objects.tsv" | tr -d ' ')" ]] || {
+  echo "Object inventory count mismatch; restore aborted." >&2; exit 2;
+}
 expected_sha="$(sed -n 's/^database_dump_sha256=//p' "$tmp/manifest.txt")"
 [[ "$expected_sha" =~ ^[a-f0-9]{64}$ ]] || {
   echo "Backup manifest checksum is missing or malformed." >&2; exit 2;
@@ -98,5 +118,12 @@ pg_restore --no-owner --no-privileges --exit-on-error \
   --dbname="$(pg_url "$RESTORE_DATABASE_URL")" "$tmp/database.dump"
 aws "${aws_args[@]}" s3 sync "$remote/$BACKUP_ID/objects/" \
   "s3://$S3_BUCKET/listings/" --only-show-errors
+aws "${aws_args[@]}" s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix listings/ \
+  --query 'Contents[].[Key,Size]' --output text \
+  | awk '$1 != "None" { print $1 "\\t" $2 }' | sort > "$tmp/restored-objects.tsv"
+if ! diff -u "$tmp/objects.tsv" "$tmp/restored-objects.tsv"; then
+  echo "Restored image-object inventory differs from the backup manifest." >&2
+  exit 2
+fi
 echo "Restore completed into the supplied empty database and image prefix."
 echo "Run application-level integrity checks before routing any traffic."
