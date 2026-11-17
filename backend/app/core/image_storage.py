@@ -7,7 +7,7 @@ from app.core.config import get_settings
 
 class ListingImageStorage(Protocol):
     def save_jpeg(self, listing_id: str, data: bytes) -> str: ...
-    def resolve(self, key: str) -> Path: ...
+    def read(self, key: str) -> bytes: ...
     def delete(self, key: str) -> None: ...
 
 
@@ -20,21 +20,25 @@ class LocalImageStorage:
     def save_jpeg(self, listing_id: str, data: bytes) -> str:
         key = f"listings/{listing_id}/{uuid4().hex}.jpg"
         destination = self._resolve(key)
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.root.chmod(0o700)
+        destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        destination.parent.chmod(0o700)
         temporary = destination.with_suffix(".tmp")
         try:
             with temporary.open("xb") as output:
                 output.write(data)
+            temporary.chmod(0o600)
             temporary.replace(destination)
         finally:
             temporary.unlink(missing_ok=True)
         return key
 
-    def resolve(self, key: str) -> Path:
+    def read(self, key: str) -> bytes:
         path = self._resolve(key)
         if not path.is_file():
             raise FileNotFoundError("Stored image not found")
-        return path
+        return path.read_bytes()
 
     def delete(self, key: str) -> None:
         path = self._resolve(key)
