@@ -16,6 +16,9 @@ class LocalDraftStore {
     _database = await openDatabase(
       _databasePath ?? p.join(root, _databaseName),
       version: _databaseVersion,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE listing_drafts (
