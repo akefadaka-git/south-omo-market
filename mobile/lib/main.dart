@@ -3,6 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
+
+import 'data/local_draft_store.dart';
+import 'data/offline_sync_service.dart';
 
 const defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -266,6 +271,17 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
           title: const Text('Seller inquiry inbox'),
           actions: [
             IconButton(
+              tooltip: 'Offline listing drafts',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => SellerDraftsPage(
+                  apiBaseUrl: widget.apiBaseUrl,
+                  accessToken: widget.accessToken,
+                  client: widget.client,
+                ),
+              )),
+              icon: const Icon(Icons.inventory_2_outlined),
+            ),
+            IconButton(
               tooltip: 'Refresh',
               onPressed: _loading ? null : _loadInbox,
               icon: const Icon(Icons.refresh),
@@ -351,4 +367,272 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
                         ),
                       ),
       );
+}
+
+
+class SellerDraftsPage extends StatefulWidget {
+  const SellerDraftsPage({
+    super.key,
+    required this.apiBaseUrl,
+    required this.accessToken,
+    required this.client,
+  });
+
+  final String apiBaseUrl;
+  final String accessToken;
+  final http.Client client;
+
+  @override
+  State<SellerDraftsPage> createState() => _SellerDraftsPageState();
+}
+
+class _SellerDraftsPageState extends State<SellerDraftsPage> {
+  static const _categories = <Map<String, String>>[
+    {'id': '00000000-0000-4000-8000-000000000001', 'name': 'Livestock'},
+    {'id': '00000000-0000-4000-8000-000000000002', 'name': 'Agriculture'},
+    {'id': '00000000-0000-4000-8000-000000000003', 'name': 'Food and groceries'},
+    {'id': '00000000-0000-4000-8000-000000000004', 'name': 'Shops and products'},
+    {'id': '00000000-0000-4000-8000-000000000005', 'name': 'Services'},
+    {'id': '00000000-0000-4000-8000-000000000006', 'name': 'Property and rentals'},
+  ];
+
+  final _store = LocalDraftStore();
+  final _picker = ImagePicker();
+  final _uuid = const Uuid();
+  final _title = TextEditingController();
+  final _description = TextEditingController();
+  final _price = TextEditingController();
+  final _location = TextEditingController(text: 'Koybe');
+  String? _categoryId;
+  String? _draftId;
+  List<Map<String, Object?>> _drafts = [];
+  List<Map<String, Object?>> _images = [];
+  bool _busy = false;
+  String? _message;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _categoryId = _categories.first['id'];
+    _reload();
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    _price.dispose();
+    _location.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    try {
+      final drafts = await _store.allDrafts();
+      if (!mounted) return;
+      setState(() => _drafts = drafts);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not open local drafts: $error');
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    final title = _title.text.trim();
+    final location = _location.text.trim();
+    final amount = double.tryParse(_price.text.trim());
+    if (title.length < 3 || location.length < 2 || amount == null || amount < 0 || _categoryId == null) {
+      setState(() => _error = 'Enter a title, category, valid ETB price and location.');
+      return;
+    }
+    final id = _draftId ?? _uuid.v4();
+    await _store.saveDraft({
+      'id': id,
+      'client_sync_id': id,
+      'category_id': _categoryId,
+      'title': title,
+      'description': _description.text.trim(),
+      'price_minor': (amount * 100).round(),
+      'location_label': location,
+      'sync_state': 'pending',
+      'last_error': null,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    if (!mounted) return;
+    setState(() {
+      _draftId = id;
+      _error = null;
+      _message = 'Draft saved on this device. It has not been published.';
+    });
+    await _reload();
+    await _loadImages();
+  }
+
+  Future<void> _loadImages() async {
+    final id = _draftId;
+    if (id == null) return;
+    final images = await _store.pendingImages(id);
+    if (mounted) setState(() => _images = images);
+  }
+
+  Future<void> _pickImage() async {
+    final id = _draftId;
+    if (id == null) {
+      setState(() => _error = 'Save the draft before adding photos.');
+      return;
+    }
+    if (_images.length >= 5) {
+      setState(() => _error = 'A listing can contain up to five photos.');
+      return;
+    }
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2400,
+      maxHeight: 2400,
+      imageQuality: 88,
+    );
+    if (picked == null) return;
+    await _store.addImage(id: _uuid.v4(), draftId: id, localPath: picked.path);
+    await _loadImages();
+    if (mounted) setState(() => _message = 'Photo queued locally for upload.');
+  }
+
+  Future<void> _syncNow() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+      _message = null;
+    });
+    try {
+      final result = await OfflineSyncService(
+        apiBaseUrl: widget.apiBaseUrl,
+        accessToken: widget.accessToken,
+        store: _store,
+        client: widget.client,
+      ).syncPending();
+      await _reload();
+      await _loadImages();
+      if (!mounted) return;
+      setState(() => _message = '${result.synced} draft(s) synced; ${result.failed} need retry.');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = 'Sync could not complete: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _startNewDraft() {
+    setState(() {
+      _draftId = null;
+      _title.clear();
+      _description.clear();
+      _price.clear();
+      _location.text = 'Koybe';
+      _images = [];
+      _error = null;
+      _message = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Offline listing drafts'),
+      actions: [
+        IconButton(
+          tooltip: 'Sync pending drafts',
+          onPressed: _busy ? null : _syncNow,
+          icon: const Icon(Icons.sync),
+        ),
+      ],
+    ),
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('Create a listing draft', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _categoryId,
+          decoration: const InputDecoration(labelText: 'Category'),
+          items: _categories.map((item) => DropdownMenuItem(
+            value: item['id'], child: Text(item['name']!),
+          )).toList(),
+          onChanged: (value) => setState(() => _categoryId = value),
+        ),
+        const SizedBox(height: 8),
+        TextField(controller: _title, decoration: const InputDecoration(labelText: 'Listing title')),
+        TextField(
+          controller: _description,
+          decoration: const InputDecoration(labelText: 'Description'),
+          maxLines: 3,
+        ),
+        TextField(
+          controller: _price,
+          decoration: const InputDecoration(labelText: 'Price (ETB)'),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        TextField(controller: _location, decoration: const InputDecoration(labelText: 'Location')),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, children: [
+          FilledButton.icon(
+            onPressed: _busy ? null : _saveDraft,
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Save draft offline'),
+          ),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _pickImage,
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: Text('Add photo (${_images.length}/5)'),
+          ),
+          TextButton(onPressed: _startNewDraft, child: const Text('New draft')),
+        ]),
+        if (_message != null) Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(_message!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+        ),
+        if (_error != null) Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ),
+        const Divider(height: 28),
+        Row(children: [
+          Expanded(child: Text('Saved on this device', style: Theme.of(context).textTheme.titleMedium)),
+          TextButton(onPressed: _reload, child: const Text('Refresh')),
+        ]),
+        if (_drafts.isEmpty)
+          const Text('No local drafts yet.')
+        else
+          ..._drafts.map((draft) => Card(
+            child: ListTile(
+              title: Text(draft['title'] as String),
+              subtitle: Text('${draft['location_label']} · ${draft['sync_state']}'
+                '${draft['last_error'] == null ? '' : '\n${draft['last_error']}'}'),
+              trailing: const Icon(Icons.cloud_upload_outlined),
+              onTap: () async {
+                setState(() {
+                  _draftId = draft['id'] as String;
+                  _categoryId = draft['category_id'] as String?;
+                  _title.text = draft['title'] as String;
+                  _description.text = draft['description'] as String? ?? '';
+                  _price.text = ((draft['price_minor'] as int) / 100).toStringAsFixed(2);
+                  _location.text = draft['location_label'] as String;
+                });
+                await _loadImages();
+              },
+            ),
+          )),
+        const SizedBox(height: 12),
+        FilledButton.tonal(
+          onPressed: _busy ? null : _syncNow,
+          child: Text(_busy ? 'Synchronizing…' : 'Sync pending drafts and photos'),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Drafts remain local until synchronization succeeds. Synchronization creates server-side drafts only; publishing still requires seller submission and administrator moderation.',
+        ),
+      ],
+    ),
+  );
 }
