@@ -425,8 +425,12 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
       if (results.any((result) => result != ConnectivityResult.none)) _syncNow();
     });
     _categoryId = _categories.first['id'];
-    _reload();
-    _syncIfOnline();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _reload();
+    await _syncIfOnline();
   }
 
   Future<void> _syncIfOnline() async {
@@ -439,6 +443,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
+    unawaited(_store.close());
     _title.dispose();
     _description.dispose();
     _price.dispose();
