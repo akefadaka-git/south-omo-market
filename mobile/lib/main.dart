@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'data/local_draft_store.dart';
@@ -505,7 +507,16 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
       imageQuality: 88,
     );
     if (picked == null) return;
-    await _store.addImage(id: _uuid.v4(), draftId: id, localPath: picked.path);
+    final imageId = _uuid.v4();
+    final documents = await getApplicationDocumentsDirectory();
+    final imageDirectory = Directory('${documents.path}/listing_draft_images');
+    await imageDirectory.create(recursive: true);
+    final extension = picked.path.contains('.')
+        ? picked.path.split('.').last.toLowerCase()
+        : 'jpg';
+    final durablePath = '${imageDirectory.path}/$imageId.$extension';
+    await File(picked.path).copy(durablePath);
+    await _store.addImage(id: imageId, draftId: id, localPath: durablePath);
     await _loadImages();
     if (mounted) setState(() => _message = 'Photo queued locally for upload.');
   }
@@ -526,7 +537,11 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
       await _reload();
       await _loadImages();
       if (!mounted) return;
-      setState(() => _message = '${result.synced} draft(s) synced; ${result.failed} need retry.');
+      final selected = _drafts.where((draft) => draft['id'] == _draftId);
+      setState(() {
+        if (selected.isNotEmpty) _selectedDraftSynced = selected.first['sync_state'] == 'synced';
+        _message = '${result.synced} draft(s) synced; ${result.failed} need retry.';
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = 'Sync could not complete: $error');
