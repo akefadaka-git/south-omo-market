@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import 'data/local_draft_store.dart';
 import 'data/offline_sync_service.dart';
+import 'marketplace_pages.dart';
 
 const defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -274,6 +275,27 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
         appBar: AppBar(
           title: const Text('Seller inquiry inbox'),
           actions: [
+            IconButton(
+              tooltip: 'Discover published listings',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => MarketplaceDiscoveryPage(
+                  apiBaseUrl: widget.apiBaseUrl,
+                  client: widget.client,
+                ),
+              )),
+              icon: const Icon(Icons.search),
+            ),
+            IconButton(
+              tooltip: 'My listings',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => SellerListingsPage(
+                  apiBaseUrl: widget.apiBaseUrl,
+                  accessToken: widget.accessToken,
+                  client: widget.client,
+                ),
+              )),
+              icon: const Icon(Icons.storefront_outlined),
+            ),
             IconButton(
               tooltip: 'Offline listing drafts',
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
