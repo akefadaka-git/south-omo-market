@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -414,16 +416,21 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
   bool _busy = false;
   String? _message;
   String? _error;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+      if (results.any((result) => result != ConnectivityResult.none)) _syncNow();
+    });
     _categoryId = _categories.first['id'];
     _reload();
   }
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     _title.dispose();
     _description.dispose();
     _price.dispose();
@@ -522,6 +529,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
   }
 
   Future<void> _syncNow() async {
+    if (_busy) return;
     setState(() {
       _busy = true;
       _error = null;
