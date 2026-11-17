@@ -28,6 +28,35 @@ pg_url() {
   printf '%s' "$1" | sed 's#^postgresql+psycopg://#postgresql://#'
 }
 
+# Write relative object key, byte length and SHA-256 of the object content.
+# listing_prefix identifies the keys to inventory; content_prefix identifies
+# the corresponding object bytes (which may be in the separate backup bucket).
+write_object_inventory() {
+  local listing_bucket="$1" listing_prefix="$2"
+  local content_bucket="$3" content_prefix="$4" output="$5"
+  aws "${aws_args[@]}" s3api list-objects-v2 --bucket "$listing_bucket" \
+    --prefix "$listing_prefix" --query 'Contents[].Key' --output text \
+    | tr '\\t' '\\n' \
+    | while IFS= read -r key; do
+        [[ -n "$key" && "$key" != "None" ]] || continue
+        [[ "$key" == "$listing_prefix"* ]] || {
+          echo "Unexpected object key outside inventory prefix." >&2; exit 2;
+        }
+        relative="${key#"$listing_prefix"}"
+        [[ "$relative" =~ ^[A-Za-z0-9._/-]+$ && "$relative" != *".."* ]] || {
+          echo "Unsupported object key in image inventory." >&2; exit 2;
+        }
+        size="$(aws "${aws_args[@]}" s3api head-object --bucket "$listing_bucket" \
+          --key "$key" --query ContentLength --output text)"
+        checksum="$(aws "${aws_args[@]}" s3 cp "s3://$content_bucket/$content_prefix$relative" - \
+          --only-show-errors | sha256sum | awk '{print $1}')"
+        [[ "$checksum" =~ ^[a-f0-9]{64}$ ]] || {
+          echo "Could not checksum image object $relative." >&2; exit 2;
+        }
+        printf '%s\\t%s\\t%s\\n' "$relative" "$size" "$checksum"
+      done | sort > "$output"
+}
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 remote="s3://$BACKUP_S3_BUCKET/$BACKUP_S3_PREFIX"
@@ -50,9 +79,8 @@ if [[ "$ACTION" == "backup" ]]; then
     "$remote/$BACKUP_ID/database.dump.gpg" --sse AES256 --only-show-errors
   aws "${aws_args[@]}" s3 sync "s3://$S3_BUCKET/listings/" \
     "$remote/$BACKUP_ID/objects/" --sse AES256 --only-show-errors
-  aws "${aws_args[@]}" s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix listings/ \
-    --query 'Contents[].[Key,Size]' --output text \
-    | awk '$1 != "None" { print $1 "\\t" $2 }' | sort > "$tmp/objects.tsv"
+  write_object_inventory "$S3_BUCKET" "listings/" "$BACKUP_S3_BUCKET" \
+    "$BACKUP_S3_PREFIX/$BACKUP_ID/objects/listings/" "$tmp/objects.tsv"
   object_count="$(wc -l < "$tmp/objects.tsv" | tr -d ' ')"
   objects_sha="$(sha256sum "$tmp/objects.tsv" | awk '{print $1}')"
   aws "${aws_args[@]}" s3 cp "$tmp/objects.tsv" \
@@ -118,9 +146,8 @@ pg_restore --no-owner --no-privileges --exit-on-error \
   --dbname="$(pg_url "$RESTORE_DATABASE_URL")" "$tmp/database.dump"
 aws "${aws_args[@]}" s3 sync "$remote/$BACKUP_ID/objects/" \
   "s3://$S3_BUCKET/listings/" --only-show-errors
-aws "${aws_args[@]}" s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix listings/ \
-  --query 'Contents[].[Key,Size]' --output text \
-  | awk '$1 != "None" { print $1 "\\t" $2 }' | sort > "$tmp/restored-objects.tsv"
+write_object_inventory "$S3_BUCKET" "listings/" "$S3_BUCKET" \
+  "listings/" "$tmp/restored-objects.tsv"
 if ! diff -u "$tmp/objects.tsv" "$tmp/restored-objects.tsv"; then
   echo "Restored image-object inventory differs from the backup manifest." >&2
   exit 2
