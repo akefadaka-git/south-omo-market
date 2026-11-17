@@ -29,7 +29,11 @@ class Settings(BaseSettings):
             raise ValueError("Production requires a separately generated JWT_SECRET of 32+ characters")
         if self.app_env == "production" and not self.image_storage_dir.is_absolute():
             raise ValueError("Production requires an absolute IMAGE_STORAGE_DIR on persistent private storage")
-        if self.max_listing_image_bytes < 1 or self.max_listing_images < 1:
+        if (
+            self.max_listing_image_bytes < 1
+            or self.max_listing_images < 1
+            or self.max_listing_image_pixels < 1
+        ):
             raise ValueError("Image upload limits must be positive")
         return self
 
