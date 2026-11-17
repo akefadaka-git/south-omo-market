@@ -107,8 +107,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Set up seller profile'), findsOneWidget);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Public seller name'), 'Synthetic Shop');
-    await tester.enterText(find.widgetWithText(TextField, 'Location'), 'Koybe');
+    await tester.enterText(find.byType(TextField).first, 'Synthetic Shop');
+    await tester.enterText(find.byType(TextField).last, 'Koybe');
     await tester.tap(find.text('Create seller profile'));
     await tester.pumpAndSettle();
     expect(profileCreated, isTrue);
