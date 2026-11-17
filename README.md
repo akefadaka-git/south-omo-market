@@ -32,10 +32,21 @@ Verification includes synthetic API tests for image decoding/normalization, size
 
 ## Mobile listing workflows and storage operations (A3)
 
-- The Android seller workspace now exposes published-listing discovery with category filtering and listing detail/photo views.
+- The Android app opens on public published-listing discovery with category filtering and listing detail/photo views. Sellers enter their authenticated workspace separately.
+- Buyers can register or sign in from a listing detail and send an authenticated inquiry; the API derives buyer identity/contact from the signed-in account.
 - Sellers can review their own server-side listings, edit draft fields, upload photos to a draft, and submit a draft for moderation. Submitted/published listings are read-only in the seller editor.
 - First-time sellers are routed through profile setup after sign-in; the app checks the authenticated seller profile endpoint before opening the inbox.
 - Offline draft creation, local photo queueing and idempotent synchronization remain available. Sync creates drafts only; moderation remains required before public visibility.
 - Storage operations are documented in docs/storage-operations.md. The backup/restore script encrypts PostgreSQL dumps, copies listing objects to a separate backup bucket, verifies checksums, and refuses non-empty restore targets. It requires owner-managed provider credentials and passphrase custody.
 - The orphan-image scanner is dry-run by default, enforces a minimum seven-day grace period, compares storage keys with database metadata, and requires explicit --apply to delete candidates. It does not delete database records.
 - These safeguards are implemented and unit/syntax tested only. No production backup, restore, provider test, or orphan deletion has been executed. Production bucket policy, versioning/retention, credentials, monitoring, recovery objectives and a witnessed restore drill remain outstanding.
+
+
+## API abuse controls (A4 corrective work)
+
+- Account registration is limited to 20 attempts per source IP per hour.
+- Login is limited to 20 attempts per source IP per minute.
+- Buyer inquiry creation is limited to 20 attempts per source IP per hour.
+- Rate limits use a shared storage backend. Development/test defaults to process-local memory; production startup requires RATE_LIMIT_STORAGE_URI to use Redis (redis:// or rediss://), so multiple API workers share counters and production cannot silently fall back to per-process memory.
+- Configure Redis with private network access, authentication, TLS where supported, monitoring and capacity controls. The API uses the TCP peer address as its rate-limit key; configure the reverse proxy so the application sees the trusted proxy connection and do not rely on client-supplied forwarded headers.
+- Production S3 storage requires S3_USE_SSL=true and rejects custom HTTP endpoints. Configure the production bucket as private and enforce provider-side encryption and least-privilege IAM separately.
