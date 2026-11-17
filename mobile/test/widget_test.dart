@@ -17,6 +17,13 @@ void main() {
           headers: {'content-type': 'application/json'},
         );
       }
+      if (request.url.path.endsWith('/sellers/me') && request.method == 'GET') {
+        return http.Response(
+          jsonEncode({'id': 'seller-1', 'public_name': 'Synthetic Seller', 'location': 'Koybe'}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
       if (request.url.path.endsWith('/inquiries/inbox') && request.method == 'GET') {
         return http.Response(
           jsonEncode([
