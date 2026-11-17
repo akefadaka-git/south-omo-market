@@ -50,3 +50,5 @@ Verification includes synthetic API tests for image decoding/normalization, size
 - Rate limits use a shared storage backend. Development/test defaults to process-local memory; production startup requires RATE_LIMIT_STORAGE_URI to use Redis (redis:// or rediss://), so multiple API workers share counters and production cannot silently fall back to per-process memory.
 - Configure Redis with private network access, authentication, TLS where supported, monitoring and capacity controls. The API uses the TCP peer address as its rate-limit key; configure the reverse proxy so the application sees the trusted proxy connection and do not rely on client-supplied forwarded headers.
 - Production S3 storage requires S3_USE_SSL=true and rejects custom HTTP endpoints. Configure the production bucket as private and enforce provider-side encryption and least-privilege IAM separately.
+
+- Production ingress, Redis, S3 policy, backup/recovery and cleanup release gates are listed in docs/production-readiness-checklist.md.
