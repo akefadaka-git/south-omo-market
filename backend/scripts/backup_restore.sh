@@ -12,6 +12,9 @@ fi
 : "${BACKUP_S3_BUCKET:?Set BACKUP_S3_BUCKET to a separate backup bucket}"
 : "${BACKUP_S3_PREFIX:?Set BACKUP_S3_PREFIX to a restricted backup prefix}"
 : "${BACKUP_PASSPHRASE_FILE:?Set BACKUP_PASSPHRASE_FILE to a protected GPG passphrase file}"
+[[ "$BACKUP_S3_PREFIX" =~ ^[A-Za-z0-9._/-]+$ && "$BACKUP_S3_PREFIX" != /* && "$BACKUP_S3_PREFIX" != *".."* ]] || {
+  echo "BACKUP_S3_PREFIX must be a safe relative object prefix." >&2; exit 2;
+}
 [[ "$S3_BUCKET" != "$BACKUP_S3_BUCKET" ]] || {
   echo "Application and backup buckets must be different." >&2; exit 2;
 }
@@ -68,6 +71,13 @@ if [[ "$ACTION" == "backup" ]]; then
     echo "BACKUP_ID contains unsupported characters." >&2; exit 2;
   }
 
+  existing_backup_objects="$(aws "${aws_args[@]}" s3api list-objects-v2 \
+    --bucket "$BACKUP_S3_BUCKET" --prefix "$BACKUP_S3_PREFIX/$BACKUP_ID/" \
+    --max-keys 1 --query 'length(Contents || `[]`)' --output text)"
+  [[ "$existing_backup_objects" == "0" ]] || {
+    echo "Backup ID already exists in the backup bucket; refusing to overwrite." >&2; exit 2;
+  }
+
   # Quiesce marketplace writes before running this command for a consistent DB/object snapshot.
   pg_dump --format=custom --no-owner --no-acl --dbname="$(pg_url "$DATABASE_URL")" \
     --file="$tmp/database.dump"
@@ -104,6 +114,12 @@ fi
 
 : "${BACKUP_ID:?Set BACKUP_ID to the exact backup to restore}"
 : "${RESTORE_DATABASE_URL:?Set RESTORE_DATABASE_URL to a newly provisioned empty database}"
+[[ "$BACKUP_ID" =~ ^[A-Za-z0-9._-]+$ ]] || {
+  echo "BACKUP_ID contains unsupported characters." >&2; exit 2;
+}
+if [[ -n "${DATABASE_URL:-}" && "$RESTORE_DATABASE_URL" == "$DATABASE_URL" ]]; then
+  echo "Restore target must differ from DATABASE_URL." >&2; exit 2;
+fi
 aws "${aws_args[@]}" s3 cp "$remote/$BACKUP_ID/manifest.txt" "$tmp/manifest.txt" --only-show-errors
 aws "${aws_args[@]}" s3 cp "$remote/$BACKUP_ID/database.dump.gpg" \
   "$tmp/database.dump.gpg" --only-show-errors
@@ -131,7 +147,7 @@ actual_sha="$(sha256sum "$tmp/database.dump" | awk '{print $1}')"
 
 # Never drop/clean a database. Restore only into a newly provisioned empty database.
 table_count="$(psql "$(pg_url "$RESTORE_DATABASE_URL")" -Atqc \
-  "SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema')")"
+  "SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND c.relkind IN ('r','p','v','m','S','f')) + (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema'))")"
 [[ "$table_count" == "0" ]] || {
   echo "Restore target database is not empty; restore aborted." >&2; exit 2;
 }
