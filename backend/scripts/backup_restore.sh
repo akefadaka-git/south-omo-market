@@ -87,8 +87,10 @@ table_count="$(psql "$(pg_url "$RESTORE_DATABASE_URL")" -Atqc \
 [[ "$table_count" == "0" ]] || {
   echo "Restore target database is not empty; restore aborted." >&2; exit 2;
 }
-existing_objects="$(aws "${aws_args[@]}" s3 ls "s3://$S3_BUCKET/listings/" | head -n 1 || true)"
-[[ -z "$existing_objects" ]] || {
+aws "${aws_args[@]}" s3api head-bucket --bucket "$S3_BUCKET"
+object_count="$(aws "${aws_args[@]}" s3api list-objects-v2 --bucket "$S3_BUCKET" \
+  --prefix listings/ --max-keys 1 --query 'length(Contents || `[]`)' --output text)"
+[[ "$object_count" == "0" ]] || {
   echo "Restore target image prefix is not empty; restore aborted." >&2; exit 2;
 }
 
