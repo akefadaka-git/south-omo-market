@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+ACTION="${1:-}"
+if [[ "$ACTION" != "backup" && "$ACTION" != "restore" ]]; then
+  echo "Usage: $0 backup|restore" >&2
+  exit 2
+fi
+
+: "${S3_BUCKET:?Set S3_BUCKET to the application image bucket}"
+: "${BACKUP_S3_BUCKET:?Set BACKUP_S3_BUCKET to a separate backup bucket}"
+: "${BACKUP_S3_PREFIX:?Set BACKUP_S3_PREFIX to a restricted backup prefix}"
+: "${BACKUP_PASSPHRASE_FILE:?Set BACKUP_PASSPHRASE_FILE to a protected GPG passphrase file}"
+[[ "$S3_BUCKET" != "$BACKUP_S3_BUCKET" ]] || {
+  echo "Application and backup buckets must be different." >&2; exit 2;
+}
+[[ -r "$BACKUP_PASSPHRASE_FILE" ]] || {
+  echo "Backup passphrase file is not readable." >&2; exit 2;
+}
+
+aws_args=()
+if [[ -n "${S3_ENDPOINT_URL:-}" ]]; then
+  aws_args+=(--endpoint-url "$S3_ENDPOINT_URL")
+fi
+
+pg_url() {
+  printf '%s' "$1" | sed 's#^postgresql+psycopg://#postgresql://#'
+}
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+remote="s3://$BACKUP_S3_BUCKET/$BACKUP_S3_PREFIX"
+
+if [[ "$ACTION" == "backup" ]]; then
+  : "${DATABASE_URL:?Set DATABASE_URL for the source PostgreSQL database}"
+  export BACKUP_ID="${BACKUP_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
+  [[ "$BACKUP_ID" =~ ^[A-Za-z0-9._-]+$ ]] || {
+    echo "BACKUP_ID contains unsupported characters." >&2; exit 2;
+  }
+
+  # Quiesce marketplace writes before running this command for a consistent DB/object snapshot.
+  pg_dump --format=custom --no-owner --no-acl --dbname="$(pg_url "$DATABASE_URL")" \
+    --file="$tmp/database.dump"
+  dump_sha="$(sha256sum "$tmp/database.dump" | awk '{print $1}')"
+  gpg --batch --yes --pinentry-mode loopback --passphrase-file "$BACKUP_PASSPHRASE_FILE" \
+    --symmetric --cipher-algo AES256 --output "$tmp/database.dump.gpg" "$tmp/database.dump"
+
+  aws "${aws_args[@]}" s3 cp "$tmp/database.dump.gpg" \
+    "$remote/$BACKUP_ID/database.dump.gpg" --sse AES256 --only-show-errors
+  aws "${aws_args[@]}" s3 sync "s3://$S3_BUCKET/listings/" \
+    "$remote/$BACKUP_ID/objects/" --sse AES256 --only-show-errors
+
+  cat > "$tmp/manifest.txt" <<MANIFEST
+backup_id=$BACKUP_ID
+created_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+source_bucket=$S3_BUCKET
+database_dump_sha256=$dump_sha
+repository_commit=${GITHUB_SHA:-unknown}
+MANIFEST
+  aws "${aws_args[@]}" s3 cp "$tmp/manifest.txt" \
+    "$remote/$BACKUP_ID/manifest.txt" --sse AES256 --only-show-errors
+  echo "Backup completed: $remote/$BACKUP_ID/"
+  echo "Database dump encrypted with GPG AES-256; backup objects use server-side AES-256."
+  exit 0
+fi
+
+: "${BACKUP_ID:?Set BACKUP_ID to the exact backup to restore}"
+: "${RESTORE_DATABASE_URL:?Set RESTORE_DATABASE_URL to a newly provisioned empty database}"
+aws "${aws_args[@]}" s3 cp "$remote/$BACKUP_ID/manifest.txt" "$tmp/manifest.txt" --only-show-errors
+aws "${aws_args[@]}" s3 cp "$remote/$BACKUP_ID/database.dump.gpg" \
+  "$tmp/database.dump.gpg" --only-show-errors
+expected_sha="$(sed -n 's/^database_dump_sha256=//p' "$tmp/manifest.txt")"
+[[ "$expected_sha" =~ ^[a-f0-9]{64}$ ]] || {
+  echo "Backup manifest checksum is missing or malformed." >&2; exit 2;
+}
+gpg --batch --yes --pinentry-mode loopback --passphrase-file "$BACKUP_PASSPHRASE_FILE" \
+  --decrypt --output "$tmp/database.dump" "$tmp/database.dump.gpg"
+actual_sha="$(sha256sum "$tmp/database.dump" | awk '{print $1}')"
+[[ "$actual_sha" == "$expected_sha" ]] || {
+  echo "Database backup checksum mismatch; restore aborted." >&2; exit 2;
+}
+
+# Never drop/clean a database. Restore only into a newly provisioned empty database.
+table_count="$(psql "$(pg_url "$RESTORE_DATABASE_URL")" -Atqc \
+  "SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema')")"
+[[ "$table_count" == "0" ]] || {
+  echo "Restore target database is not empty; restore aborted." >&2; exit 2;
+}
+existing_objects="$(aws "${aws_args[@]}" s3 ls "s3://$S3_BUCKET/listings/" | head -n 1 || true)"
+[[ -z "$existing_objects" ]] || {
+  echo "Restore target image prefix is not empty; restore aborted." >&2; exit 2;
+}
+
+pg_restore --no-owner --no-privileges --exit-on-error \
+  --dbname="$(pg_url "$RESTORE_DATABASE_URL")" "$tmp/database.dump"
+aws "${aws_args[@]}" s3 sync "$remote/$BACKUP_ID/objects/" \
+  "s3://$S3_BUCKET/listings/" --only-show-errors
+echo "Restore completed into the supplied empty database and image prefix."
+echo "Run application-level integrity checks before routing any traffic."
