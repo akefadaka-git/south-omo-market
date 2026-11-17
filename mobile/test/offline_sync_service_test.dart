@@ -111,9 +111,9 @@ void main() {
         );
       }
       expect(request.url.path, '/api/v1/listings/server-listing-456/images');
-      expect(request, isA<http.MultipartRequest>());
-      final multipart = request as http.MultipartRequest;
-      expect(multipart.fields['client_image_id'], 'stable-image-uuid');
+      expect(request.headers['content-type'], startsWith('multipart/form-data;'));
+      expect(request.body, contains('name="client_image_id"'));
+      expect(request.body, contains('stable-image-uuid'));
       return http.Response(
         '{"id":"server-image-789","url":"/image.jpg"}',
         201,
