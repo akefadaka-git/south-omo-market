@@ -22,7 +22,7 @@ Set DATABASE_URL, S3_BUCKET, BACKUP_S3_BUCKET, BACKUP_S3_PREFIX, and BACKUP_PASS
 3. Record the emitted backup ID and verify the manifest, encrypted database dump and object prefix exist in the separate backup bucket.
 4. Resume writes only after the backup command and remote object checks succeed.
 
-The script creates a PostgreSQL custom-format dump, encrypts it with GPG AES-256, records a SHA-256 checksum for the database dump and a separate SHA-256 checksum plus key/size inventory for listing objects, copies listing objects to the backup bucket, and uploads the manifest last. The backup bucket objects use server-side AES-256 encryption. The script does not configure provider versioning, lifecycle retention, replication or Object Lock; configure those at the provider.
+The script creates a PostgreSQL custom-format dump, encrypts it with GPG AES-256, records a SHA-256 checksum for the database dump and a separate SHA-256 checksum plus key/size/content-SHA-256 inventory for every listing object, copies listing objects to the backup bucket, and uploads the manifest last. The backup bucket objects use server-side AES-256 encryption. The script does not configure provider versioning, lifecycle retention, replication or Object Lock; configure those at the provider.
 
 ## Restore drill
 
@@ -30,7 +30,7 @@ Restore only to a newly provisioned, empty PostgreSQL database and an empty list
 
     bash backend/scripts/backup_restore.sh restore
 
-The script verifies the decrypted database dump checksum and object-inventory checksum/count, refuses a non-empty database or image prefix, and compares the restored key/size inventory with the saved manifest before reporting success. It never drops or cleans an existing database and never uses destructive object sync. After restore, run Alembic/current-schema checks, compare listing-image metadata against object keys, fetch representative images through the API, and document RPO/RTO. Do not route production traffic until the owner approves the recovery result.
+The script verifies the decrypted database dump checksum and object-inventory checksum/count, refuses a non-empty database or image prefix, and recomputes every restored object's SHA-256 and compares the restored key/size/content-checksum inventory with the saved manifest before reporting success. It never drops or cleans an existing database and never uses destructive object sync. After restore, run Alembic/current-schema checks, compare listing-image metadata against object keys, fetch representative images through the API, and document RPO/RTO. Do not route production traffic until the owner approves the recovery result.
 
 ## Orphan image cleanup
 
