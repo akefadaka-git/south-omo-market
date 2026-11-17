@@ -36,7 +36,7 @@ write_object_inventory() {
   local content_bucket="$3" content_prefix="$4" output="$5"
   aws "${aws_args[@]}" s3api list-objects-v2 --bucket "$listing_bucket" \
     --prefix "$listing_prefix" --query 'Contents[].Key' --output text \
-    | tr '\\t' '\\n' \
+    | tr '\t' '\n' \
     | while IFS= read -r key; do
         [[ -n "$key" && "$key" != "None" ]] || continue
         [[ "$key" == "$listing_prefix"* ]] || {
@@ -53,7 +53,7 @@ write_object_inventory() {
         [[ "$checksum" =~ ^[a-f0-9]{64}$ ]] || {
           echo "Could not checksum image object $relative." >&2; exit 2;
         }
-        printf '%s\\t%s\\t%s\\n' "$relative" "$size" "$checksum"
+        printf '%s\t%s\t%s\n' "$relative" "$size" "$checksum"
       done | sort > "$output"
 }
 
