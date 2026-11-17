@@ -5,13 +5,16 @@ import 'package:uuid/uuid.dart';
 class LocalDraftStore {
   static const _databaseName = 'south_omo_market.db';
   static const _databaseVersion = 2;
+  LocalDraftStore({String? databasePath}) : _databasePath = databasePath;
+
+  final String? _databasePath;
   Database? _database;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
     final root = await getDatabasesPath();
     _database = await openDatabase(
-      p.join(root, _databaseName),
+      _databasePath ?? p.join(root, _databaseName),
       version: _databaseVersion,
       onCreate: (db, version) async {
         await db.execute('''
