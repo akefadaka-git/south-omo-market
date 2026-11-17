@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     jwt_secret: SecretStr = SecretStr("development-only-change-this-secret")
     jwt_issuer: str = "south-omo-market"
     access_token_minutes: int = 30
+    rate_limit_storage_uri: str = "memory://"
     image_storage_dir: Path = Path("var/listing-images")
     image_storage_backend: str = "local"
     s3_endpoint_url: str | None = None
@@ -48,6 +49,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production S3 storage requires S3_USE_SSL=true")
             if self.s3_endpoint_url and urlparse(self.s3_endpoint_url).scheme != "https":
                 raise ValueError("Production S3_ENDPOINT_URL must use HTTPS")
+        if self.app_env == "production" and not self.rate_limit_storage_uri.startswith(("redis://", "rediss://")):
+            raise ValueError("Production requires a shared Redis RATE_LIMIT_STORAGE_URI")
         if min(self.max_listing_image_bytes, self.max_listing_images, self.max_listing_image_pixels) < 1:
             raise ValueError("Image upload limits must be positive")
         return self
