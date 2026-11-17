@@ -426,6 +426,14 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
     });
     _categoryId = _categories.first['id'];
     _reload();
+    _syncIfOnline();
+  }
+
+  Future<void> _syncIfOnline() async {
+    final results = await Connectivity().checkConnectivity();
+    if (results.any((result) => result != ConnectivityResult.none)) {
+      await _syncNow();
+    }
   }
 
   @override
