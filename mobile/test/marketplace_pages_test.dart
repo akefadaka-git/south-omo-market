@@ -133,14 +133,14 @@ void main() {
       apiBaseUrl: 'https://market.example.test/api/v1', client: client, listingId: 'listing-2',
     )));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Is this available?');
+    await tester.enterText(find.byKey(const Key('buyer-inquiry-message')), 'Is this available?');
     await tester.tap(find.text('Send inquiry'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).at(0), 'Buyer Test');
-    await tester.enterText(find.byType(TextField).at(1), '+251900000007');
-    await tester.enterText(find.byType(TextField).at(2), 'synthetic-password-123');
+    await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Buyer Test');
+    await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000007');
+    await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-password-123');
     await tester.tap(find.text('Register and continue'));
     await tester.pumpAndSettle();
     expect(registered, isTrue);
