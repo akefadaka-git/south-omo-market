@@ -4,6 +4,7 @@ from botocore.config import Config as BotoConfig
 from moto import mock_aws
 
 from app.core.image_storage import S3ImageStorage
+from app.storage_maintenance import _s3_candidates
 
 
 @pytest.fixture
@@ -53,3 +54,11 @@ def test_s3_adapter_rejects_path_traversal(s3_storage):
     storage, _, _ = s3_storage
     with pytest.raises(ValueError):
         storage.read("listings/../../private/secret.jpg")
+
+def test_s3_orphan_scanner_enumerates_listing_objects(s3_storage):
+    storage, client, bucket = s3_storage
+    client.put_object(Bucket=bucket, Key="listings/orphan/image.jpg", Body=b"synthetic")
+    candidates = _s3_candidates(storage)
+    assert len(candidates) == 1
+    assert candidates[0][0] == "listings/orphan/image.jpg"
+    assert candidates[0][1].tzinfo is not None
