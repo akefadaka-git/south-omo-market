@@ -1,4 +1,8 @@
+from io import BytesIO
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -350,3 +354,131 @@ def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
         f"/api/v1/inquiries/{inquiry_id}/status",
         headers=outsider_headers, json={"status": "closed"},
     ).status_code == 404
+
+
+def _register_seller(phone: str) -> tuple[str, str]:
+    created = client.post("/api/v1/auth/register", json={
+        "phone_number": phone,
+        "display_name": "Synthetic Offline Seller",
+        "password": "synthetic-offline-password-123",
+    })
+    assert created.status_code == 201
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": phone,
+        "password": "synthetic-offline-password-123",
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    profile = client.post("/api/v1/sellers/me", headers=headers, json={
+        "public_name": "Synthetic Offline Shop", "location_label": "Koybe",
+    })
+    assert profile.status_code == 201
+    return created.json()["id"], token
+
+
+def test_offline_listing_sync_is_idempotent_and_seller_scoped() -> None:
+    category_id = "00000000-0000-4000-8000-000000000001"
+    db = TestingSession()
+    if db.get(Category, category_id) is None:
+        db.add(Category(id=category_id, slug="offline-livestock", name_en="Offline livestock", is_active=True))
+        db.commit()
+    db.close()
+    _user_id, token = _register_seller("+251900000401")
+    headers = {"Authorization": f"Bearer {token}"}
+    sync_id = str(uuid4())
+    payload = {
+        "client_sync_id": sync_id,
+        "category_id": category_id,
+        "title": "Offline synthetic goats",
+        "description": "Queued without network",
+        "price_minor": 35000,
+        "location_label": "Koybe",
+    }
+    first = client.post("/api/v1/listings/sync", headers=headers, json=payload)
+    assert first.status_code == 200
+    assert first.json()["idempotent"] is False
+    replay = client.post("/api/v1/listings/sync", headers=headers, json=payload)
+    assert replay.status_code == 200
+    assert replay.json()["id"] == first.json()["id"]
+    assert replay.json()["idempotent"] is True
+
+    changed = {**payload, "title": "Changed content with same idempotency key"}
+    assert client.post("/api/v1/listings/sync", headers=headers, json=changed).status_code == 409
+
+    _other_id, other_token = _register_seller("+251900000402")
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    assert client.post("/api/v1/listings/sync", headers=other_headers, json=payload).status_code == 409
+
+
+def test_listing_image_upload_validates_content_and_hides_private_images(tmp_path, monkeypatch) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("IMAGE_STORAGE_DIR", str(tmp_path / "private-images"))
+    get_settings.cache_clear()
+    try:
+        _user_id, token = _register_seller("+251900000411")
+        headers = {"Authorization": f"Bearer {token}"}
+        category_id = "00000000-0000-4000-8000-000000000001"
+        db = TestingSession()
+        if db.get(Category, category_id) is None:
+            db.add(Category(id=category_id, slug="image-livestock", name_en="Image livestock", is_active=True))
+            db.commit()
+        db.close()
+        listing = client.post("/api/v1/listings", headers=headers, json={
+            "category_id": category_id, "title": "Image test listing",
+            "description": "Synthetic image test", "price_minor": 50000,
+            "location_label": "Jinka",
+        })
+        assert listing.status_code == 201
+        listing_id = listing.json()["id"]
+
+        image_buffer = BytesIO()
+        Image.new("RGB", (24, 16), "green").save(image_buffer, format="PNG")
+        image_bytes = image_buffer.getvalue()
+        image_id = str(uuid4())
+        uploaded = client.post(
+            f"/api/v1/listings/{listing_id}/images",
+            headers=headers,
+            data={"client_image_id": image_id},
+            files={"file": ("synthetic.png", image_bytes, "image/png")},
+        )
+        assert uploaded.status_code == 201
+        image = uploaded.json()
+        assert image["width"] == 24 and image["height"] == 16
+        assert client.get(image["url"]).status_code == 404
+
+        replay = client.post(
+            f"/api/v1/listings/{listing_id}/images",
+            headers=headers,
+            data={"client_image_id": image_id},
+            files={"file": ("synthetic.png", image_bytes, "image/png")},
+        )
+        assert replay.status_code == 201
+        assert replay.json()["id"] == image["id"]
+
+        invalid = client.post(
+            f"/api/v1/listings/{listing_id}/images",
+            headers=headers,
+            data={"client_image_id": str(uuid4())},
+            files={"file": ("not-an-image.png", b"not an image", "image/png")},
+        )
+        assert invalid.status_code == 415
+
+        db = TestingSession()
+        db.get(models.Listing, listing_id).status = "published"
+        db.commit()
+        db.close()
+        served = client.get(image["url"])
+        assert served.status_code == 200
+        assert served.headers["content-type"] == "image/jpeg"
+        assert served.content.startswith(b"\\xff\\xd8")
+
+        _other_id, other_token = _register_seller("+251900000412")
+        other_headers = {"Authorization": f"Bearer {other_token}"}
+        assert client.post(
+            f"/api/v1/listings/{listing_id}/images",
+            headers=other_headers,
+            data={"client_image_id": str(uuid4())},
+            files={"file": ("synthetic.png", image_bytes, "image/png")},
+        ).status_code == 404
+    finally:
+        get_settings.cache_clear()
