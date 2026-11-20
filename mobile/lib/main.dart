@@ -278,14 +278,14 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const MarketBrandPanel(
-                    title: 'Your shop. More local buyers.',
-                    subtitle: 'Manage your listings and buyer inquiries across South Omo.',
+                  MarketBrandPanel(
+                    title: marketString(context, en: 'Your shop. More local buyers.', am: 'የእርስዎ ሱቅ። ተጨማሪ የአካባቢ ገዢዎች።', mdy: ''),
+                    subtitle: marketString(context, en: 'Manage your listings and buyer inquiries across South Omo.', am: 'በደቡብ ኦሞ ያሉ ዝርዝሮችዎንና የገዢ ጥያቄዎችን ያስተዳድሩ።', mdy: ''),
                   ),
                   const SizedBox(height: 22),
-                  const Text(
-                    'Seller sign in',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  Text(
+                    marketString(context, en: 'Seller sign in', am: 'የሻጭ መግቢያ', mdy: ''),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(marketString(context, en: 'Sign in to view and manage inquiries about your listings.', am: 'ስለ ዝርዝሮችዎ የተላኩ ጥያቄዎችን ለማየትና ለማስተዳደር ይግቡ።', mdy: '')),
@@ -313,7 +313,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                       prefixIcon: Icon(Icons.phone_outlined),
                     ),
                     validator: (value) =>
-                        value == null || value.trim().length < 7 ? 'Enter a valid phone number' : null,
+                        value == null || value.trim().length < 7 ? marketString(context, en: 'Enter a valid phone number', am: 'ትክክለኛ የስልክ ቁጥር ያስገቡ', mdy: '') : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -330,7 +330,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                       ),
                     ),
                     validator: (value) =>
-                        value == null || value.length < 12 ? 'Password must be at least 12 characters' : null,
+                        value == null || value.length < 12 ? marketString(context, en: 'Password must be at least 12 characters', am: 'የይለፍ ቃሉ ቢያንስ 12 ፊደላት መሆን አለበት', mdy: '') : null,
                   ),
                   const SizedBox(height: 12),
                   TextButton(
