@@ -30,6 +30,6 @@ void main() {
     ));
 
     expect(find.text('Trade closer. Grow together.'), findsOneWidget);
-    expect(find.byType(MarketBrandMark), findsOneWidget);
+    expect(find.byType(MarketBrandMark), findsNWidgets(2));
   });
 }
