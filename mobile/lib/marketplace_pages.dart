@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'l10n/market_strings.dart';
 import 'design/market_design_system.dart';
 import 'design/market_brand_pages.dart';
+import 'design/market_category_browser.dart';
 
 class MarketplaceDiscoveryPage extends StatefulWidget {
   const MarketplaceDiscoveryPage({
@@ -91,12 +92,35 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
     }
   }
 
+  Future<void> _browseCategories() async {
+    final selection = await showModalBottomSheet<MarketCategorySelection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: MarketPalette.paper,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => MarketCategoryBrowserSheet(
+        categories: _categories,
+        selectedCategoryId: _categoryId,
+      ),
+    );
+    if (selection == null || !mounted) return;
+    _searchController.text = selection.searchTerm ?? '';
+    setState(() {
+      _categoryId = selection.categoryId;
+      _searchQuery = selection.searchTerm ?? '';
+    });
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
     final visibleListings = _listings.where((item) {
       if (query.isEmpty) return true;
-      final searchable = '${item['title'] ?? ''} ${item['location'] ?? ''}'.toLowerCase();
+      final categoryName = _categories.firstWhere((entry) => entry['id'] == item['category_id'], orElse: () => {'name': ''})['name'] ?? '';
+      final searchable = '${item['title'] ?? ''} ${item['description'] ?? ''} ${item['location'] ?? ''} $categoryName'.toLowerCase();
       return searchable.contains(query);
     }).toList();
 
@@ -153,23 +177,26 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         ),
       ),
       Padding(
-        padding: const EdgeInsets.all(12),
-        child: DropdownButtonFormField<String>(
-          value: _categoryId,
-          decoration: InputDecoration(labelText: marketString(context, en: 'Filter by category', am: 'በምድብ አጣራ', mdy: '')),
-          items: [
-            DropdownMenuItem<String>(value: null, child: Text(marketString(context, en: 'All categories', am: 'ሁሉም ምድቦች', mdy: ''))),
-            ..._categories.map((category) => DropdownMenuItem<String>(
-              value: category['id'] as String,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(MarketIcons.category(category['name'] as String), size: 19),
-                const SizedBox(width: 9),
-                Flexible(child: Text(category['name'] as String)),
-              ]),
-            )),
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        child: Row(children: [
+          Expanded(child: OutlinedButton.icon(
+            key: const Key('browse-market-categories'),
+            onPressed: _loading ? null : _browseCategories,
+            icon: const Icon(Icons.grid_view_rounded),
+            label: Text(marketString(context, en: 'Browse categories', am: 'ምድቦችን ይመልከቱ', mdy: '')),
+          )),
+          if (_categoryId != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Clear category',
+              onPressed: () {
+                setState(() { _categoryId = null; _searchController.clear(); _searchQuery = ''; });
+                _load();
+              },
+              icon: const Icon(Icons.filter_alt_off_rounded),
+            ),
           ],
-          onChanged: (value) { setState(() => _categoryId = value); _load(); },
-        ),
+        ]),
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
