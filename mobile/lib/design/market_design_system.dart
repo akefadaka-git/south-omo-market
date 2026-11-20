@@ -68,8 +68,29 @@ abstract final class MarketDesignSystem {
         color: MarketPalette.muted, height: 1.4),
     );
 
+    TextStyle? ethiopic(TextStyle? style) => style?.copyWith(
+      fontFamilyFallback: const ['Noto Sans Ethiopic', 'NotoSansEthiopic'],
+    );
+    final localizedText = text.copyWith(
+      displayLarge: ethiopic(text.displayLarge),
+      displayMedium: ethiopic(text.displayMedium),
+      displaySmall: ethiopic(text.displaySmall),
+      headlineLarge: ethiopic(text.headlineLarge),
+      headlineMedium: ethiopic(text.headlineMedium),
+      headlineSmall: ethiopic(text.headlineSmall),
+      titleLarge: ethiopic(text.titleLarge),
+      titleMedium: ethiopic(text.titleMedium),
+      titleSmall: ethiopic(text.titleSmall),
+      bodyLarge: ethiopic(text.bodyLarge),
+      bodyMedium: ethiopic(text.bodyMedium),
+      bodySmall: ethiopic(text.bodySmall),
+      labelLarge: ethiopic(text.labelLarge),
+      labelMedium: ethiopic(text.labelMedium),
+      labelSmall: ethiopic(text.labelSmall),
+    );
+
     return base.copyWith(
-      textTheme: text,
+      textTheme: localizedText,
       appBarTheme: const AppBarTheme(
         backgroundColor: MarketPalette.paper,
         foregroundColor: MarketPalette.ink,
