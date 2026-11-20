@@ -165,7 +165,9 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Row(mainAxisSize: MainAxisSize.min, children: [\n        MarketBrandMark(size: 34), SizedBox(width: 10), Text('South Omo Market'),\n      ])),
+      appBar: AppBar(title: const Row(mainAxisSize: MainAxisSize.min, children: [
+        MarketBrandMark(size: 34), SizedBox(width: 10), Text('South Omo Market'),
+      ])),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -303,7 +305,9 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: const Row(mainAxisSize: MainAxisSize.min, children: [\n            MarketBrandMark(size: 32), SizedBox(width: 9), Text('Seller inquiry inbox'),\n          ]),
+          title: const Row(mainAxisSize: MainAxisSize.min, children: [
+            MarketBrandMark(size: 32), SizedBox(width: 9), Text('Seller inquiry inbox'),
+          ]),
           actions: [
             IconButton(
               tooltip: 'Discover published listings',
@@ -711,7 +715,8 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
             child: ListTile(
               title: Text(draft['title'] as String),
               subtitle: Text('${draft['location_label']} · ${draft['sync_state']}'
-                '${draft['last_error'] == null ? '' : '\n${draft['last_error']}'}'),
+                '${draft['last_error'] == null ? '' : '
+${draft['last_error']}'}'),
               trailing: Icon(draft['sync_state'] == 'synced' ? Icons.cloud_done : Icons.cloud_upload_outlined),
               onTap: () async {
                 setState(() {
