@@ -136,6 +136,16 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       const SizedBox(width: 10),
       Flexible(child: Text(marketString(context, en: 'South Omo Market', am: 'ደቡብ ኦሞ ገበያ', mdy: ''))),
     ]), actions: [
+      if (widget.onLocaleChanged != null)
+        PopupMenuButton<String>(
+          tooltip: marketString(context, en: 'Change language', am: 'ቋንቋ ቀይር', mdy: ''),
+          onSelected: (language) => widget.onLocaleChanged!(Locale(language)),
+          itemBuilder: (_) => const [
+            PopupMenuItem<String>(value: 'am', child: Text('አማርኛ')),
+            PopupMenuItem<String>(value: 'en', child: Text('English')),
+          ],
+          icon: const Icon(Icons.language_rounded),
+        ),
       if (widget.onSellerSignIn != null)
         IconButton(
           tooltip: marketString(context, en: 'Seller sign in', am: 'የሻጭ መግቢያ', mdy: ''),
