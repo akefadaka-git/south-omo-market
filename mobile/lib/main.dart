@@ -245,7 +245,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
 
     return Scaffold(
       appBar: AppBar(title: const Row(mainAxisSize: MainAxisSize.min, children: [
-        MarketBrandMark(size: 34), SizedBox(width: 10), Text('South Omo Market'),
+        MarketBrandMark(size: 34), SizedBox(width: 10), Text(marketString(context, en: 'South Omo Market', am: 'ደቡብ ኦሞ ገበያ', mdy: '')),
       ])),
       body: Center(
         child: SingleChildScrollView(
@@ -405,7 +405,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
           ]),
           actions: [
             IconButton(
-              tooltip: 'Discover published listings',
+              tooltip: marketString(context, en: 'Discover published listings', am: 'የታተሙ ዝርዝሮችን ያግኙ', mdy: ''),
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
                 builder: (_) => MarketplaceDiscoveryPage(
                   apiBaseUrl: widget.apiBaseUrl,
@@ -415,7 +415,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
               icon: const Icon(Icons.search),
             ),
             IconButton(
-              tooltip: 'My listings',
+              tooltip: marketString(context, en: 'My listings', am: 'የእኔ ዝርዝሮች', mdy: ''),
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
                 builder: (_) => SellerListingsPage(
                   apiBaseUrl: widget.apiBaseUrl,
@@ -426,7 +426,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
               icon: const Icon(Icons.storefront_outlined),
             ),
             IconButton(
-              tooltip: 'Offline listing drafts',
+              tooltip: marketString(context, en: 'Offline listing drafts', am: 'ከመስመር ውጭ ረቂቆች', mdy: ''),
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
                 builder: (_) => SellerDraftsPage(
                   apiBaseUrl: widget.apiBaseUrl,
@@ -437,7 +437,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
               icon: const Icon(Icons.inventory_2_outlined),
             ),
             IconButton(
-              tooltip: 'Refresh',
+              tooltip: marketString(context, en: 'Refresh', am: 'አድስ', mdy: ''),
               onPressed: _loading ? null : _loadInbox,
               icon: const Icon(Icons.refresh),
             ),
@@ -459,7 +459,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
                         children: [
                           Text(_error!, textAlign: TextAlign.center),
                           const SizedBox(height: 12),
-                          FilledButton(onPressed: _loadInbox, child: const Text('Retry')),
+                          FilledButton(onPressed: _loadInbox, child: Text(marketString(context, en: 'Retry', am: 'እንደገና ሞክር', mdy: ''))),
                         ],
                       ),
                     ),
@@ -500,17 +500,17 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
                                         if (status == 'open')
                                           OutlinedButton(
                                             onPressed: updating ? null : () => _updateStatus(id, 'read'),
-                                            child: const Text('Mark read'),
+                                            child: Text(marketString(context, en: 'Mark read', am: 'እንደተነበበ ምልክት አድርግ', mdy: '')),
                                           ),
                                         if (status != 'closed')
                                           FilledButton.tonal(
                                             onPressed: updating ? null : () => _updateStatus(id, 'closed'),
-                                            child: const Text('Close inquiry'),
+                                            child: Text(marketString(context, en: 'Close inquiry', am: 'ጥያቄውን ዝጋ', mdy: '')),
                                           ),
                                         if (status == 'closed')
                                           OutlinedButton(
                                             onPressed: updating ? null : () => _updateStatus(id, 'open'),
-                                            child: const Text('Reopen'),
+                                            child: Text(marketString(context, en: 'Reopen', am: 'እንደገና ክፈት', mdy: '')),
                                           ),
                                       ],
                                     ),
@@ -741,10 +741,10 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Offline listing drafts'),
+      title: Text(marketString(context, en: 'Offline listing drafts', am: 'ከመስመር ውጭ የዝርዝር ረቂቆች', mdy: '')),
       actions: [
         IconButton(
-          tooltip: 'Sync pending drafts',
+          tooltip: marketString(context, en: 'Sync pending drafts', am: 'ያልተላኩ ረቂቆችን አመሳስል', mdy: ''),
           onPressed: _busy ? null : _syncNow,
           icon: const Icon(Icons.sync),
         ),
