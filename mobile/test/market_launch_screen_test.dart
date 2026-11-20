@@ -39,4 +39,24 @@ void main() {
     expect(find.byKey(const Key('seller-display-name')), findsOneWidget);
   });
 
+  testWidgets('Amharic is default and English is an explicit language choice', (tester) async {
+    final client = MockClient((request) async => http.Response('[]', 200));
+    await tester.pumpWidget(SouthOmoMarketApp(
+      apiBaseUrl: 'https://market.example/api/v1',
+      client: client,
+    ));
+    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ደቡብ ኦሞ ገበያ'), findsOneWidget);
+    expect(find.byTooltip('ቋንቋ ቀይር'), findsOneWidget);
+    await tester.tap(find.byTooltip('ቋንቋ ቀይር'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search products and services'), findsOneWidget);
+    client.close();
+  });
+
 }
