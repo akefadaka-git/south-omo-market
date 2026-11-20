@@ -16,6 +16,11 @@ void main() {
           {'id': 'cat-livestock', 'name': 'Livestock'},
         ]), 200);
       }
+      if (request.url.path.endsWith('/locations')) {
+        return http.Response(jsonEncode([
+          {'id': 'loc-koybe', 'name': 'Koybe', 'level': 'locality'},
+        ]), 200);
+      }
       if (request.url.path.endsWith('/listings') && request.url.pathSegments.last == 'listings') {
         return http.Response(jsonEncode([
           {'id': 'listing-1', 'title': 'Synthetic goats', 'price_minor': 450000,
