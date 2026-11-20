@@ -295,3 +295,84 @@ class MarketBrandPanel extends StatelessWidget {
     ),
   );
 }
+
+
+/// Branded, information-dense listing tile used in discovery results.
+class MarketListingCard extends StatelessWidget {
+  const MarketListingCard({
+    super.key,
+    required this.title,
+    required this.location,
+    required this.price,
+    required this.category,
+    required this.onTap,
+  });
+
+  final String title;
+  final String location;
+  final String price;
+  final String category;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 66,
+              height: 66,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(19),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [MarketPalette.mint, Color(0xFFEAF1EC)],
+                ),
+              ),
+              child: Icon(MarketIcons.category(category),
+                size: 30, color: MarketPalette.forest),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(category.toUpperCase(), maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: MarketPalette.jade, fontSize: 10,
+                    fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+                const SizedBox(height: 4),
+                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 6),
+                Row(children: [
+                  const Icon(MarketIcons.location, size: 14,
+                    color: MarketPalette.muted),
+                  const SizedBox(width: 4),
+                  Expanded(child: Text(location, maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall)),
+                ]),
+              ],
+            )),
+            const SizedBox(width: 10),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(price, textAlign: TextAlign.end,
+                style: const TextStyle(
+                  color: MarketPalette.ink, fontSize: 14,
+                  fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              const Icon(Icons.arrow_forward_rounded,
+                size: 18, color: MarketPalette.jade),
+            ]),
+          ],
+        ),
+      ),
+    ),
+  );
+}
