@@ -360,7 +360,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   child: Image.network(
                     Uri.parse('${widget.apiBaseUrl}/').resolve(image['url'] as String).toString(),
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox(
+                    errorBuilder: (_, __, ___) => SizedBox(
                       height: 80, child: Center(child: Text(marketString(context, en: 'Photo unavailable', am: 'ፎቶው አልተገኘም', mdy: ''))),
                     ),
                   ),
@@ -374,7 +374,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                 controller: _messageController,
                 maxLines: 4,
                 maxLength: 2000,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: marketString(context, en: 'Your message', am: 'መልዕክትዎ', mdy: ''),
                   hintText: marketString(context, en: 'Ask about availability, condition or collection', am: 'ስለ መኖሩ፣ ሁኔታው ወይም መውሰጃው ይጠይቁ', mdy: ''),
                   border: OutlineInputBorder(),
