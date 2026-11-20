@@ -82,6 +82,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
   String? _error;
   bool _needsSellerProfile = false;
   bool _busy = false;
+  bool _obscurePassword = true;
 
   String get _baseUrl => widget.apiBaseUrl.replaceFirst(RegExp(r'/+$'), '');
 
@@ -178,6 +179,11 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const MarketBrandPanel(
+                    title: 'Your shop. More local buyers.',
+                    subtitle: 'Manage your listings and buyer inquiries across South Omo.',
+                  ),
+                  const SizedBox(height: 22),
                   const Text(
                     'Seller sign in',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -189,7 +195,10 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                     key: const Key('seller-phone'),
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'Phone number'),
+                    decoration: const InputDecoration(
+                      labelText: 'Phone number',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
                     validator: (value) =>
                         value == null || value.trim().length < 7 ? 'Enter a valid phone number' : null,
                   ),
@@ -197,8 +206,16 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                   TextFormField(
                     key: const Key('seller-password'),
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      ),
+                    ),
                     validator: (value) =>
                         value == null || value.length < 12 ? 'Password must be at least 12 characters' : null,
                   ),
