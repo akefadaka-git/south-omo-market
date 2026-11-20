@@ -36,6 +36,13 @@ class SouthOmoMarketApp extends StatelessWidget {
         title: 'South Omo Market',
         debugShowCheckedModeBanner: false,
         supportedLocales: const [Locale('am'), Locale('en'), Locale('mdy')],
+        localeResolutionCallback: (deviceLocale, supportedLocales) {
+          if (deviceLocale == null) return const Locale('en');
+          for (final supported in supportedLocales) {
+            if (supported.languageCode == deviceLocale.languageCode) return supported;
+          }
+          return const Locale('en');
+        },
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF356859)),
