@@ -52,10 +52,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final deviceLanguage = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-      final categoryLanguage = deviceLanguage == 'am' || deviceLanguage == 'mdy'
-          ? deviceLanguage
-          : 'en';
+      final categoryLanguage = Localizations.localeOf(context).languageCode;
       final listingUri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
         queryParameters: {
           'limit': '50',
@@ -139,7 +136,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       IconButton(tooltip: marketString(context, en: 'Refresh listings', am: 'ዝርዝሮችን አድስ', mdy: ''), onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh)),
       IconButton(
-        tooltip: 'About South Omo Market',
+        tooltip: marketString(context, en: 'About South Omo Market', am: 'ስለ ደቡብ ኦሞ ገበያ', mdy: ''),
         onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => const MarketAboutPage(),
         )),
@@ -165,7 +162,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
             labelText: marketString(context, en: 'Search products and services', am: 'ምርቶችን እና አገልግሎቶችን ፈልግ', mdy: ''),
             prefixIcon: const Icon(MarketIcons.search),
             suffixIcon: _searchQuery.isEmpty ? null : IconButton(
-              tooltip: 'Clear search',
+              tooltip: marketString(context, en: 'Clear search', am: 'ፍለጋውን አጽዳ', mdy: ''),
               onPressed: () {
                 _searchController.clear();
                 setState(() => _searchQuery = '');
@@ -188,7 +185,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
           if (_categoryId != null) ...[
             const SizedBox(width: 8),
             IconButton(
-              tooltip: 'Clear category',
+              tooltip: marketString(context, en: 'Clear category', am: 'ምድቡን አጽዳ', mdy: ''),
               onPressed: () {
                 setState(() { _categoryId = null; _searchController.clear(); _searchQuery = ''; });
                 _load();
@@ -347,7 +344,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   Widget build(BuildContext context) {
     final listing = _listing;
     return Scaffold(
-      appBar: AppBar(title: const Text('Listing details')),
+      appBar: AppBar(title: Text(marketString(context, en: 'Listing details', am: 'የዝርዝር መረጃ', mdy: ''))),
       body: _error != null
         ? Center(child: Text(_error!))
         : listing == null
@@ -364,29 +361,29 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     Uri.parse('${widget.apiBaseUrl}/').resolve(image['url'] as String).toString(),
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const SizedBox(
-                      height: 80, child: Center(child: Text('Photo unavailable')),
+                      height: 80, child: Center(child: Text(marketString(context, en: 'Photo unavailable', am: 'ፎቶው አልተገኘም', mdy: ''))),
                     ),
                   ),
                 ),
               Text(listing['description'] as String? ?? ''),
               const SizedBox(height: 24),
-              Text('Contact seller', style: Theme.of(context).textTheme.titleLarge),
-              const Text('Sign in or create a buyer account to send your inquiry. Your registered phone number is shared with the seller.'),
+              Text(marketString(context, en: 'Contact seller', am: 'ሻጩን ያነጋግሩ', mdy: ''), style: Theme.of(context).textTheme.titleLarge),
+              Text(marketString(context, en: 'Sign in or create a buyer account to send your inquiry. Your registered phone number is shared with the seller.', am: 'ጥያቄዎን ለመላክ ይግቡ ወይም የገዢ መለያ ይፍጠሩ። የተመዘገበው ስልክ ቁጥርዎ ለሻጩ ይታያል።', mdy: '')),
               TextField(
                 key: const Key('buyer-inquiry-message'),
                 controller: _messageController,
                 maxLines: 4,
                 maxLength: 2000,
                 decoration: const InputDecoration(
-                  labelText: 'Your message',
-                  hintText: 'Ask about availability, condition or collection',
+                  labelText: marketString(context, en: 'Your message', am: 'መልዕክትዎ', mdy: ''),
+                  hintText: marketString(context, en: 'Ask about availability, condition or collection', am: 'ስለ መኖሩ፣ ሁኔታው ወይም መውሰጃው ይጠይቁ', mdy: ''),
                   border: OutlineInputBorder(),
                 ),
               ),
               FilledButton.icon(
                 onPressed: _sending ? null : _sendInquiry,
                 icon: const Icon(Icons.send),
-                label: Text(_sending ? 'Sending…' : 'Send inquiry'),
+                label: Text(_sending ? marketString(context, en: 'Sending…', am: 'በመላክ ላይ…', mdy: '') : marketString(context, en: 'Send inquiry', am: 'ጥያቄ ላክ', mdy: '')),
               ),
               if (_notice != null) Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -573,7 +570,7 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('My listings'), actions: [
+    appBar: AppBar(title: Text(marketString(context, en: 'My listings', am: 'የእኔ ዝርዝሮች', mdy: '')), actions: [
       IconButton(onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh)),
     ]),
     body: _loading ? const Center(child: CircularProgressIndicator())
@@ -682,7 +679,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Set up seller profile')),
+    appBar: AppBar(title: Text(marketString(context, en: 'Set up seller profile', am: 'የሻጭ መገለጫ ያዘጋጁ', mdy: ''))),
     body: ListView(padding: const EdgeInsets.all(24), children: [
       const MarketBrandPanel(
         title: 'Meet your local customers.',
@@ -779,7 +776,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     title: Row(children: [
       const MarketBrandMark(size: 34),
       const SizedBox(width: 10),
-      Expanded(child: Text(_register ? 'Create buyer account' : 'Buyer sign in')),
+      Expanded(child: Text(_register ? marketString(context, en: 'Create buyer account', am: 'የገዢ መለያ ይፍጠሩ', mdy: '') : marketString(context, en: 'Buyer sign in', am: 'የገዢ መግቢያ', mdy: ''))),
     ]),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text(_register
@@ -800,10 +797,10 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     actions: [
       TextButton(
         onPressed: _busy ? null : () => setState(() { _register = !_register; _error = null; }),
-        child: Text(_register ? 'I already have an account' : 'Create account'),
+        child: Text(_register ? marketString(context, en: 'I already have an account', am: 'መለያ አለኝ', mdy: '') : marketString(context, en: 'Create account', am: 'መለያ ፍጠር', mdy: '')),
       ),
       FilledButton(onPressed: _busy ? null : _authenticate,
-        child: Text(_busy ? 'Please wait…' : (_register ? 'Register and continue' : 'Sign in'))),
+        child: Text(_busy ? marketString(context, en: 'Please wait…', am: 'እባክዎ ይጠብቁ…', mdy: '') : (_register ? marketString(context, en: 'Register and continue', am: 'ተመዝግበው ይቀጥሉ', mdy: '') : marketString(context, en: 'Sign in', am: 'ግባ', mdy: '')))),
     ],
   );
 }
