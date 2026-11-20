@@ -27,6 +27,8 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _locations = [];
   List<Map<String, dynamic>> _listings = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   String? _categoryId;
   String? _locationId;
   String? _error;
@@ -36,6 +38,12 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -82,7 +90,15 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final visibleListings = _listings.where((item) {
+      if (query.isEmpty) return true;
+      final searchable = '${item['title'] ?? ''} ${item['location'] ?? ''}'.toLowerCase();
+      return searchable.contains(query);
+    }).toList();
+
+    return Scaffold(
     appBar: AppBar(title: Text(marketString(context, en: 'South Omo Market', am: 'ደቡብ ኦሞ ገበያ', mdy: '')), actions: [
       if (widget.onSellerSignIn != null)
         IconButton(
@@ -94,6 +110,28 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         icon: const Icon(Icons.refresh)),
     ]),
     body: Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: TextField(
+          key: const Key('marketplace-search'),
+          controller: _searchController,
+          onChanged: (value) => setState(() => _searchQuery = value),
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            labelText: marketString(context, en: 'Search products and services', am: 'ምርቶችን እና አገልግሎቶችን ፈልግ', mdy: ''),
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchQuery.isEmpty ? null : IconButton(
+              tooltip: 'Clear search',
+              onPressed: () {
+                _searchController.clear();
+                setState(() => _searchQuery = '');
+              },
+              icon: const Icon(Icons.close),
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+      ),
       Padding(
         padding: const EdgeInsets.all(12),
         child: DropdownButtonFormField<String>(
@@ -128,14 +166,19 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         ? const Center(child: CircularProgressIndicator())
         : _error != null
           ? Center(child: Text(_error!, textAlign: TextAlign.center))
-          : _listings.isEmpty
-            ? Center(child: Text(marketString(context, en: 'No published listings found.', am: 'የታተሙ ማስታወቂያዎች አልተገኙም።', mdy: '')))
+          : visibleListings.isEmpty
+            ? Center(child: Text(
+                query.isEmpty
+                  ? marketString(context, en: 'No published listings found.', am: 'የታተሙ ማስታወቂያዎች አልተገኙም።', mdy: '')
+                  : marketString(context, en: 'No matches. Try another search or clear the filters.', am: 'ውጤት አልተገኘም። ሌላ ፍለጋ ወይም ማጣሪያ ይሞክሩ።', mdy: ''),
+                textAlign: TextAlign.center,
+              ))
             : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
-                itemCount: _listings.length,
+                itemCount: visibleListings.length,
                 itemBuilder: (context, index) {
-                  final item = _listings[index];
+                  final item = visibleListings[index];
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: ListTile(
@@ -159,6 +202,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       ),
     ]),
   );
+  }
 }
 
 class ListingDetailPage extends StatefulWidget {
