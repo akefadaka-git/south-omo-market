@@ -541,7 +541,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
                                     const SizedBox(height: 8),
                                     Text(inquiry['message'] as String? ?? ''),
                                     const SizedBox(height: 8),
-                                    Text('Status: $status'),
+                                    Text('${marketString(context, en: 'Status', am: 'ሁኔታ', mdy: '')}: ${status == 'open' ? 'ክፍት' : status == 'read' ? 'ተነብቧል' : status == 'closed' ? 'ተዘግቷል' : status}'),
                                     const SizedBox(height: 8),
                                     Wrap(
                                       spacing: 8,
