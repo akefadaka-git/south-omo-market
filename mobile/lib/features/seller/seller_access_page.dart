@@ -70,8 +70,8 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
         );
         if (created.statusCode != 201) {
           throw Exception(created.statusCode == 409
-            ? 'That phone number is already registered.'
-            : 'Seller account registration failed (${created.statusCode}).');
+            ? marketString(context, en: 'That phone number is already registered.', am: 'ይህ ስልክ ቁጥር አስቀድሞ ተመዝግቧል።', mdy: '')
+            : marketString(context, en: 'Seller account registration failed (${created.statusCode}).', am: 'የሻጭ መለያ መመዝገብ አልተሳካም (${created.statusCode})።', mdy: ''));
         }
       }
       final response = await _client.post(
@@ -83,19 +83,19 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
         }),
       );
       if (response.statusCode != 200) {
-        throw Exception('Sign-in failed. Check the account details and try again.');
+        throw Exception(marketString(context, en: 'Sign-in failed. Check the account details and try again.', am: 'መግባት አልተሳካም። የመለያ መረጃዎን ያረጋግጡና እንደገና ይሞክሩ።', mdy: ''));
       }
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
       final token = payload['access_token'] as String?;
       if (token == null || token.isEmpty) {
-        throw Exception('The API did not return an access token.');
+        throw Exception(marketString(context, en: 'The API did not return an access token.', am: 'ከአገልጋዩ የመግቢያ ቁልፍ አልተመለሰም።', mdy: ''));
       }
       final profileResponse = await _client.get(
         Uri.parse('$_baseUrl/sellers/me'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (profileResponse.statusCode != 200 && profileResponse.statusCode != 404) {
-        throw Exception('Could not verify seller profile.');
+        throw Exception(marketString(context, en: 'Could not verify seller profile.', am: 'የሻጭ መገለጫውን ማረጋገጥ አልተቻለም።', mdy: ''));
       }
       if (!mounted) return;
       setState(() {
