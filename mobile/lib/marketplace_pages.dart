@@ -40,7 +40,9 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
   }
 
   @override
