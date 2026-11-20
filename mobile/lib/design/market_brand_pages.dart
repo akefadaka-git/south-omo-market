@@ -110,7 +110,7 @@ class MarketAboutPage extends StatelessWidget {
           label: Text(marketString(context, en: 'View the welcome experience', am: 'የመጀመሪያ መቀበያ ገጹን ይመልከቱ', mdy: '')),
         ),
         const SizedBox(height: 14),
-        Text('Built for local discovery and direct contact. Listings are subject to marketplace moderation.',
+        Text(marketString(context, en: 'Built for local discovery and direct contact. Listings are subject to marketplace moderation.', am: 'ለአካባቢ ግኝትና ቀጥተኛ ግንኙነት የተዘጋጀ ነው። ዝርዝሮች በገበያው ህግ መሠረት ይገመገማሉ።', mdy: ''),
           style: Theme.of(context).textTheme.bodySmall),
       ],
     ),
