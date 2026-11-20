@@ -17,7 +17,7 @@ void main() {
     expect(find.text('ከአካባቢ ለአካባቢ'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 2100));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('ምርቶችን እና አገልግሎቶችን ፈልግ'), findsOneWidget);
     expect(find.text('South Omo Market'), findsNothing);
@@ -29,7 +29,7 @@ void main() {
       client: client,
     ));
     await tester.pump(const Duration(milliseconds: 2100));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('የሻጭ መግቢያ'));
     await tester.pumpAndSettle();
 
