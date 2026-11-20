@@ -153,7 +153,11 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
             DropdownMenuItem<String>(value: null, child: Text(marketString(context, en: 'All categories', am: 'ሁሉም ምድቦች', mdy: ''))),
             ..._categories.map((category) => DropdownMenuItem<String>(
               value: category['id'] as String,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [\n                Icon(MarketIcons.category(category['name'] as String), size: 19),\n                const SizedBox(width: 9),\n                Flexible(child: Text(category['name'] as String)),\n              ]),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(MarketIcons.category(category['name'] as String), size: 19),
+                const SizedBox(width: 9),
+                Flexible(child: Text(category['name'] as String)),
+              ]),
             )),
           ],
           onChanged: (value) { setState(() => _categoryId = value); _load(); },
