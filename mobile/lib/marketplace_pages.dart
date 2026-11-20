@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import 'l10n/market_strings.dart';
+
 class MarketplaceDiscoveryPage extends StatefulWidget {
   const MarketplaceDiscoveryPage({
     super.key,
@@ -65,14 +67,14 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('South Omo Market'), actions: [
+    appBar: AppBar(title: Text(marketString(context, en: 'South Omo Market', am: 'ደቡብ ኦሞ ገበያ', mdy: '')), actions: [
       if (widget.onSellerSignIn != null)
         IconButton(
-          tooltip: 'Seller sign in',
+          tooltip: marketString(context, en: 'Seller sign in', am: 'የሻጭ መግቢያ', mdy: ''),
           onPressed: () => widget.onSellerSignIn!(context),
           icon: const Icon(Icons.storefront_outlined),
         ),
-      IconButton(tooltip: 'Refresh listings', onPressed: _loading ? null : _load,
+      IconButton(tooltip: marketString(context, en: 'Refresh listings', am: 'ዝርዝሮችን አድስ', mdy: ''), onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh)),
     ]),
     body: Column(children: [
@@ -80,9 +82,9 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         padding: const EdgeInsets.all(12),
         child: DropdownButtonFormField<String>(
           value: _categoryId,
-          decoration: const InputDecoration(labelText: 'Filter by category'),
+          decoration: InputDecoration(labelText: marketString(context, en: 'Filter by category', am: 'በምድብ አጣራ', mdy: '')),
           items: [
-            const DropdownMenuItem<String>(value: null, child: Text('All categories')),
+            DropdownMenuItem<String>(value: null, child: Text(marketString(context, en: 'All categories', am: 'ሁሉም ምድቦች', mdy: ''))),
             ..._categories.map((category) => DropdownMenuItem<String>(
               value: category['id'] as String,
               child: Text(category['name'] as String),
@@ -96,7 +98,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         : _error != null
           ? Center(child: Text(_error!, textAlign: TextAlign.center))
           : _listings.isEmpty
-            ? const Center(child: Text('No published listings found.'))
+            ? Center(child: Text(marketString(context, en: 'No published listings found.', am: 'የታተሙ ማስታወቂያዎች አልተገኙም።', mdy: '')))
             : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
