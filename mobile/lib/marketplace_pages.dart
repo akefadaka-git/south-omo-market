@@ -25,8 +25,10 @@ class MarketplaceDiscoveryPage extends StatefulWidget {
 
 class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _locations = [];
   List<Map<String, dynamic>> _listings = [];
   String? _categoryId;
+  String? _locationId;
   String? _error;
   bool _loading = true;
 
@@ -43,11 +45,17 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       final categoryLanguage = deviceLanguage == 'am' || deviceLanguage == 'mdy'
           ? deviceLanguage
           : 'en';
+      final listingUri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
+        queryParameters: {
+          'limit': '50',
+          if (_categoryId != null) 'category_id': _categoryId!,
+          if (_locationId != null) 'location_id': _locationId!,
+        },
+      );
       final results = await Future.wait([
         widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories?lang=$categoryLanguage')),
-        widget.client.get(Uri.parse(
-          '${widget.apiBaseUrl}/listings?limit=50${_categoryId == null ? '' : '&category_id=$_categoryId'}',
-        )),
+        widget.client.get(listingUri),
+        widget.client.get(Uri.parse('${widget.apiBaseUrl}/locations?lang=$categoryLanguage')),
       ]);
       if (results.any((response) => response.statusCode != 200)) {
         throw Exception('Marketplace listings could not be loaded.');
@@ -56,8 +64,16 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
           .cast<Map<String, dynamic>>();
       final listings = (jsonDecode(results[1].body) as List<dynamic>)
           .cast<Map<String, dynamic>>();
+      final locations = (jsonDecode(results[2].body) as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .where((location) => location['level'] == 'town' || location['level'] == 'locality')
+          .toList();
       if (!mounted) return;
-      setState(() { _categories = categories; _listings = listings; });
+      setState(() {
+        _categories = categories;
+        _locations = locations;
+        _listings = listings;
+      });
     } catch (error) {
       if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -91,6 +107,21 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
             )),
           ],
           onChanged: (value) { setState(() => _categoryId = value); _load(); },
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: DropdownButtonFormField<String>(
+          value: _locationId,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Filter by location', am: 'በአካባቢ አጣራ', mdy: '')),
+          items: [
+            DropdownMenuItem<String>(value: null, child: Text(marketString(context, en: 'All locations', am: 'ሁሉም አካባቢዎች', mdy: ''))),
+            ..._locations.map((location) => DropdownMenuItem<String>(
+              value: location['id'] as String,
+              child: Text(location['name'] as String),
+            )),
+          ],
+          onChanged: (value) { setState(() => _locationId = value); _load(); },
         ),
       ),
       Expanded(child: _loading
