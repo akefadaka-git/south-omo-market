@@ -109,7 +109,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         IconButton(
           tooltip: marketString(context, en: 'Seller sign in', am: 'የሻጭ መግቢያ', mdy: ''),
           onPressed: () => widget.onSellerSignIn!(context),
-          icon: const Icon(Icons.storefront_outlined),
+          icon: const Icon(MarketIcons.seller),
         ),
       IconButton(tooltip: marketString(context, en: 'Refresh listings', am: 'ዝርዝሮችን አድስ', mdy: ''), onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh)),
@@ -131,7 +131,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             labelText: marketString(context, en: 'Search products and services', am: 'ምርቶችን እና አገልግሎቶችን ፈልግ', mdy: ''),
-            prefixIcon: const Icon(Icons.search),
+            prefixIcon: const Icon(MarketIcons.search),
             suffixIcon: _searchQuery.isEmpty ? null : IconButton(
               tooltip: 'Clear search',
               onPressed: () {
@@ -153,7 +153,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
             DropdownMenuItem<String>(value: null, child: Text(marketString(context, en: 'All categories', am: 'ሁሉም ምድቦች', mdy: ''))),
             ..._categories.map((category) => DropdownMenuItem<String>(
               value: category['id'] as String,
-              child: Text(category['name'] as String),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [\n                Icon(MarketIcons.category(category['name'] as String), size: 19),\n                const SizedBox(width: 9),\n                Flexible(child: Text(category['name'] as String)),\n              ]),
             )),
           ],
           onChanged: (value) { setState(() => _categoryId = value); _load(); },
