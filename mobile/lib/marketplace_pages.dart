@@ -684,8 +684,8 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
     appBar: AppBar(title: Text(marketString(context, en: 'Set up seller profile', am: 'የሻጭ መገለጫ ያዘጋጁ', mdy: ''))),
     body: ListView(padding: const EdgeInsets.all(24), children: [
       const MarketBrandPanel(
-        title: 'Meet your local customers.',
-        subtitle: 'Set up a clear public seller identity so buyers know who they are contacting.',
+        title: marketString(context, en: 'Meet your local customers.', am: 'ከአካባቢዎ ደንበኞች ጋር ይገናኙ።', mdy: ''),
+        subtitle: marketString(context, en: 'Set up a clear public seller identity so buyers know who they are contacting.', am: 'ገዢዎች ማንን እንደሚያነጋግሩ እንዲያውቁ የሻጭ መገለጫዎን ያዘጋጁ።', mdy: ''),
       ),
       const SizedBox(height: 20),
       TextField(controller: _name, decoration: InputDecoration(
@@ -696,7 +696,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
       const SizedBox(height: 16),
       FilledButton(
         onPressed: _busy ? null : _createProfile,
-        child: Text(_busy ? 'Saving…' : 'Create seller profile'),
+        child: Text(_busy ? marketString(context, en: 'Saving…', am: 'በማስቀመጥ ላይ…', mdy: '') : marketString(context, en: 'Create seller profile', am: 'የሻጭ መገለጫ ፍጠር', mdy: '')),
       ),
       if (_error != null) Padding(
         padding: const EdgeInsets.only(top: 12),
