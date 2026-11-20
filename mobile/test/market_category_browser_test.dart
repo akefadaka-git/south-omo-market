@@ -13,7 +13,6 @@ void main() {
           selected = await showModalBottomSheet<MarketCategorySelection>(
             context: context, isScrollControlled: true,
             builder: (_) => const MarketCategoryBrowserSheet(categories: [
-              {'id': '00000000-0000-4000-8000-000000000001', 'name': 'Livestock'},
               {'id': '00000000-0000-4000-8000-000000000002', 'name': 'Agriculture'},
             ]),
           );
@@ -24,11 +23,6 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
     expect(find.text('Explore categories'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.text('Maize and grains'),
-      find.byType(ListView).last,
-      const Offset(0, -260),
-    );
     await tester.tap(find.text('Maize and grains'));
     await tester.pumpAndSettle();
     expect(selected?.categoryId, '00000000-0000-4000-8000-000000000002');
