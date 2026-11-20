@@ -57,9 +57,9 @@ abstract final class MarketDesignSystem {
       headlineLarge: base.textTheme.headlineLarge?.copyWith(
         color: MarketPalette.ink, fontWeight: FontWeight.w800, letterSpacing: -.6),
       headlineMedium: base.textTheme.headlineMedium?.copyWith(
-        color: MarketPalette.ink, fontWeight: FontWeight.w750),
+        color: MarketPalette.ink, fontWeight: FontWeight.w700),
       titleLarge: base.textTheme.titleLarge?.copyWith(
-        color: MarketPalette.ink, fontWeight: FontWeight.w750),
+        color: MarketPalette.ink, fontWeight: FontWeight.w700),
       titleMedium: base.textTheme.titleMedium?.copyWith(
         color: MarketPalette.ink, fontWeight: FontWeight.w700),
       bodyLarge: base.textTheme.bodyLarge?.copyWith(
@@ -115,7 +115,7 @@ abstract final class MarketDesignSystem {
           minimumSize: const Size(48, 52),
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w750),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -131,7 +131,7 @@ abstract final class MarketDesignSystem {
         selectedColor: MarketPalette.forest,
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w650),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
       ),
       dividerTheme: const DividerThemeData(color: MarketPalette.line, thickness: 1),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
