@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../l10n/market_strings.dart';
-import '../../design/market_design_system.dart';
 import 'buyer_auth_dialog.dart';
 
 class ListingDetailPage extends StatefulWidget {
