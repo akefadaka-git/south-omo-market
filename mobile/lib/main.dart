@@ -189,6 +189,22 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
       _error = null;
     });
     try {
+      if (_register) {
+        final created = await _client.post(
+          Uri.parse('$_baseUrl/auth/register'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'phone_number': _phoneController.text.trim(),
+            'display_name': _displayNameController.text.trim(),
+            'password': _passwordController.text,
+          }),
+        );
+        if (created.statusCode != 201) {
+          throw Exception(created.statusCode == 409
+            ? 'That phone number is already registered.'
+            : 'Seller account registration failed (${created.statusCode}).');
+        }
+      }
       final response = await _client.post(
         Uri.parse('$_baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
