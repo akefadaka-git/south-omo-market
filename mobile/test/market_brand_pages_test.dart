@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:south_omo_market/design/market_brand_pages.dart';
 import 'package:south_omo_market/design/market_icon_pack.dart';
 import 'package:south_omo_market/design/market_design_system.dart';
 
 void main() {
+  test('bundled Ethiopic font is registered and loadable', () async {
+    final font = await rootBundle.load('assets/fonts/NotoSansEthiopic-Regular.ttf');
+    expect(font.lengthInBytes, greaterThan(100000));
+    expect(MarketDesignSystem.lightTheme.textTheme.bodyMedium?.fontFamilyFallback,
+        contains('NotoSansEthiopic'));
+  });
+
   test('brand icon pack resolves representative catalogue groups', () {
     expect(MarketIconPack.forCategory('Livestock'), MarketIconPack.livestock);
     expect(MarketIconPack.forCategory('Agriculture'), MarketIconPack.crops);

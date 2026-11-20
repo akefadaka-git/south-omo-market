@@ -10,7 +10,7 @@ The app uses a river-basin identity: deep river ink, forest green, jade, mint, w
 `MarketWelcomePage` provides a warm, dark branded welcome experience. `MarketAboutPage` explains the local marketplace purpose and links to the welcome surface. The discovery app bar exposes the About page.
 
 ## Amharic typography
-The theme explicitly requests Noto Sans Ethiopic through font-family fallback. The repository does not yet bundle a licensed Noto Sans Ethiopic font binary; rendering therefore still depends on the Android system fallback. This change does not claim cross-device font parity. Bundle the upstream licensed font file and its OFL notice in a subsequent asset-specific change before release.
+The theme explicitly requests Noto Sans Ethiopic through font-family fallback. The app now bundles the official hinted Noto Sans Ethiopic Regular TTF from the Noto Fonts project and registers it as the `NotoSansEthiopic` Flutter font family. The upstream SIL Open Font License 1.1 notice is included at `assets/fonts/OFL.txt`. Latin text continues to use the platform's primary sans-serif face; Ethiopic glyphs use the bundled fallback. Visual QA on target Android devices remains required.
 
 ## Verification boundary
 Widget tests cover the icon mapping and welcome/about navigation. CI and physical-device checks are required for final visual, contrast, TalkBack, large-text and Samsung Galaxy A16 acceptance.
