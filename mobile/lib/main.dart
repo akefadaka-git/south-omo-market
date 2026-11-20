@@ -153,12 +153,14 @@ class MarketplaceHomePage extends StatefulWidget {
 class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
+  final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
   late final http.Client _client;
   late final bool _ownsClient;
   String? _accessToken;
   String? _error;
   bool _needsSellerProfile = false;
+  bool _register = false;
   bool _busy = false;
   bool _obscurePassword = true;
 
@@ -174,6 +176,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
   @override
   void dispose() {
     _phoneController.dispose();
+    _displayNameController.dispose();
     _passwordController.dispose();
     if (_ownsClient) _client.close();
     super.dispose();
