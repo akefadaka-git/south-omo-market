@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 
 import '../marketplace_pages.dart';
+import '../features/seller/seller_pages.dart';
 import '../design/market_design_system.dart';
 
 const defaultApiBaseUrl = String.fromEnvironment(

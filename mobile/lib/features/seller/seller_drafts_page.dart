@@ -11,7 +11,6 @@ import 'package:uuid/uuid.dart';
 import '../../data/local_draft_store.dart';
 import '../../data/offline_sync_service.dart';
 import '../../l10n/market_strings.dart';
-import '../../design/market_design_system.dart';
 
 class SellerDraftsPage extends StatefulWidget {
   const SellerDraftsPage({

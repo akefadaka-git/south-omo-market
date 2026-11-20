@@ -7,7 +7,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../l10n/market_strings.dart';
 import '../../design/market_design_system.dart';
-import '../../design/market_brand_pages.dart';
 
 class SellerListingsPage extends StatefulWidget {
   const SellerListingsPage({
