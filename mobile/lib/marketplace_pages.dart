@@ -37,8 +37,12 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
+      final deviceLanguage = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      final categoryLanguage = deviceLanguage == 'am' || deviceLanguage == 'mdy'
+          ? deviceLanguage
+          : 'en';
       final results = await Future.wait([
-        widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories')),
+        widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories?lang=$categoryLanguage')),
         widget.client.get(Uri.parse(
           '${widget.apiBaseUrl}/listings?limit=50${_categoryId == null ? '' : '&category_id=$_categoryId'}',
         )),
