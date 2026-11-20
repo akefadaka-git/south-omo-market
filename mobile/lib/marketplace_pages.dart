@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import 'l10n/market_strings.dart';
+import 'design/market_design_system.dart';
 
 class MarketplaceDiscoveryPage extends StatefulWidget {
   const MarketplaceDiscoveryPage({
@@ -99,7 +100,11 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
     }).toList();
 
     return Scaffold(
-    appBar: AppBar(title: Text(marketString(context, en: 'South Omo Market', am: 'ደቡብ ኦሞ ገበያ', mdy: '')), actions: [
+    appBar: AppBar(title: Row(mainAxisSize: MainAxisSize.min, children: [
+      const MarketBrandMark(size: 34),
+      const SizedBox(width: 10),
+      Flexible(child: Text(marketString(context, en: 'South Omo Market', am: 'ደቡብ ኦሞ ገበያ', mdy: ''))),
+    ]), actions: [
       if (widget.onSellerSignIn != null)
         IconButton(
           tooltip: marketString(context, en: 'Seller sign in', am: 'የሻጭ መግቢያ', mdy: ''),
@@ -110,6 +115,13 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         icon: const Icon(Icons.refresh)),
     ]),
     body: Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+        child: MarketBrandPanel(
+          title: marketString(context, en: 'Trade closer. Grow together.', am: 'በቅርብ ይገበያዩ፤ አብረው ያድጉ።', mdy: ''),
+          subtitle: marketString(context, en: 'Discover goods, local skills and trusted businesses across South Omo.', am: 'በደቡብ ኦሞ ያሉ ምርቶችን፣ ክህሎቶችን እና ንግዶችን ያግኙ።', mdy: ''),
+        ),
+      ),
       Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
         child: TextField(
