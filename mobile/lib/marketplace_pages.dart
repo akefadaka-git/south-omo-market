@@ -683,7 +683,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(marketString(context, en: 'Set up seller profile', am: 'የሻጭ መገለጫ ያዘጋጁ', mdy: ''))),
     body: ListView(padding: const EdgeInsets.all(24), children: [
-      const MarketBrandPanel(
+      MarketBrandPanel(
         title: marketString(context, en: 'Meet your local customers.', am: 'ከአካባቢዎ ደንበኞች ጋር ይገናኙ።', mdy: ''),
         subtitle: marketString(context, en: 'Set up a clear public seller identity so buyers know who they are contacting.', am: 'ገዢዎች ማንን እንደሚያነጋግሩ እንዲያውቁ የሻጭ መገለጫዎን ያዘጋጁ።', mdy: ''),
       ),
