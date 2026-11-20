@@ -24,6 +24,7 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
     expect(find.text('Explore categories'), findsOneWidget);
+    await tester.ensureVisible(find.text('Maize and grains'));
     await tester.tap(find.text('Maize and grains'));
     await tester.pumpAndSettle();
     expect(selected?.categoryId, '00000000-0000-4000-8000-000000000002');
