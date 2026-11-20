@@ -40,6 +40,20 @@ class ListingSyncCreate(ListingCreate):
     client_sync_id: UUID
 
 
+def _resolve_location_id(db: Session, location_id: str | None, location_label: str) -> str | None:
+    if location_id is not None:
+        location = db.get(Location, location_id)
+        if location is None or not location.is_active:
+            raise HTTPException(status_code=404, detail="Location not found")
+        return location.id
+    return db.scalar(
+        select(Location.id).where(
+            func.lower(Location.name_en) == location_label.strip().lower(),
+            Location.is_active.is_(True),
+        )
+    )
+
+
 def _image_payload(image: ListingImage) -> dict[str, object]:
     return {
         "id": image.id,
@@ -131,12 +145,14 @@ def sync_my_offline_draft(
     seller = db.scalar(select(SellerProfile).where(SellerProfile.user_id == user.id))
     if seller is None:
         raise HTTPException(status_code=409, detail="Create a seller profile before syncing drafts")
+    resolved_location_id = _resolve_location_id(db, payload.location_id, payload.location_label)
     sync_id = str(payload.client_sync_id)
     existing = db.scalar(select(Listing).where(Listing.client_sync_id == sync_id))
     if existing is not None:
         if existing.seller_id != seller.id:
             raise HTTPException(status_code=409, detail="Sync identifier is already in use")
         expected = payload.model_dump(exclude={"client_sync_id"})
+        expected["location_id"] = resolved_location_id
         actual = {
             "category_id": existing.category_id,
             "title": existing.title,
@@ -152,10 +168,6 @@ def sync_my_offline_draft(
     category = db.get(Category, payload.category_id)
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
-    if payload.location_id is not None:
-        location = db.get(Location, payload.location_id)
-        if location is None or not location.is_active:
-            raise HTTPException(status_code=404, detail="Location not found")
     listing = Listing(
         seller_id=seller.id,
         category_id=category.id,
@@ -163,7 +175,7 @@ def sync_my_offline_draft(
         description=payload.description,
         price_minor=payload.price_minor,
         location_label=payload.location_label,
-        location_id=payload.location_id,
+        location_id=resolved_location_id,
         status="draft",
         client_sync_id=sync_id,
     )
@@ -176,12 +188,14 @@ def sync_my_offline_draft(
         if existing is None or existing.seller_id != seller.id:
             raise HTTPException(status_code=409, detail="Sync identifier is already in use")
         expected = payload.model_dump(exclude={"client_sync_id"})
+        expected["location_id"] = resolved_location_id
         actual = {
             "category_id": existing.category_id,
             "title": existing.title,
             "description": existing.description,
             "price_minor": existing.price_minor,
             "location_label": existing.location_label,
+            "location_id": existing.location_id,
         }
         if expected != actual:
             raise HTTPException(status_code=409, detail="Sync identifier was reused with different draft data")
@@ -210,15 +224,12 @@ def create_my_listing(
     category = db.get(Category, payload.category_id)
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
-    if payload.location_id is not None:
-        location = db.get(Location, payload.location_id)
-        if location is None or not location.is_active:
-            raise HTTPException(status_code=404, detail="Location not found")
+    resolved_location_id = _resolve_location_id(db, payload.location_id, payload.location_label)
     listing = Listing(
         seller_id=seller.id, category_id=category.id,
         title=payload.title, description=payload.description,
         price_minor=payload.price_minor, location_label=payload.location_label,
-        location_id=payload.location_id, status="draft",
+        location_id=resolved_location_id, status="draft",
     )
     db.add(listing)
     db.commit()
