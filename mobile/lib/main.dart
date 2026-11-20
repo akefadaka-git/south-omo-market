@@ -267,14 +267,14 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  const Text('Sign in to view and manage inquiries about your listings.'),
+                  Text(marketString(context, en: 'Sign in to view and manage inquiries about your listings.', am: 'ስለ ዝርዝሮችዎ የተላኩ ጥያቄዎችን ለማየትና ለማስተዳደር ይግቡ።', mdy: '')),
                   const SizedBox(height: 24),
                   TextFormField(
                     key: const Key('seller-phone'),
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
-                      labelText: 'Phone number',
+                      labelText: marketString(context, en: 'Phone number', am: 'ስልክ ቁጥር', mdy: ''),
                       prefixIcon: Icon(Icons.phone_outlined),
                     ),
                     validator: (value) =>
@@ -286,7 +286,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: marketString(context, en: 'Password', am: 'የይለፍ ቃል', mdy: ''),
                       prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
                         tooltip: _obscurePassword ? 'Show password' : 'Hide password',
@@ -300,7 +300,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                   const SizedBox(height: 20),
                   FilledButton(
                     onPressed: _busy ? null : _signIn,
-                    child: Text(_busy ? 'Signing in…' : 'Sign in'),
+                    child: Text(_busy ? marketString(context, en: 'Signing in…', am: 'በመግባት ላይ…', mdy: '') : marketString(context, en: 'Sign in', am: 'ግባ', mdy: '')),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
@@ -401,7 +401,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: const Row(mainAxisSize: MainAxisSize.min, children: [
-            MarketBrandMark(size: 32), SizedBox(width: 9), Text('Seller inquiry inbox'),
+            MarketBrandMark(size: 32), SizedBox(width: 9), Text(marketString(context, en: 'Seller inquiry inbox', am: 'የሻጭ ጥያቄዎች', mdy: '')),
           ]),
           actions: [
             IconButton(
@@ -442,7 +442,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
               icon: const Icon(Icons.refresh),
             ),
             IconButton(
-              tooltip: 'Sign out',
+              tooltip: marketString(context, en: 'Sign out', am: 'ውጣ', mdy: ''),
               onPressed: widget.onLogout,
               icon: const Icon(Icons.logout),
             ),
@@ -465,7 +465,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
                     ),
                   )
                 : _inquiries.isEmpty
-                    ? const Center(child: Text('No inquiries yet.'))
+                    ? Center(child: Text(marketString(context, en: 'No inquiries yet.', am: 'እስካሁን ምንም ጥያቄ የለም።', mdy: '')))
                     : RefreshIndicator(
                         onRefresh: _loadInbox,
                         child: ListView.builder(
