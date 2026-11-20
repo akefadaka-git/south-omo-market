@@ -273,7 +273,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                     key: const Key('seller-phone'),
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: marketString(context, en: 'Phone number', am: 'ስልክ ቁጥር', mdy: ''),
                       prefixIcon: Icon(Icons.phone_outlined),
                     ),
@@ -400,7 +400,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: const Row(mainAxisSize: MainAxisSize.min, children: [
+          title: Row(mainAxisSize: MainAxisSize.min, children: [
             MarketBrandMark(size: 32), SizedBox(width: 9), Text(marketString(context, en: 'Seller inquiry inbox', am: 'የሻጭ ጥያቄዎች', mdy: '')),
           ]),
           actions: [
