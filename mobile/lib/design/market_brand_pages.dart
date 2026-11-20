@@ -45,10 +45,10 @@ class MarketWelcomePage extends StatelessWidget {
                   style: TextStyle(color: Colors.white.withValues(alpha: .78),
                     fontSize: 16, height: 1.5)),
                 const SizedBox(height: 30),
-                const Row(children: [
-                  _WelcomePill(icon: MarketIconPack.products, label: 'የአካባቢ ምርቶች'),
-                  SizedBox(width: 8),
-                  _WelcomePill(icon: MarketIconPack.services, label: 'የአካባቢ ክህሎቶች'),
+                Row(children: [
+                  _WelcomePill(icon: MarketIconPack.products, label: marketString(context, en: 'Local products', am: 'የአካባቢ ምርቶች', mdy: '')),
+                  const SizedBox(width: 8),
+                  _WelcomePill(icon: MarketIconPack.services, label: marketString(context, en: 'Local skills', am: 'የአካባቢ ክህሎቶች', mdy: '')),
                 ]),
                 const Spacer(),
                 SizedBox(
@@ -93,14 +93,14 @@ class MarketAboutPage extends StatelessWidget {
         Text(marketString(context, en: 'South Omo Market helps buyers discover local goods and services, and gives sellers a direct way to present what they offer.', am: 'ደቡብ ኦሞ ገበያ ገዢዎች የአካባቢ ምርቶችንና አገልግሎቶችን እንዲያገኙ እና ሻጮች የሚያቀርቡትን በቀጥታ እንዲያሳዩ ያግዛል።', mdy: ''),
           style: Theme.of(context).textTheme.bodyLarge),
         const SizedBox(height: 20),
-        _AboutFeature(icon: MarketIconPack.products, title: 'Local products',
-          description: 'Agriculture, livestock, food, household goods and more.'),
-        _AboutFeature(icon: MarketIconPack.services, title: 'Local services',
-          description: 'Skilled work, repairs, rentals, farming and professional services.'),
-        _AboutFeature(icon: MarketIconPack.location, title: 'South Omo first',
-          description: 'Designed around local places and the realities of mobile connectivity.'),
-        _AboutFeature(icon: MarketIconPack.message, title: 'Direct conversations',
-          description: 'Buyers contact sellers directly; payment and collection are agreed between them.'),
+        _AboutFeature(icon: MarketIconPack.products, title: marketString(context, en: 'Local products', am: 'የአካባቢ ምርቶች', mdy: ''),
+          description: marketString(context, en: 'Agriculture, livestock, food, household goods and more.', am: 'የግብርና ምርቶች፣ እንስሳት፣ ምግብ፣ የቤት ዕቃዎችና ሌሎችም።', mdy: '')),
+        _AboutFeature(icon: MarketIconPack.services, title: marketString(context, en: 'Local services', am: 'የአካባቢ አገልግሎቶች', mdy: ''),
+          description: marketString(context, en: 'Skilled work, repairs, rentals, farming and professional services.', am: 'የባለሙያ ሥራዎች፣ ጥገና፣ ኪራይ፣ ግብርናና ሌሎች የሙያ አገልግሎቶች።', mdy: '')),
+        _AboutFeature(icon: MarketIconPack.location, title: marketString(context, en: 'South Omo first', am: 'ደቡብ ኦሞ ቅድሚያ', mdy: ''),
+          description: marketString(context, en: 'Designed around local places and the realities of mobile connectivity.', am: 'በአካባቢው ቦታዎችና በሞባይል ኔትወርክ ሁኔታ መሠረት የተዘጋጀ።', mdy: '')),
+        _AboutFeature(icon: MarketIconPack.message, title: marketString(context, en: 'Direct conversations', am: 'ቀጥተኛ ውይይት', mdy: ''),
+          description: marketString(context, en: 'Buyers contact sellers directly; payment and collection are agreed between them.', am: 'ገዢዎች ሻጮችን በቀጥታ ያነጋግራሉ፤ ክፍያና መረከብ በሁለቱ መካከል ይስማማሉ።', mdy: '')),
         const SizedBox(height: 18),
         OutlinedButton.icon(
           onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(

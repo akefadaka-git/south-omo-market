@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'market_design_system.dart';
 import 'market_icon_pack.dart';
+import '../l10n/market_strings.dart';
 
 class MarketCategorySelection {
   const MarketCategorySelection({this.categoryId, this.searchTerm});
@@ -16,28 +17,40 @@ class MarketCategoryBrowserSheet extends StatelessWidget {
   final List<Map<String, dynamic>> categories;
   final String? selectedCategoryId;
 
-  static List<String> _subcategoriesFor(Map<String, dynamic> category) {
+  static List<String> _subcategoriesFor(Map<String, dynamic> category, {required bool amharic}) {
     final name = (category['name'] as String? ?? '').toLowerCase();
     final id = category['id'] as String? ?? '';
     if (name.contains('live') || name.contains('animal') || name.contains('እንስሳ') || id.endsWith('0001')) {
-      return ['Cattle and oxen', 'Goats and sheep', 'Poultry and eggs', 'Camels', 'Honey and beeswax', 'Milk and dairy'];
+      return amharic
+        ? ['ከብቶችና ላሞች', 'ፍየሎችና በጎች', 'ዶሮዎችና እንቁላል', 'ግመሎች', 'ማርና ሰም', 'ወተትና የወተት ውጤቶች']
+        : ['Cattle and oxen', 'Goats and sheep', 'Poultry and eggs', 'Camels', 'Honey and beeswax', 'Milk and dairy'];
     }
     if (name.contains('agri') || name.contains('farm') || name.contains('crop') || name.contains('ግብርና') || id.endsWith('0002')) {
-      return ['Maize and grains', 'Sorghum', 'Teff and wheat', 'Beans and pulses', 'Sesame and oilseeds', 'Fruits and vegetables', 'Seeds and seedlings'];
+      return amharic
+        ? ['በቆሎና እህሎች', 'ማሽላ', 'ጤፍና ስንዴ', 'ባቄላና ጥራጥሬዎች', 'ሰሊጥና ዘይት እህሎች', 'ፍራፍሬና አትክልቶች', 'ዘርና ችግኞች']
+        : ['Maize and grains', 'Sorghum', 'Teff and wheat', 'Beans and pulses', 'Sesame and oilseeds', 'Fruits and vegetables', 'Seeds and seedlings'];
     }
     if (name.contains('food') || name.contains('grocer') || name.contains('ምግብ') || id.endsWith('0003')) {
-      return ['Honey', 'Grain and flour', 'Spices and ingredients', 'Prepared food', 'Non-alcoholic drinks', 'Household groceries'];
+      return amharic
+        ? ['ማር', 'እህልና ዱቄት', 'ቅመማ ቅመሞችና ግብዓቶች', 'የተዘጋጀ ምግብ', 'አልኮል ያልሆኑ መጠጦች', 'የቤት ሸቀጣ ሸቀጦች']
+        : ['Honey', 'Grain and flour', 'Spices and ingredients', 'Prepared food', 'Non-alcoholic drinks', 'Household groceries'];
     }
     if (name.contains('shop') || name.contains('product') || name.contains('retail') || name.contains('ሱቅ') || id.endsWith('0004')) {
-      return ['Clothing and traditional wear', 'Shoes and accessories', 'Household goods', 'Phones and electronics', 'Solar lamps and batteries', 'Tools and building supplies', 'Vehicle parts'];
+      return amharic
+        ? ['ልብስና ባህላዊ አልባሳት', 'ጫማና መለዋወጫዎች', 'የቤት ዕቃዎች', 'ስልኮችና ኤሌክትሮኒክስ', 'የፀሐይ መብራቶችና ባትሪዎች', 'መሣሪያዎችና የግንባታ እቃዎች', 'የተሽከርካሪ መለዋወጫዎች']
+        : ['Clothing and traditional wear', 'Shoes and accessories', 'Household goods', 'Phones and electronics', 'Solar lamps and batteries', 'Tools and building supplies', 'Vehicle parts'];
     }
     if (name.contains('service') || name.contains('አገልግሎት') || id.endsWith('0005')) {
-      return ['Farm labour and ploughing', 'Livestock and veterinary services', 'Construction and carpentry', 'Plumbing and electrical work', 'Welding and repairs', 'Tailoring and personal care', 'Tutoring and professional services', 'Transport and equipment hire'];
+      return amharic
+        ? ['የእርሻ ሠራተኛና ማረስ', 'የእንስሳትና የእንስሳት ሕክምና', 'ግንባታና አናጢነት', 'ቧንቧና ኤሌክትሪክ ሥራ', 'ብየዳና ጥገና', 'ልብስ ስፌትና የግል እንክብካቤ', 'ትምህርትና የሙያ አገልግሎቶች', 'ትራንስፖርትና የመሣሪያ ኪራይ']
+        : ['Farm labour and ploughing', 'Livestock and veterinary services', 'Construction and carpentry', 'Plumbing and electrical work', 'Welding and repairs', 'Tailoring and personal care', 'Tutoring and professional services', 'Transport and equipment hire'];
     }
     if (name.contains('property') || name.contains('rental') || name.contains('home') || name.contains('ንብረት') || id.endsWith('0006')) {
-      return ['Shop and workspace rentals', 'Homes and accommodation', 'Land and property', 'Equipment and machinery hire', 'Event tents and chairs'];
+      return amharic
+        ? ['የሱቅና የሥራ ቦታ ኪራይ', 'ቤቶችና ማረፊያዎች', 'መሬትና ንብረት', 'የመሣሪያና ማሽን ኪራይ', 'የዝግጅት ድንኳኖችና ወንበሮች']
+        : ['Shop and workspace rentals', 'Homes and accommodation', 'Land and property', 'Equipment and machinery hire', 'Event tents and chairs'];
     }
-    return const ['Other local goods', 'Other local services'];
+    return amharic ? ['ሌሎች የአካባቢ ምርቶች', 'ሌሎች የአካባቢ አገልግሎቶች'] : ['Other local goods', 'Other local services'];
   }
 
   @override
@@ -49,15 +62,15 @@ class MarketCategoryBrowserSheet extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 12, 8),
             child: Row(children: [
-              const Expanded(child: Column(
+              Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Explore categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  Text(marketString(context, en: 'Explore categories', am: 'ምድቦችን ይመልከቱ', mdy: ''), style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                   SizedBox(height: 3),
-                  Text('Choose a market group or narrow it down', style: TextStyle(color: MarketPalette.muted)),
+                  Text(marketString(context, en: 'Choose a market group or narrow it down', am: 'የገበያ ምድብ ይምረጡ ወይም ፍለጋውን ያጥቡ', mdy: ''), style: TextStyle(color: MarketPalette.muted)),
                 ],
               )),
-              IconButton(tooltip: 'Close category browser', onPressed: () => Navigator.pop(context),
+              IconButton(tooltip: marketString(context, en: 'Close category browser', am: 'የምድብ መምረጫውን ዝጋ', mdy: ''), onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close_rounded)),
             ]),
           ),
@@ -66,8 +79,8 @@ class MarketCategoryBrowserSheet extends StatelessWidget {
             children: [
               Card(child: ListTile(
                 leading: const MarketCategoryGlyph(category: 'All categories', size: 46),
-                title: const Text('All categories', style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('Show every published listing'),
+                title: Text(marketString(context, en: 'All categories', am: 'ሁሉም ምድቦች', mdy: ''), style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(marketString(context, en: 'Show every published listing', am: 'የታተሙ ሁሉንም ዝርዝሮች አሳይ', mdy: '')),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                 onTap: () => Navigator.pop(context, const MarketCategorySelection()),
               )),
@@ -76,7 +89,7 @@ class MarketCategoryBrowserSheet extends StatelessWidget {
                 final id = category['id'] as String;
                 final name = category['name'] as String? ?? 'Market';
                 final selected = id == selectedCategoryId;
-                final subcategories = _subcategoriesFor(category);
+                final subcategories = _subcategoriesFor(category, amharic: Localizations.localeOf(context).languageCode == 'am');
                 return Card(
                   margin: const EdgeInsets.only(bottom: 10),
                   color: selected ? const Color(0xFFF0F7F2) : Colors.white,
@@ -91,7 +104,7 @@ class MarketCategoryBrowserSheet extends StatelessWidget {
                           const SizedBox(width: 12),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                            Text('${subcategories.length} browse topics',
+                            Text(marketString(context, en: '${subcategories.length} browse topics', am: '${subcategories.length} የፍለጋ አማራጮች', mdy: ''),
                               style: const TextStyle(color: MarketPalette.muted, fontSize: 12)),
                           ])),
                           Icon(selected ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,

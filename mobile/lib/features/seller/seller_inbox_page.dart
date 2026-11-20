@@ -175,11 +175,11 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
                                       style: Theme.of(context).textTheme.titleMedium,
                                     ),
                                     const SizedBox(height: 6),
-                                    Text('${inquiry['buyer_name'] ?? 'Buyer'} · ${inquiry['buyer_contact'] ?? ''}'),
+                                    Text('${inquiry['buyer_name'] ?? marketString(context, en: 'Buyer', am: 'ገዢ', mdy: '')} · ${inquiry['buyer_contact'] ?? ''}'),
                                     const SizedBox(height: 8),
                                     Text(inquiry['message'] as String? ?? ''),
                                     const SizedBox(height: 8),
-                                    Text('${marketString(context, en: 'Status', am: 'ሁኔታ', mdy: '')}: ${status == 'open' ? 'ክፍት' : status == 'read' ? 'ተነብቧል' : status == 'closed' ? 'ተዘግቷል' : status}'),
+                                    Text('${marketString(context, en: 'Status', am: 'ሁኔታ', mdy: '')}: ${marketStatusLabel(context, status)}'),
                                     const SizedBox(height: 8),
                                     Wrap(
                                       spacing: 8,

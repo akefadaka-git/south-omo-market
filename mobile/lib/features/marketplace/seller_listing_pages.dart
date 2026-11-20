@@ -192,7 +192,7 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
         if (_listings.isEmpty) Text(marketString(context, en: 'You have not created any server listings yet.', am: 'እስካሁን በሰርቨሩ ላይ ምንም ዝርዝር አልፈጠሩም።', mdy: '')),
         ..._listings.map((listing) => ListTile(
           title: Text(listing['title'] as String? ?? 'Untitled'),
-          subtitle: Text('${listing['location'] ?? ''} · ${listing['status']}'),
+          subtitle: Text('${listing['location'] ?? ''} · ${marketStatusLabel(context, listing['status'] as String)}'),
           selected: _selected?['id'] == listing['id'],
           onTap: () => _select(listing),
         )),

@@ -247,7 +247,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
           value: _categoryId,
           decoration: InputDecoration(labelText: marketString(context, en: 'Category', am: 'ምድብ', mdy: '')),
           items: _categories.map((item) => DropdownMenuItem(
-            value: item['id'], child: Text(item['name']!),
+            value: item['id'], child: Text(marketString(context, en: item['name']!, am: const {'Livestock':'እንስሳት','Agriculture':'ግብርና','Food and groceries':'ምግብና ሸቀጣ ሸቀጦች','Shops and products':'ሱቆችና ምርቶች','Services':'አገልግሎቶች','Property and rentals':'ንብረትና ኪራይ'}[item['name']] ?? item['name']!, mdy: '')),
           )).toList(),
           onChanged: (value) => setState(() => _categoryId = value),
         ),
@@ -297,7 +297,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
           ..._drafts.map((draft) => Card(
             child: ListTile(
               title: Text(draft['title'] as String),
-              subtitle: Text('${draft['location_label']} · ${draft['sync_state']}'
+              subtitle: Text('${draft['location_label']} · ${marketStatusLabel(context, draft['sync_state'] as String)}'
                 '${draft['last_error'] == null ? '' : '\n${draft['last_error']}'}'),
               trailing: Icon(draft['sync_state'] == 'synced' ? Icons.cloud_done : Icons.cloud_upload_outlined),
               onTap: () async {
