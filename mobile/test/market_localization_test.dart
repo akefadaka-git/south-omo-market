@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:south_omo_market/design/market_category_browser.dart';
 import 'package:south_omo_market/l10n/market_strings.dart';
@@ -8,6 +9,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('am'),
       supportedLocales: const [Locale('am'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: Builder(builder: (context) => Scaffold(
         body: Center(child: ElevatedButton(
           onPressed: () => showModalBottomSheet<void>(
