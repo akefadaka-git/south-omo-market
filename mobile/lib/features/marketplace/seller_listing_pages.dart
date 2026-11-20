@@ -39,6 +39,7 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
   String? _message;
   bool _loading = true;
   bool _busy = false;
+  String? _loadedLocale;
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer ${widget.accessToken}',
@@ -46,7 +47,15 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
   };
 
   @override
-  void initState() { super.initState(); _load(); }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final language = Localizations.localeOf(context).languageCode;
+    if (_loadedLocale == language) return;
+    _loadedLocale = language;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
+  }
 
   @override
   void dispose() {
@@ -59,7 +68,7 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
     try {
       final responses = await Future.wait([
         widget.client.get(Uri.parse('${widget.apiBaseUrl}/listings/my'), headers: _headers),
-        widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories?lang=${Localizations.localeOf(context).languageCode}')),
+        widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories?lang=${_loadedLocale ?? 'am'}')),
       ]);
       if (responses.any((response) => response.statusCode != 200)) {
         throw Exception(marketString(context, en: 'Your listings could not be loaded.', am: 'የእርስዎን ዝርዝሮች መጫን አልተቻለም።', mdy: ''));
