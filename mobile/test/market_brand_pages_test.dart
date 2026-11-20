@@ -19,9 +19,18 @@ void main() {
     ));
     expect(find.text('About South Omo Market'), findsOneWidget);
     expect(find.text('Welcome to a closer marketplace'), findsOneWidget);
-    await tester.tap(find.text('View the welcome experience'));
+    final welcomeButton = find.text('View the welcome experience');
+    await tester.scrollUntilVisible(
+      welcomeButton,
+      240,
+      scrollable: find.descendant(
+        of: find.byType(Scrollable).first,
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(welcomeButton);
     await tester.pumpAndSettle();
-    expect(find.text('Closer markets.\nStronger communities.'), findsOneWidget);
+    expect(find.text('Closer markets.\\nStronger communities.'), findsOneWidget);
     expect(find.text('Explore the marketplace'), findsOneWidget);
   });
 }
