@@ -98,7 +98,7 @@ jobs:
         run: flutter pub get
       - name: Build release APK
         working-directory: mobile
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
       - name: Sign test APK with an ephemeral CI key
         working-directory: mobile
         shell: bash
@@ -113,21 +113,25 @@ jobs:
             -alias south-omo-ci-test \
             -keyalg RSA -keysize 2048 -validity 30 \
             -dname "CN=South Omo Market CI Test, OU=Non-production, O=South Omo Market, L=Jinka, ST=South Omo, C=ET"
-          "$build_tools/apksigner" sign \
-            --ks "$key_path" \
-            --ks-key-alias south-omo-ci-test \
-            --ks-pass pass:changeit \
-            --key-pass pass:changeit \
-            --out build/app/outputs/flutter-apk/app-release-signed.apk \
-            build/app/outputs/flutter-apk/app-release.apk
-          "$build_tools/apksigner" verify --verbose --print-certs \
-            build/app/outputs/flutter-apk/app-release-signed.apk
-          mv build/app/outputs/flutter-apk/app-release-signed.apk \
-            build/app/outputs/flutter-apk/app-release.apk
+          shopt -s nullglob
+          apks=(build/app/outputs/flutter-apk/app-*-release.apk)
+          test "${#apks[@]}" -gt 0
+          for apk in "${apks[@]}"; do
+            signed="${apk%.apk}-signed.apk"
+            "$build_tools/apksigner" sign \
+              --ks "$key_path" \
+              --ks-key-alias south-omo-ci-test \
+              --ks-pass pass:changeit \
+              --key-pass pass:changeit \
+              --out "$signed" \
+              "$apk"
+            "$build_tools/apksigner" verify --verbose --print-certs "$signed"
+            mv "$signed" "$apk"
+          done
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: south-omo-market-android-release
-          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          name: south-omo-market-android-release-split-abi
+          path: mobile/build/app/outputs/flutter-apk/app-*-release.apk
           if-no-files-found: error
           retention-days: 14
