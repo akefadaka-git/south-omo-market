@@ -191,14 +191,17 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
                 itemCount: visibleListings.length,
                 itemBuilder: (context, index) {
                   final item = visibleListings[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: ListTile(
-                      title: Text(item['title'] as String? ?? 'Listing'),
-                      subtitle: Text(
-                        '${item['location'] ?? ''} · ${((item['price_minor'] as num?) ?? 0) / 100} ETB',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
+                  final category = (_categories.firstWhere(
+                    (entry) => entry['id'] == item['category_id'],
+                    orElse: () => {'name': 'Local finds'},
+                  )['name'] as String?) ?? 'Local finds';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: MarketListingCard(
+                      title: item['title'] as String? ?? 'Listing',
+                      location: item['location'] as String? ?? '',
+                      price: '${(((item['price_minor'] as num?) ?? 0) / 100).toStringAsFixed(2)} ETB',
+                      category: category,
                       onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
                         builder: (_) => ListingDetailPage(
                           apiBaseUrl: widget.apiBaseUrl,
