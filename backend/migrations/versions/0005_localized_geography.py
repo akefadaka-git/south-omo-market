@@ -25,19 +25,22 @@ def upgrade() -> None:
     op.create_index("ix_locations_level", "locations", ["level"])
     op.add_column("categories", sa.Column("name_am", sa.String(120), nullable=True))
     op.add_column("categories", sa.Column("name_mdy", sa.String(120), nullable=True))
-    op.add_column("listings", sa.Column("location_id", sa.String(36), nullable=True))
-    op.create_foreign_key("fk_listings_location_id_locations", "listings", "locations", ["location_id"], ["id"])
-    op.create_index("ix_listings_location_id", "listings", ["location_id"])
+    with op.batch_alter_table("listings") as batch:
+        batch.add_column(sa.Column("location_id", sa.String(36), nullable=True))
+        batch.create_foreign_key(
+            "fk_listings_location_id_locations", "locations", ["location_id"], ["id"]
+        )
+        batch.create_index("ix_listings_location_id", ["location_id"])
 
-    categories = sa.table("categories", sa.column("id", sa.String(36)), sa.column("name_am", sa.String(120)))
-    op.bulk_update(categories, [
-        {"id": "00000000-0000-4000-8000-000000000001", "name_am": "እንስሳት"},
-        {"id": "00000000-0000-4000-8000-000000000002", "name_am": "ግብርና"},
-        {"id": "00000000-0000-4000-8000-000000000003", "name_am": "ምግብ እና ግሮሰሪ"},
-        {"id": "00000000-0000-4000-8000-000000000004", "name_am": "ሱቆች እና ምርቶች"},
-        {"id": "00000000-0000-4000-8000-000000000005", "name_am": "አገልግሎቶች"},
-        {"id": "00000000-0000-4000-8000-000000000006", "name_am": "ንብረት፣ መሳሪያ እና ኪራይ"},
-    ], ["id"])
+    bind = op.get_bind()
+    bind.execute(sa.text("UPDATE categories SET name_am = :name WHERE id = :id"), [
+        {"id": "00000000-0000-4000-8000-000000000001", "name": "እንስሳት"},
+        {"id": "00000000-0000-4000-8000-000000000002", "name": "ግብርና"},
+        {"id": "00000000-0000-4000-8000-000000000003", "name": "ምግብ እና ግሮሰሪ"},
+        {"id": "00000000-0000-4000-8000-000000000004", "name": "ሱቆች እና ምርቶች"},
+        {"id": "00000000-0000-4000-8000-000000000005", "name": "አገልግሎቶች"},
+        {"id": "00000000-0000-4000-8000-000000000006", "name": "ንብረት፣ መሳሪያ እና ኪራይ"},
+    ])
 
     locations = sa.table(
         "locations", sa.column("id", sa.String(36)), sa.column("parent_id", sa.String(36)),
@@ -57,11 +60,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_listings_location_id", table_name="listings")
-    op.drop_constraint("fk_listings_location_id_locations", "listings", type_="foreignkey")
-    op.drop_column("listings", "location_id")
-    op.drop_column("categories", "name_mdy")
-    op.drop_column("categories", "name_am")
+    with op.batch_alter_table("listings") as batch:
+        batch.drop_index("ix_listings_location_id")
+        batch.drop_constraint("fk_listings_location_id_locations", type_="foreignkey")
+        batch.drop_column("location_id")
+    with op.batch_alter_table("categories") as batch:
+        batch.drop_column("name_mdy")
+        batch.drop_column("name_am")
     op.drop_index("ix_locations_level", table_name="locations")
     op.drop_index("ix_locations_code", table_name="locations")
     op.drop_index("ix_locations_parent_id", table_name="locations")
