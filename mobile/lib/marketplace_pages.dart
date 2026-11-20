@@ -686,10 +686,10 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
         subtitle: 'Set up a clear public seller identity so buyers know who they are contacting.',
       ),
       const SizedBox(height: 20),
-      TextField(controller: _name, decoration: const InputDecoration(
+      TextField(controller: _name, decoration: InputDecoration(
         labelText: marketString(context, en: 'Public seller name', am: 'የሻጭ ስም', mdy: ''), prefixIcon: Icon(Icons.storefront_outlined))),
       const SizedBox(height: 10),
-      TextField(controller: _location, decoration: const InputDecoration(
+      TextField(controller: _location, decoration: InputDecoration(
         labelText: marketString(context, en: 'Location', am: 'አካባቢ', mdy: ''), prefixIcon: Icon(Icons.location_on_outlined))),
       const SizedBox(height: 16),
       FilledButton(
