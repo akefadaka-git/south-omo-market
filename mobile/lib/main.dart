@@ -35,7 +35,7 @@ class SouthOmoMarketApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
         title: 'South Omo Market',
         debugShowCheckedModeBanner: false,
-        supportedLocales: const [Locale('am'), Locale('en'), Locale('mdy')],
+        supportedLocales: const [Locale('am'), Locale('en')],
         localeResolutionCallback: (deviceLocale, supportedLocales) {
           if (deviceLocale == null) return const Locale('en');
           for (final supported in supportedLocales) {
