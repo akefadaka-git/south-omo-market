@@ -25,9 +25,10 @@ void main() => runApp(const SouthOmoMarketApp());
 
 /// Branded launch gate: the splash is the real initial route.
 class MarketLaunchScreen extends StatefulWidget {
-  const MarketLaunchScreen({super.key, required this.apiBaseUrl, required this.client});
+  const MarketLaunchScreen({super.key, required this.apiBaseUrl, required this.client, required this.onLocaleChanged});
   final String apiBaseUrl;
   final http.Client client;
+  final ValueChanged<Locale> onLocaleChanged;
   @override
   State<MarketLaunchScreen> createState() => _MarketLaunchScreenState();
 }
@@ -47,6 +48,7 @@ class _MarketLaunchScreenState extends State<MarketLaunchScreen>
         builder: (_) => MarketplaceDiscoveryPage(
           apiBaseUrl: widget.apiBaseUrl,
           client: widget.client,
+          onLocaleChanged: widget.onLocaleChanged,
           onSellerSignIn: (context) => Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => MarketplaceHomePage(
@@ -103,7 +105,7 @@ class _MarketLaunchScreenState extends State<MarketLaunchScreen>
 }
 
 
-class SouthOmoMarketApp extends StatelessWidget {
+class SouthOmoMarketApp extends StatefulWidget {
   const SouthOmoMarketApp({
     super.key,
     this.apiBaseUrl = defaultApiBaseUrl,
@@ -114,24 +116,29 @@ class SouthOmoMarketApp extends StatelessWidget {
   final http.Client? client;
 
   @override
+  State<SouthOmoMarketApp> createState() => _SouthOmoMarketAppState();
+}
+
+class _SouthOmoMarketAppState extends State<SouthOmoMarketApp> {
+  Locale _locale = const Locale('am');
+
+  void _setLocale(Locale locale) {
+    if (locale.languageCode != 'am' && locale.languageCode != 'en') return;
+    setState(() => _locale = locale);
+  }
+
+  @override
   Widget build(BuildContext context) => MaterialApp(
         title: 'ደቡብ ኦሞ ገበያ',
         debugShowCheckedModeBanner: false,
-        locale: const Locale('am'),
+        locale: _locale,
         supportedLocales: const [Locale('am'), Locale('en')],
-        localeResolutionCallback: (deviceLocale, supportedLocales) {
-          if (deviceLocale != null) {
-            for (final supported in supportedLocales) {
-              if (supported.languageCode == deviceLocale.languageCode) return supported;
-            }
-          }
-          return const Locale('am');
-        },
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: MarketDesignSystem.lightTheme,
         home: MarketLaunchScreen(
-          apiBaseUrl: apiBaseUrl,
-          client: client ?? http.Client(),
+          apiBaseUrl: widget.apiBaseUrl,
+          client: widget.client ?? http.Client(),
+          onLocaleChanged: _setLocale,
         ),
       );
 }
