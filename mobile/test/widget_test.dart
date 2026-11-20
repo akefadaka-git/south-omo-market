@@ -60,27 +60,27 @@ void main() {
       client: client,
     ));
     await tester.pumpAndSettle();
-    expect(find.text('South Omo Market'), findsOneWidget);
-    await tester.tap(find.byTooltip('Seller sign in'));
+    expect(find.text('ደቡብ ኦሞ ገበያ'), findsOneWidget);
+    await tester.tap(find.byTooltip('የሻጭ መግቢያ'));
     await tester.pumpAndSettle();
-    expect(find.text('Seller sign in'), findsOneWidget);
+    expect(find.text('የሻጭ መግቢያ'), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('seller-phone')), '+251900000001');
     await tester.enterText(
       find.byKey(const Key('seller-password')),
       'synthetic-test-password-123',
     );
-    await tester.tap(find.text('Sign in'));
+    await tester.tap(find.text('ግባ'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Seller inquiry inbox'), findsOneWidget);
+    expect(find.text('የሻጭ ጥያቄዎች'), findsOneWidget);
     expect(find.text('Synthetic goats'), findsOneWidget);
     expect(find.textContaining('+251900000001'), findsOneWidget);
-    expect(find.text('Status: open'), findsOneWidget);
+    expect(find.text('ሁኔታ: ክፍት'), findsOneWidget);
 
-    await tester.tap(find.text('Mark read'));
+    await tester.tap(find.text('እንደተነበበ ምልክት አድርግ'));
     await tester.pumpAndSettle();
-    expect(find.text('Status: read'), findsOneWidget);
+    expect(find.text('ሁኔታ: ተነብቧል'), findsOneWidget);
   });
   testWidgets('new account completes seller profile onboarding before inbox', (tester) async {
     var profileCreated = false;
@@ -115,14 +115,14 @@ void main() {
     await tester.enterText(find.byKey(const Key('seller-password')), 'synthetic-test-password-123');
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
-    expect(find.text('Set up seller profile'), findsOneWidget);
+    expect(find.text('የሻጭ መገለጫ ያዘጋጁ'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'Synthetic Shop');
     await tester.enterText(find.byType(TextField).last, 'Koybe');
-    await tester.tap(find.text('Create seller profile'));
+    await tester.tap(find.text('የሻጭ መገለጫ ፍጠር'));
     await tester.pumpAndSettle();
     expect(profileCreated, isTrue);
-    expect(find.text('Seller inquiry inbox'), findsOneWidget);
+    expect(find.text('የሻጭ ጥያቄዎች'), findsOneWidget);
     client.close();
   });
 
