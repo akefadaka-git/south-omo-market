@@ -684,9 +684,16 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Set up seller profile')),
     body: ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('Create your seller profile before managing listings and inquiries.'),
-      TextField(controller: _name, decoration: const InputDecoration(labelText: 'Public seller name')),
-      TextField(controller: _location, decoration: const InputDecoration(labelText: 'Location')),
+      const MarketBrandPanel(
+        title: 'Meet your local customers.',
+        subtitle: 'Set up a clear public seller identity so buyers know who they are contacting.',
+      ),
+      const SizedBox(height: 20),
+      TextField(controller: _name, decoration: const InputDecoration(
+        labelText: 'Public seller name', prefixIcon: Icon(Icons.storefront_outlined))),
+      const SizedBox(height: 10),
+      TextField(controller: _location, decoration: const InputDecoration(
+        labelText: 'Location', prefixIcon: Icon(Icons.location_on_outlined))),
       const SizedBox(height: 16),
       FilledButton(
         onPressed: _busy ? null : _createProfile,
@@ -769,13 +776,22 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(_register ? 'Create buyer account' : 'Buyer sign in'),
+    title: Row(children: [
+      const MarketBrandMark(size: 34),
+      const SizedBox(width: 10),
+      Expanded(child: Text(_register ? 'Create buyer account' : 'Buyer sign in')),
+    ]),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      if (_register) TextField(key: const Key('buyer-display-name'), controller: _name, decoration: const InputDecoration(labelText: 'Display name')),
+      Text(_register
+        ? 'Create an account to contact sellers and follow up on your inquiries.'
+        : 'Sign in to contact this seller. Your registered phone number is shared with the seller.'),
+      const SizedBox(height: 14),
+      if (_register) TextField(key: const Key('buyer-display-name'), controller: _name,
+        decoration: const InputDecoration(labelText: 'Display name', prefixIcon: Icon(Icons.person_outline))),
       TextField(key: const Key('buyer-phone'), controller: _phone, keyboardType: TextInputType.phone,
-        decoration: const InputDecoration(labelText: 'Phone number')),
+        decoration: const InputDecoration(labelText: 'Phone number', prefixIcon: Icon(Icons.phone_outlined))),
       TextField(key: const Key('buyer-password'), controller: _password, obscureText: true,
-        decoration: const InputDecoration(labelText: 'Password (minimum 12 characters)')),
+        decoration: const InputDecoration(labelText: 'Password (minimum 12 characters)', prefixIcon: Icon(Icons.lock_outline))),
       if (_error != null) Padding(
         padding: const EdgeInsets.only(top: 8),
         child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
