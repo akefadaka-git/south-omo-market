@@ -32,11 +32,25 @@ class SellerProfile(Base):
     user: Mapped[User] = relationship(back_populates="seller_profile")
 
 
+class Location(Base):
+    __tablename__ = "locations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True, index=True)
+    code: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    level: Mapped[str] = mapped_column(String(24), index=True)
+    name_en: Mapped[str] = mapped_column(String(120))
+    name_am: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    name_mdy: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class Category(Base):
     __tablename__ = "categories"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     name_en: Mapped[str] = mapped_column(String(120))
+    name_am: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    name_mdy: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -50,6 +64,7 @@ class Listing(Base):
     price_minor: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(3), default="ETB")
     location_label: Mapped[str] = mapped_column(String(160))
+    location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(24), default="draft", index=True)
     moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
