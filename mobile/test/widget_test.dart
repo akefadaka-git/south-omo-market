@@ -59,6 +59,8 @@ void main() {
       apiBaseUrl: 'https://market.example.test/api/v1',
       client: client,
     ));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
     expect(find.text('ደቡብ ኦሞ ገበያ'), findsOneWidget);
     await tester.tap(find.byTooltip('የሻጭ መግቢያ'));
