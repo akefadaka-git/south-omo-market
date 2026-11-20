@@ -37,7 +37,7 @@ class MarketWelcomePage extends StatelessWidget {
                       letterSpacing: 1.5, fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(height: 22),
-                const Text('Closer markets.\nStronger communities.',
+                Text(marketString(context, en: 'Closer markets.\nStronger communities.', am: 'የቀረበ ገበያ።\nጠንካራ ማህበረሰብ።', mdy: ''),
                   style: TextStyle(color: Colors.white, fontSize: 34,
                     height: 1.08, fontWeight: FontWeight.w800, letterSpacing: -1)),
                 const SizedBox(height: 14),
