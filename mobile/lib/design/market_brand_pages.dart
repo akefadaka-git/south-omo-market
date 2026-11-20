@@ -82,7 +82,7 @@ class MarketAboutPage extends StatelessWidget {
     body: ListView(
       padding: const EdgeInsets.all(18),
       children: [
-        const MarketBrandPanel(
+        MarketBrandPanel(
           title: marketString(context, en: 'Rooted here. Connected everywhere.', am: 'ከዚህ የተመሠረተ፤ ከሁሉም ጋር የተገናኘ።', mdy: ''),
           subtitle: marketString(context, en: 'A local marketplace for the people, products and skills of South Omo.', am: 'ለደቡብ ኦሞ ሰዎች፣ ምርቶችና ክህሎቶች የተዘጋጀ የአካባቢ ገበያ።', mdy: ''),
         ),
