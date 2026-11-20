@@ -265,7 +265,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Row(mainAxisSize: MainAxisSize.min, children: [
+      appBar: AppBar(title: Row(mainAxisSize: MainAxisSize.min, children: [
         MarketBrandMark(size: 34), SizedBox(width: 10), Text(marketString(context, en: 'South Omo Market', am: 'ደቡብ ኦሞ ገበያ', mdy: '')),
       ])),
       body: Center(
