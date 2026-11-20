@@ -22,7 +22,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())
         assert {"users", "seller_profiles", "categories", "listings", "inquiries",
-                "audit_events", "listing_images", "alembic_version"} <= tables
+                "audit_events", "listing_images", "locations", "alembic_version"} <= tables
         assert "client_sync_id" in {
             column["name"] for column in inspector.get_columns("listings")
         }
@@ -30,6 +30,14 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
                 "width", "height"} <= {
             column["name"] for column in inspector.get_columns("listing_images")
         }
+        assert {"parent_id", "code", "level", "name_en", "name_am", "name_mdy"} <= {
+            column["name"] for column in inspector.get_columns("locations")
+        }
+        assert "location_id" in {
+            column["name"] for column in inspector.get_columns("listings")
+        }
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT COUNT(*) FROM locations")).scalar_one() == 7
         assert {"buyer_user_id", "status", "read_at", "closed_at"} <= {
             column["name"] for column in inspector.get_columns("inquiries")
         }
@@ -37,7 +45,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0004_listing_images_sync"
+            assert revision == "0005_localized_geography"
             trigger = connection.execute(text("""
                 SELECT COUNT(*) FROM pg_trigger
                 WHERE tgname = 'audit_events_append_only' AND NOT tgisinternal
@@ -73,7 +81,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
 
         command.downgrade(config, "base")
         remaining = set(inspect(engine).get_table_names())
-        assert not {"users", "listings", "inquiries", "audit_events", "listing_images"} & remaining
+        assert not {"users", "listings", "inquiries", "audit_events", "listing_images", "locations"} & remaining
         with engine.connect() as connection:
             functions = connection.execute(text("""
                 SELECT COUNT(*) FROM pg_proc WHERE proname = 'reject_audit_event_mutation'
