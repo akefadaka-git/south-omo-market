@@ -47,8 +47,8 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
         );
         if (created.statusCode != 201) {
           throw Exception(created.statusCode == 409
-            ? 'That phone number is already registered. Choose sign in.'
-            : 'Account registration failed (${created.statusCode}).');
+            ? marketString(context, en: 'That phone number is already registered. Choose sign in.', am: 'ይህ ስልክ ቁጥር አስቀድሞ ተመዝግቧል። ወደ መግቢያ ይመለሱ።', mdy: '')
+            : marketString(context, en: 'Account registration failed (${created.statusCode}).', am: 'መለያ መመዝገብ አልተሳካም (${created.statusCode})።', mdy: ''));
         }
       }
       final response = await widget.client.post(

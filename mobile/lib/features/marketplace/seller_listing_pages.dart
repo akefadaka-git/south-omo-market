@@ -59,7 +59,7 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
     try {
       final responses = await Future.wait([
         widget.client.get(Uri.parse('${widget.apiBaseUrl}/listings/my'), headers: _headers),
-        widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories')),
+        widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories?lang=${Localizations.localeOf(context).languageCode}')),
       ]);
       if (responses.any((response) => response.statusCode != 200)) {
         throw Exception(marketString(context, en: 'Your listings could not be loaded.', am: 'የእርስዎን ዝርዝሮች መጫን አልተቻለም።', mdy: ''));
@@ -190,7 +190,7 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
         Text(marketString(context, en: 'Your listings', am: 'የእርስዎ ዝርዝሮች', mdy: ''), style: Theme.of(context).textTheme.titleLarge),
         if (_listings.isEmpty) Text(marketString(context, en: 'You have not created any server listings yet.', am: 'እስካሁን በሰርቨሩ ላይ ምንም ዝርዝር አልፈጠሩም።', mdy: '')),
         ..._listings.map((listing) => ListTile(
-          title: Text(listing['title'] as String? ?? 'Untitled'),
+          title: Text(listing['title'] as String? ?? marketString(context, en: 'Untitled', am: 'ርዕስ የሌለው', mdy: '')),
           subtitle: Text('${listing['location'] ?? ''} · ${marketStatusLabel(context, listing['status'] as String)}'),
           selected: _selected?['id'] == listing['id'],
           onTap: () => _select(listing),

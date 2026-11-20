@@ -37,6 +37,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('am'),
       supportedLocales: const [Locale('am'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: Builder(builder: (context) {
         label = marketStatusLabel(context, 'pending_review');
         return const SizedBox.shrink();
