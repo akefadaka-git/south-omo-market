@@ -27,7 +27,7 @@ void main() {
     );
     await tester.tap(welcomeButton);
     await tester.pumpAndSettle();
-    expect(find.text('Closer markets.\\nStronger communities.'), findsOneWidget);
+    expect(find.text('Closer markets.\nStronger communities.'), findsOneWidget);
     expect(find.text('Explore the marketplace'), findsOneWidget);
   });
 }
