@@ -568,3 +568,32 @@ def test_localized_category_and_hierarchical_location_catalog() -> None:
         "name_am": "ቆይቤ",
         "name_mdy": None,
     }]
+
+
+def test_public_listing_location_filter_uses_normalized_location_id() -> None:
+    db = TestingSession()
+    category_id = "00000000-0000-4000-8000-000000000006"
+    location_id = "10000000-0000-4000-8000-000000000003"
+    listing_id = "20000000-0000-4000-8000-000000000001"
+    if db.get(Listing, listing_id) is None:
+        db.add(Listing(
+            id=listing_id,
+            seller_id="synthetic-seller-id",
+            category_id=category_id,
+            title="Synthetic Koybe listing",
+            description="Test-only listing",
+            price_minor=10000,
+            currency="ETB",
+            location_label="Koybe",
+            location_id=location_id,
+            status="published",
+        ))
+        db.commit()
+    db.close()
+
+    matching = client.get(f"/api/v1/listings?location_id={location_id}")
+    nonmatching = client.get("/api/v1/listings?location_id=10000000-0000-4000-8000-000000000004")
+    assert matching.status_code == 200
+    assert [row["id"] for row in matching.json()] == [listing_id]
+    assert nonmatching.status_code == 200
+    assert all(row["id"] != listing_id for row in nonmatching.json())
