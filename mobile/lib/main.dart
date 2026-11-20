@@ -288,6 +288,20 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                   const SizedBox(height: 8),
                   Text(marketString(context, en: 'Sign in to view and manage inquiries about your listings.', am: 'ስለ ዝርዝሮችዎ የተላኩ ጥያቄዎችን ለማየትና ለማስተዳደር ይግቡ።', mdy: '')),
                   const SizedBox(height: 24),
+                  if (_register) ...[
+                    TextFormField(
+                      key: const Key('seller-display-name'),
+                      controller: _displayNameController,
+                      decoration: InputDecoration(
+                        labelText: marketString(context, en: 'Public seller name', am: 'የሻጭ ስም', mdy: ''),
+                        prefixIcon: const Icon(Icons.storefront_outlined),
+                      ),
+                      validator: (value) => value == null || value.trim().length < 2
+                        ? marketString(context, en: 'Enter at least 2 characters.', am: 'ቢያንስ 2 ፊደላት ያስገቡ።', mdy: '')
+                        : null,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextFormField(
                     key: const Key('seller-phone'),
                     controller: _phoneController,
