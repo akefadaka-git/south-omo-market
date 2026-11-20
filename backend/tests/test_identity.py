@@ -54,7 +54,19 @@ def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
         db.add(Category(
             id=category_id, slug="test-livestock", name_en="Test livestock", is_active=True
         ))
-        db.commit()
+    koybe_id = "10000000-0000-4000-8000-000000000003"
+    if db.get(Location, koybe_id) is None:
+        db.add(Location(
+            id=koybe_id,
+            parent_id="10000000-0000-4000-8000-000000000002",
+            code="ET-SO-MAALE-KOYBE",
+            level="locality",
+            name_en="Koybe",
+            name_am="ቆይቤ",
+            name_mdy=None,
+            is_active=True,
+        ))
+    db.commit()
     db.close()
 
     registration = client.post("/api/v1/auth/register", json={
@@ -87,6 +99,10 @@ def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
     })
     assert created.status_code == 201
     listing_id = created.json()["id"]
+    my_listings = client.get("/api/v1/listings/my", headers=headers)
+    assert my_listings.status_code == 200
+    created_listing = next(row for row in my_listings.json() if row["id"] == listing_id)
+    assert created_listing["location_id"] == "10000000-0000-4000-8000-000000000003"
 
     mine = client.get("/api/v1/listings/my", headers=headers)
     assert mine.status_code == 200
