@@ -16,11 +16,13 @@ class MarketplaceDiscoveryPage extends StatefulWidget {
     required this.apiBaseUrl,
     required this.client,
     this.onSellerSignIn,
+    this.onLocaleChanged,
   });
 
   final String apiBaseUrl;
   final http.Client client;
   final void Function(BuildContext context)? onSellerSignIn;
+  final ValueChanged<Locale>? onLocaleChanged;
 
   @override
   State<MarketplaceDiscoveryPage> createState() => _MarketplaceDiscoveryPageState();
@@ -37,9 +39,14 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   String? _error;
   bool _loading = true;
 
+  String? _loadedLocale;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final language = Localizations.localeOf(context).languageCode;
+    if (_loadedLocale == language) return;
+    _loadedLocale = language;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _load();
     });
