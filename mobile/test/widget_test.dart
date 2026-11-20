@@ -60,7 +60,6 @@ void main() {
       client: client,
     ));
     await tester.pump(const Duration(seconds: 2));
-    await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
     expect(find.text('ደቡብ ኦሞ ገበያ'), findsOneWidget);
     await tester.tap(find.byTooltip('የሻጭ መግቢያ'));
@@ -109,13 +108,14 @@ void main() {
       apiBaseUrl: 'https://market.example.test/api/v1',
       client: client,
     ));
+    await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
-    expect(find.text('South Omo Market'), findsOneWidget);
-    await tester.tap(find.byTooltip('Seller sign in'));
+    expect(find.text('ደቡብ ኦሞ ገበያ'), findsOneWidget);
+    await tester.tap(find.byTooltip('የሻጭ መግቢያ'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('seller-phone')), '+251900000009');
     await tester.enterText(find.byKey(const Key('seller-password')), 'synthetic-test-password-123');
-    await tester.tap(find.text('Sign in'));
+    await tester.tap(find.text('ግባ'));
     await tester.pumpAndSettle();
     expect(find.text('የሻጭ መገለጫ ያዘጋጁ'), findsOneWidget);
 
