@@ -165,7 +165,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('South Omo Market')),
+      appBar: AppBar(title: const Row(mainAxisSize: MainAxisSize.min, children: [\n        MarketBrandMark(size: 34), SizedBox(width: 10), Text('South Omo Market'),\n      ])),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -303,7 +303,7 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: const Text('Seller inquiry inbox'),
+          title: const Row(mainAxisSize: MainAxisSize.min, children: [\n            MarketBrandMark(size: 32), SizedBox(width: 9), Text('Seller inquiry inbox'),\n          ]),
           actions: [
             IconButton(
               tooltip: 'Discover published listings',
