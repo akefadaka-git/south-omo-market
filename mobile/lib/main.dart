@@ -13,6 +13,7 @@ import 'package:uuid/uuid.dart';
 import 'data/local_draft_store.dart';
 import 'data/offline_sync_service.dart';
 import 'marketplace_pages.dart';
+import 'design/market_design_system.dart';
 
 const defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -44,10 +45,7 @@ class SouthOmoMarketApp extends StatelessWidget {
           return const Locale('en');
         },
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF356859)),
-          useMaterial3: true,
-        ),
+        theme: MarketDesignSystem.lightTheme,
         home: MarketplaceDiscoveryPage(
           apiBaseUrl: apiBaseUrl,
           client: client ?? http.Client(),
