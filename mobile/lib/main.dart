@@ -233,6 +233,8 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
         _accessToken = token;
         _needsSellerProfile = profileResponse.statusCode == 404;
         _passwordController.clear();
+        _displayNameController.clear();
+        _register = false;
       });
     } catch (error) {
       if (!mounted) return;
@@ -330,10 +332,24 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                     validator: (value) =>
                         value == null || value.length < 12 ? 'Password must be at least 12 characters' : null,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _busy ? null : () => setState(() {
+                      _register = !_register;
+                      _error = null;
+                    }),
+                    child: Text(_register
+                      ? marketString(context, en: 'I already have a seller account', am: 'የሻጭ መለያ አለኝ', mdy: '')
+                      : marketString(context, en: 'Create seller account', am: 'የሻጭ መለያ ፍጠር', mdy: '')),
+                  ),
+                  const SizedBox(height: 8),
                   FilledButton(
                     onPressed: _busy ? null : _signIn,
-                    child: Text(_busy ? marketString(context, en: 'Signing in…', am: 'በመግባት ላይ…', mdy: '') : marketString(context, en: 'Sign in', am: 'ግባ', mdy: '')),
+                    child: Text(_busy
+                      ? marketString(context, en: 'Please wait…', am: 'እባክዎ ይጠብቁ…', mdy: '')
+                      : (_register
+                        ? marketString(context, en: 'Register and continue', am: 'ተመዝግበው ይቀጥሉ', mdy: '')
+                        : marketString(context, en: 'Sign in', am: 'ግባ', mdy: ''))),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
