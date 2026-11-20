@@ -715,8 +715,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
             child: ListTile(
               title: Text(draft['title'] as String),
               subtitle: Text('${draft['location_label']} · ${draft['sync_state']}'
-                '${draft['last_error'] == null ? '' : '
-${draft['last_error']}'}'),
+                '${draft['last_error'] == null ? '' : '\n${draft['last_error']}'}'),
               trailing: Icon(draft['sync_state'] == 'synced' ? Icons.cloud_done : Icons.cloud_upload_outlined),
               onTap: () async {
                 setState(() {
