@@ -13,6 +13,7 @@ import 'package:uuid/uuid.dart';
 import 'data/local_draft_store.dart';
 import 'data/offline_sync_service.dart';
 import 'marketplace_pages.dart';
+import 'l10n/market_strings.dart';
 import 'design/market_design_system.dart';
 
 const defaultApiBaseUrl = String.fromEnvironment(
@@ -44,7 +45,15 @@ class _MarketLaunchScreenState extends State<MarketLaunchScreen>
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
         builder: (_) => MarketplaceDiscoveryPage(
-          apiBaseUrl: widget.apiBaseUrl, client: widget.client,
+          apiBaseUrl: widget.apiBaseUrl,
+          client: widget.client,
+          onSellerSignIn: (context) => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => MarketplaceHomePage(
+                apiBaseUrl: widget.apiBaseUrl, client: widget.client,
+              ),
+            ),
+          ),
         ),
       ));
     });
@@ -106,7 +115,7 @@ class SouthOmoMarketApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'South Omo Market',
+        title: 'ደቡብ ኦሞ ገበያ',
         debugShowCheckedModeBanner: false,
         locale: const Locale('am'),
         supportedLocales: const [Locale('am'), Locale('en')],
