@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import 'l10n/market_strings.dart';
 import 'design/market_design_system.dart';
+import 'design/market_brand_pages.dart';
 
 class MarketplaceDiscoveryPage extends StatefulWidget {
   const MarketplaceDiscoveryPage({
@@ -113,6 +114,13 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         ),
       IconButton(tooltip: marketString(context, en: 'Refresh listings', am: 'ዝርዝሮችን አድስ', mdy: ''), onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh)),
+      IconButton(
+        tooltip: 'About South Omo Market',
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => const MarketAboutPage(),
+        )),
+        icon: const Icon(Icons.info_outline_rounded),
+      ),
     ]),
     body: Column(children: [
       Padding(
