@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
-from app.models import Category, Listing, ListingImage, SellerProfile, User
+from app.models import Category, Listing, ListingImage, Location, SellerProfile, User
 
 router = APIRouter(prefix="/listings")
 
@@ -24,6 +24,7 @@ class ListingCreate(BaseModel):
     description: str = Field(default="", max_length=5000)
     price_minor: int = Field(ge=0)
     location_label: str = Field(min_length=2, max_length=160)
+    location_id: str | None = None
 
 
 class ListingUpdate(BaseModel):
@@ -32,6 +33,7 @@ class ListingUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
     price_minor: int | None = Field(default=None, ge=0)
     location_label: str | None = Field(default=None, min_length=2, max_length=160)
+    location_id: str | None = None
 
 
 class ListingSyncCreate(ListingCreate):
@@ -57,6 +59,7 @@ def _listing_summary(row: Listing) -> dict[str, object]:
         "price_minor": row.price_minor,
         "currency": row.currency,
         "location": row.location_label,
+        "location_id": row.location_id,
         "status": row.status,
         "images": [_image_payload(image) for image in row.images],
     }
@@ -79,11 +82,14 @@ def list_public_listings(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     category_id: str | None = None,
+    location_id: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict[str, object]]:
     query = select(Listing).where(Listing.status == "published")
     if category_id:
         query = query.where(Listing.category_id == category_id)
+    if location_id:
+        query = query.where(Listing.location_id == location_id)
     rows = db.scalars(
         query.order_by(Listing.created_at.desc(), Listing.id).offset(offset).limit(limit)
     ).all()
@@ -94,6 +100,7 @@ def list_public_listings(
             "price_minor": row.price_minor,
             "currency": row.currency,
             "location": row.location_label,
+            "location_id": row.location_id,
             "images": [_image_payload(image) for image in row.images],
         }
         for row in rows
@@ -136,6 +143,7 @@ def sync_my_offline_draft(
             "description": existing.description,
             "price_minor": existing.price_minor,
             "location_label": existing.location_label,
+            "location_id": existing.location_id,
         }
         if expected != actual:
             raise HTTPException(status_code=409, detail="Sync identifier was reused with different draft data")
@@ -144,6 +152,10 @@ def sync_my_offline_draft(
     category = db.get(Category, payload.category_id)
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
+    if payload.location_id is not None:
+        location = db.get(Location, payload.location_id)
+        if location is None or not location.is_active:
+            raise HTTPException(status_code=404, detail="Location not found")
     listing = Listing(
         seller_id=seller.id,
         category_id=category.id,
@@ -151,6 +163,7 @@ def sync_my_offline_draft(
         description=payload.description,
         price_minor=payload.price_minor,
         location_label=payload.location_label,
+        location_id=payload.location_id,
         status="draft",
         client_sync_id=sync_id,
     )
@@ -197,11 +210,15 @@ def create_my_listing(
     category = db.get(Category, payload.category_id)
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
+    if payload.location_id is not None:
+        location = db.get(Location, payload.location_id)
+        if location is None or not location.is_active:
+            raise HTTPException(status_code=404, detail="Location not found")
     listing = Listing(
         seller_id=seller.id, category_id=category.id,
         title=payload.title, description=payload.description,
         price_minor=payload.price_minor, location_label=payload.location_label,
-        status="draft",
+        location_id=payload.location_id, status="draft",
     )
     db.add(listing)
     db.commit()
@@ -222,6 +239,10 @@ def update_my_listing(
     changes = payload.model_dump(exclude_unset=True)
     if any(value is None for value in changes.values()):
         raise HTTPException(status_code=422, detail="Listing fields cannot be null")
+    if "location_id" in changes and changes["location_id"] is not None:
+        location = db.get(Location, changes["location_id"])
+        if location is None or not location.is_active:
+            raise HTTPException(status_code=404, detail="Location not found")
     if "category_id" in changes:
         category = db.get(Category, changes["category_id"])
         if category is None or not category.is_active:
