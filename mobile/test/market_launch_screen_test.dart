@@ -1,0 +1,25 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+import 'package:south_omo_market/main.dart';
+
+void main() {
+  testWidgets('Amharic branded splash is the initial route', (tester) async {
+    final client = MockClient((request) async => http.Response('[]', 200));
+    await tester.pumpWidget(SouthOmoMarketApp(
+      apiBaseUrl: 'https://market.example/api/v1',
+      client: client,
+    ));
+
+    expect(find.text('ደቡብ ኦሞ ገበያ'), findsOneWidget);
+    expect(find.text('ከአካባቢ ለአካባቢ'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
+
+    expect(find.text('ምርቶችን እና አገልግሎቶችን ፈልግ'), findsOneWidget);
+    expect(find.text('South Omo Market'), findsNothing);
+  });
+}
