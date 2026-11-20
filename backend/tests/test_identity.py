@@ -11,7 +11,7 @@ from app.core.database import Base, get_db
 from app.core.rate_limit import limiter
 from app.main import app
 from app import models  # noqa: F401
-from app.models import Category
+from app.models import Category, Listing, Location
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
@@ -524,3 +524,47 @@ def test_login_endpoint_enforces_ip_rate_limit() -> None:
     blocked = client.post("/api/v1/auth/login", json=payload)
     assert blocked.status_code == 429
     limiter.reset()
+
+
+
+def test_localized_category_and_hierarchical_location_catalog() -> None:
+    db = TestingSession()
+    category_id = "00000000-0000-4000-8000-000000000006"
+    location_id = "10000000-0000-4000-8000-000000000003"
+    parent_id = "10000000-0000-4000-8000-000000000002"
+    if db.get(Category, category_id) is None:
+        db.add(Category(
+            id=category_id, slug="test-rentals", name_en="Property and rentals",
+            name_am="ንብረት እና ኪራይ", is_active=True,
+        ))
+    if db.get(Location, parent_id) is None:
+        db.add(Location(
+            id=parent_id, code="TEST-MAALE", level="woreda",
+            name_en="Maale", name_am="ማሌ", name_mdy=None, is_active=True,
+        ))
+    if db.get(Location, location_id) is None:
+        db.add(Location(
+            id=location_id, parent_id=parent_id, code="TEST-KOYBE", level="locality",
+            name_en="Koybe", name_am="ቆይቤ", name_mdy=None, is_active=True,
+        ))
+    db.commit()
+    db.close()
+
+    categories = client.get("/api/v1/categories?lang=am")
+    assert categories.status_code == 200
+    translated = next(row for row in categories.json() if row["id"] == category_id)
+    assert translated["name"] == "ንብረት እና ኪራይ"
+    assert translated["name_en"] == "Property and rentals"
+
+    locations = client.get(f"/api/v1/locations?parent_id={parent_id}&lang=am")
+    assert locations.status_code == 200
+    assert locations.json() == [{
+        "id": location_id,
+        "parent_id": parent_id,
+        "code": "TEST-KOYBE",
+        "level": "locality",
+        "name": "ቆይቤ",
+        "name_en": "Koybe",
+        "name_am": "ቆይቤ",
+        "name_mdy": None,
+    }]
