@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'market_design_system.dart';
 import 'market_icon_pack.dart';
+import '../l10n/market_strings.dart';
 
 /// Brand-led welcome surface, reusable for onboarding and future launch flow.
 class MarketWelcomePage extends StatelessWidget {
@@ -31,7 +32,7 @@ class MarketWelcomePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(30),
                     border: Border.all(color: MarketPalette.mint.withValues(alpha: .28)),
                   ),
-                  child: const Text('SOUTH OMO · LOCAL TRADE NETWORK',
+                  child: Text(marketString(context, en: 'SOUTH OMO · LOCAL TRADE NETWORK', am: 'ደቡብ ኦሞ · የአካባቢ ገበያ', mdy: ''),
                     style: TextStyle(color: MarketPalette.mint, fontSize: 10,
                       letterSpacing: 1.5, fontWeight: FontWeight.w800)),
                 ),
@@ -40,14 +41,14 @@ class MarketWelcomePage extends StatelessWidget {
                   style: TextStyle(color: Colors.white, fontSize: 34,
                     height: 1.08, fontWeight: FontWeight.w800, letterSpacing: -1)),
                 const SizedBox(height: 14),
-                Text('Discover local products, useful services and businesses across South Omo.',
+                Text(marketString(context, en: 'Discover local products, useful services and businesses across South Omo.', am: 'በደቡብ ኦሞ ያሉ ምርቶችን፣ አገልግሎቶችንና ንግዶችን ያግኙ።', mdy: ''),
                   style: TextStyle(color: Colors.white.withValues(alpha: .78),
                     fontSize: 16, height: 1.5)),
                 const SizedBox(height: 30),
                 const Row(children: [
-                  _WelcomePill(icon: MarketIconPack.products, label: 'Local goods'),
+                  _WelcomePill(icon: MarketIconPack.products, label: 'የአካባቢ ምርቶች'),
                   SizedBox(width: 8),
-                  _WelcomePill(icon: MarketIconPack.services, label: 'Local skills'),
+                  _WelcomePill(icon: MarketIconPack.services, label: 'የአካባቢ ክህሎቶች'),
                 ]),
                 const Spacer(),
                 SizedBox(
@@ -59,7 +60,7 @@ class MarketWelcomePage extends StatelessWidget {
                       foregroundColor: MarketPalette.deep,
                       minimumSize: const Size.fromHeight(56),
                     ),
-                    child: const Text('Explore the marketplace',
+                    child: Text(marketString(context, en: 'Explore the marketplace', am: 'ገበያውን ይመልከቱ', mdy: ''),
                       style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
                 ),
@@ -77,19 +78,19 @@ class MarketAboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('About South Omo Market')),
+    appBar: AppBar(title: Text(marketString(context, en: 'About South Omo Market', am: 'ስለ ደቡብ ኦሞ ገበያ', mdy: ''))),
     body: ListView(
       padding: const EdgeInsets.all(18),
       children: [
         const MarketBrandPanel(
-          title: 'Rooted here. Connected everywhere.',
-          subtitle: 'A local marketplace for the people, products and skills of South Omo.',
+          title: marketString(context, en: 'Rooted here. Connected everywhere.', am: 'ከዚህ የተመሠረተ፤ ከሁሉም ጋር የተገናኘ።', mdy: ''),
+          subtitle: marketString(context, en: 'A local marketplace for the people, products and skills of South Omo.', am: 'ለደቡብ ኦሞ ሰዎች፣ ምርቶችና ክህሎቶች የተዘጋጀ የአካባቢ ገበያ።', mdy: ''),
         ),
         const SizedBox(height: 22),
-        Text('Welcome to a closer marketplace',
+        Text(marketString(context, en: 'Welcome to a closer marketplace', am: 'ወደ ቅርብ ገበያ እንኳን በደህና መጡ', mdy: ''),
           style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 8),
-        Text('South Omo Market helps buyers discover local goods and services, and gives sellers a direct way to present what they offer.',
+        Text(marketString(context, en: 'South Omo Market helps buyers discover local goods and services, and gives sellers a direct way to present what they offer.', am: 'ደቡብ ኦሞ ገበያ ገዢዎች የአካባቢ ምርቶችንና አገልግሎቶችን እንዲያገኙ እና ሻጮች የሚያቀርቡትን በቀጥታ እንዲያሳዩ ያግዛል።', mdy: ''),
           style: Theme.of(context).textTheme.bodyLarge),
         const SizedBox(height: 20),
         _AboutFeature(icon: MarketIconPack.products, title: 'Local products',
@@ -106,7 +107,7 @@ class MarketAboutPage extends StatelessWidget {
             builder: (_) => const MarketWelcomePage(),
           )),
           icon: const Icon(Icons.waving_hand_outlined),
-          label: const Text('View the welcome experience'),
+          label: Text(marketString(context, en: 'View the welcome experience', am: 'የመጀመሪያ መቀበያ ገጹን ይመልከቱ', mdy: '')),
         ),
         const SizedBox(height: 14),
         Text('Built for local discovery and direct contact. Listings are subject to marketplace moderation.',
