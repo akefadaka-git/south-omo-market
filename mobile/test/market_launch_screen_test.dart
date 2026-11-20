@@ -21,4 +21,21 @@ void main() {
     expect(find.text('ምርቶችን እና አገልግሎቶችን ፈልግ'), findsOneWidget);
     expect(find.text('South Omo Market'), findsNothing);
   });
+  testWidgets('seller registration is discoverable in Amharic', (tester) async {
+    final client = MockClient((request) async => http.Response('[]', 200));
+    await tester.pumpWidget(SouthOmoMarketApp(
+      apiBaseUrl: 'https://market.example/api/v1',
+      client: client,
+    ));
+    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
+    await tester.tap(find.byTooltip('የሻጭ መግቢያ'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('የሻጭ መለያ ፍጠር'), findsOneWidget);
+    await tester.tap(find.text('የሻጭ መለያ ፍጠር'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('seller-display-name')), findsOneWidget);
+  });
+
 }
