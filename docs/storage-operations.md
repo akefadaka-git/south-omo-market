@@ -2,25 +2,15 @@
 
 This runbook is an A3 operational control. It is not evidence that production backups have been configured or that a recovery exercise has succeeded.
 
-## No-cost S3-compatible pilot candidate: Cloudflare R2
+## Cloudflare R2: technical compatibility, not production-approved
 
-The existing `S3ImageStorage` adapter is compatible with an S3 endpoint and can use Cloudflare R2 without application-code changes. Cloudflare currently advertises a recurring free allowance of 10 GB-month standard storage, 1 million Class A operations and 10 million Class B operations, with no egress charge; its product page says account creation is available without a credit card. These are quotas, not unlimited free production storage. Confirm current terms in the [official R2 pricing page](https://www.cloudflare.com/products/r2/) before provisioning.
+The existing `S3ImageStorage` adapter is technically compatible with Cloudflare R2. Cloudflare advertises a recurring free allowance of 10 GB-month standard storage, 1 million Class A operations and 10 million Class B operations, with no egress charge; its product page says account creation is available without a credit card. These are quotas, not unlimited free storage. See the [official R2 pricing page](https://www.cloudflare.com/products/r2/).
 
-Suggested environment mapping after the owner creates a private R2 bucket and scoped API token:
+**Legal restriction:** the Ethiopian Personal Data Protection Proclamation No. 1321/2024, Article 22(1), requires locally collected or obtained personal data to be stored on a server or data centre located in Ethiopia. Cloudflare's published R2 bucket locations do not include Ethiopia. R2 is therefore **not approved for South Omo Market production personal data**, including user-associated listing photos, inquiry attachments, reports or backups. Article 21 cross-border safeguards and Article 22(3) prior approval for sensitive-data transfers must be assessed by Ethiopian counsel and the competent Authority before any exception or cross-border processing is considered.
 
-- `IMAGE_STORAGE_BACKEND=s3`
-- `S3_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com`
-- `S3_REGION=auto`
-- `S3_BUCKET=<private-application-bucket>`
-- `S3_ACCESS_KEY_ID=<R2-access-key-id>`
-- `S3_SECRET_ACCESS_KEY=<R2-secret-access-key>`
-- `S3_USE_SSL=true`
+R2 may be considered only for synthetic test data or content confirmed not to be personal data, and only after checking the current provider terms. Do not create a bucket, add credentials or route real users' data to R2 under this project. The existing Singapore-based Neon/Render test environment is likewise synthetic-data-only.
 
-Do not enable public bucket access. Keep the R2 token scoped to the application bucket and store the credentials only in the hosting provider's secret environment settings. The API continues to publish images through its listing-ownership and listing-status checks.
-
-For recovery, create a second bucket for backups and configure a bucket-lock retention rule in the Cloudflare dashboard for the backup prefix. R2 bucket-lock rules can prevent matching objects from being overwritten or deleted; the R2 S3 compatibility table does not implement S3 Object Lock APIs, so configure the lock through Cloudflare's dashboard/API, not the boto3 S3 adapter. Keep the backup ID unique and use the existing encrypted database/object inventory script. Primary and backup objects both consume the account's free storage allowance; monitor usage and keep the combined retained data within the free quota. Never rely on free-tier limits to prevent billable overage without checking the account's billing controls.
-
-**Provisioning state:** no R2 account, bucket, API token, environment secret, backup bucket, or recovery test has been created or configured by this repository change.
+**Provisioning state:** no R2 account, bucket, API token, environment secret, backup bucket or recovery test has been created or configured by this repository change. No Ethiopia-located no-cost persistent object-storage provider has been verified.
 
 ## Required production controls
 
