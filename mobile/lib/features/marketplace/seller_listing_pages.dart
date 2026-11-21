@@ -90,7 +90,10 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
   void _select(Map<String, dynamic> listing) {
     setState(() {
       _selected = listing;
-      _categoryId = listing['category_id'] as String?;
+      final savedCategoryId = listing['category_id'] as String?;
+      _categoryId = _categories.any((category) =>
+        category['id'] == savedCategoryId && category['is_leaf'] == true)
+          ? savedCategoryId : null;
       _attributeValues = Map<String, dynamic>.from(
         (listing['attributes'] as Map<String, dynamic>?) ?? const {},
       );
