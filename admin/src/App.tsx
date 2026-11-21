@@ -1,4 +1,5 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 
 type QueueItem = {
   id: string;
@@ -41,6 +42,7 @@ type AuditEvent = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1').replace(/\/$/, '');
+const authHeaders = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` });
 
 export default function App() {
   const [phone, setPhone] = useState('');
@@ -53,8 +55,6 @@ export default function App() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-
-  const authHeaders = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` });
 
   const loadQueue = useCallback(async (accessToken: string) => {
     const response = await fetch(`${API_BASE}/admin/moderation/queue`, {
