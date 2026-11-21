@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 
 class LocalDraftStore {
   static const _databaseName = 'south_omo_market.db';
-  static const _databaseVersion = 2;
+  static const _databaseVersion = 3;
   LocalDraftStore({String? databasePath}) : _databasePath = databasePath;
 
   final String? _databasePath;
@@ -27,6 +27,7 @@ class LocalDraftStore {
             category_id TEXT NOT NULL,
             title TEXT NOT NULL,
             description TEXT NOT NULL DEFAULT '',
+            attributes_json TEXT NOT NULL DEFAULT '{}',
             price_minor INTEGER NOT NULL DEFAULT 0,
             location_label TEXT NOT NULL,
             server_listing_id TEXT,
@@ -82,6 +83,9 @@ class LocalDraftStore {
           await db.execute(
             'CREATE INDEX ix_listing_draft_images_draft_id ON listing_draft_images(draft_id)',
           );
+        }
+        if (oldVersion < 3) {
+          await db.execute("ALTER TABLE listing_drafts ADD COLUMN attributes_json TEXT NOT NULL DEFAULT '{}'");
         }
       },
     );
