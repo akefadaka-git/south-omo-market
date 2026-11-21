@@ -92,7 +92,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       );
       if (report == null || !mounted) return;
       final response = await widget.client.post(
-        Uri.parse('\${widget.apiBaseUrl}/reports'),
+        Uri.parse('${widget.apiBaseUrl}/reports'),
         headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
         body: jsonEncode({
           if (listingId != null) 'listing_id': listingId,
@@ -104,7 +104,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       );
       if (response.statusCode != 201) {
         final detail = (jsonDecode(response.body) as Map<String, dynamic>)['detail'];
-        throw Exception(detail is String ? detail : 'Report could not be submitted (\${response.statusCode}).');
+        throw Exception(detail is String ? detail : 'Report could not be submitted (${response.statusCode}).');
       }
       if (mounted) setState(() => _notice = 'Report submitted. You can follow its status in My reports.');
     } catch (error) {
