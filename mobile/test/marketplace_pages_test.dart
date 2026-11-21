@@ -158,7 +158,7 @@ void main() {
   });
 
 
-  testWidgets('discovery exposes sorting and loads the next listing page', (tester) async {
+  testWidgets('discovery deduplicates page boundaries and stops on an empty final page', (tester) async {
     final listingRequests = <Uri>[];
     final firstPage = List.generate(50, (index) => {
       'id': 'listing-$index',
@@ -169,6 +169,18 @@ void main() {
       'location': 'Koybe',
       'images': <Object>[],
     });
+    final secondPage = [
+      firstPage.last,
+      ...List.generate(49, (index) => {
+        'id': 'listing-${index + 50}',
+        'title': 'Synthetic listing ${index + 50}',
+        'description': 'Synthetic test listing',
+        'category_id': 'cat-livestock',
+        'price_minor': 10050 + index,
+        'location': 'Koybe',
+        'images': <Object>[],
+      }),
+    ];
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/categories')) {
         return http.Response(jsonEncode([
@@ -183,17 +195,12 @@ void main() {
       if (request.url.path.endsWith('/listings')) {
         listingRequests.add(request.url);
         final offset = int.tryParse(request.url.queryParameters['offset'] ?? '0') ?? 0;
-        return http.Response(jsonEncode(offset == 0 ? firstPage : [
-          {
-            'id': 'listing-50',
-            'title': 'Synthetic listing 50',
-            'description': 'Synthetic test listing',
-            'category_id': 'cat-livestock',
-            'price_minor': 10050,
-            'location': 'Koybe',
-            'images': <Object>[],
-          },
-        ]), 200);
+        final rows = switch (offset) {
+          0 => firstPage,
+          50 => secondPage,
+          _ => <Map<String, Object>>[],
+        };
+        return http.Response(jsonEncode(rows), 200);
       }
       return http.Response('Not found', 404);
     });
@@ -214,10 +221,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(listingRequests.last.queryParameters['offset'], '50');
-    expect(find.text('Synthetic listing 50'), findsOneWidget);
+    expect(find.text('Synthetic listing 49'), findsOneWidget,
+      reason: 'A listing repeated at the page boundary must not be rendered twice');
+    expect(find.text('Synthetic listing 98'), findsOneWidget);
+    expect(find.text('Load more listings'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Load more listings'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Load more listings'));
+    await tester.pumpAndSettle();
+
+    expect(listingRequests.last.queryParameters['offset'], '100');
+    expect(find.text('Load more listings'), findsNothing,
+      reason: 'An empty final page must disable further pagination');
     client.close();
   });
-
 }
 
 
