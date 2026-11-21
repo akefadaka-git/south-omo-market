@@ -22,7 +22,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "locations" in inspector.get_table_names()
         assert "reports" in inspector.get_table_names()
         assert {"is_suspended", "auth_version"} <= {column["name"] for column in inspector.get_columns("users")}
-        assert {"listing_id", "seller_id", "reason", "description", "evidence", "status", "reviewed_by"} <= {
+        assert {"listing_id", "seller_id", "reason", "description", "evidence", "status", "previous_target_status", "reviewed_by"} <= {
             column["name"] for column in inspector.get_columns("reports")
         }
         location_columns = {column["name"] for column in inspector.get_columns("locations")}
