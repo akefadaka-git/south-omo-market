@@ -22,14 +22,15 @@
 | Backend health/readiness | Liveness and database readiness endpoints | IMPLEMENTED |
 | Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers | IMPLEMENTED; execution still requires GitHub Actions to run |
 | Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | ADDED; execution pending |
-| Category hierarchy data model | Self-referencing category parent, root/child query, leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
-| Category-specific listing attributes | JSON attribute schema, typed required/optional validation, bounds/choice validation, create/update/offline-sync persistence | IMPLEMENTED; test execution pending |
+| Category hierarchy data model | Self-referencing category parent, seeded South Omo subcategories, root/child query, leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
+| Category-specific listing attributes | JSON attribute schemas, typed required/optional validation, bounds/choice validation, create/update/offline-sync persistence | IMPLEMENTED; test execution pending |
+| Grouped mobile category browser | Removed hard-coded topic chips; renders API root categories and actual leaf subcategories | IMPLEMENTED; Flutter test execution pending |
 
 ## Explicitly unresolved A3 scope
 
 These items must not be marked complete without implementation and evidence:
 
-1. **Catalogue depth:** backend hierarchy and attribute-validation primitives are now implemented. Still open: seed the complete approved catalogue from `docs/catalogue-taxonomy.md`, build the grouped mobile category browser and category-driven seller forms, and verify category migration/API/widget behavior.
+1. **Catalogue depth:** backend hierarchy, initial subcategory seeds, attribute-validation primitives and API-backed grouped category browser are implemented. Still open: complete the entire catalogue coverage from `docs/catalogue-taxonomy.md`, build category-driven seller attribute forms, and verify category migration/API/widget behavior.
 2. **Pagination boundary tests:** load-more UI, API limit/offset integration and a widget test for fetching the second page are implemented; execute the test and add boundary coverage for duplicate prevention, empty final page, retry behavior and filter changes.
 3. **Maale localization:** human-reviewed translations, terminology register, script/font validation and Maale-speaking approval. Empty strings are not translations and must not be presented as such.
 4. **Seller phone ownership:** OTP verification is not implemented because no SMS provider has been selected or integrated. Do not simulate verification or imply a phone number is verified.
