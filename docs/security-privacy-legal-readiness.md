@@ -15,6 +15,22 @@ Official sources:
 - Federal Negarit Gazette / Ethiopian Communications Authority copy — https://pdp.eca.et/files/pdfs/pdp-proclamation/pdp_personal_data_protection_proclamation_No_1321_2024.pdf
 - Cloudflare R2 bucket locations — https://developers.cloudflare.com/api/resources/r2/subresources/buckets/
 
+## Ethiopia-hosted provider evaluation — 2026-11-21
+
+A no-cost provider review was performed without creating accounts, resources, credentials or billing activity:
+
+- **AletCloud Solo:** its published offer includes one free app per account, but the free app has no persistent disk. Its one free PostgreSQL Solo database has 1 GB storage, 256 MiB memory and 10 connections, but explicitly has no backups of any kind. AletCloud object storage is S3-compatible and located in Addis Ababa, but starts at 50 ETB/month. This is a credible local infrastructure candidate for synthetic testing, not a production recovery solution under the current no-payment constraint.
+- **Ethiopian National Data Center / Government Cloud:** its official site advertises Object Storage Service (OBS), PostgreSQL RDS and backup services, and identifies the National Data Center in Ethiopia. The public material reviewed does not establish free access, private-marketplace eligibility, a service-level agreement, data-processing terms or a no-cost account. Treat as an unverified institutional candidate; do not provision or send data.
+- **Deploy.et:** its S3-compatible storage starts at 199 ETB/month and its published FAQ says the storage is in European data centres. It is both paid and not suitable for Ethiopia-residency production personal data.
+- **Conclusion:** no publicly documented, no-cost, Ethiopia-located object-storage and recoverable-backup arrangement has been verified. Do not substitute a free database with no backups or an app's ephemeral filesystem for persistent media storage. Keep the production media/recovery gate BLOCKED.
+
+Provider references:
+- AletCloud pricing and free-tier limits: https://aletcloud.com/pricing
+- AletCloud managed database backup policy: https://aletcloud.com/docs/managed-databases
+- AletCloud S3 storage location and pricing: https://aletcloud.com/docs/object-storage
+- Ethiopian National Data Center Object Storage Service: https://cloud.gov.et/?page_id=50501
+- Deploy.et storage and location disclosure: https://www.deploy.et/storage
+
 ## Current personal-data inventory
 
 | Data | Why the platform holds it | Key controls / open work |
