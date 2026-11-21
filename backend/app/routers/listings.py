@@ -165,6 +165,7 @@ def _image_payload(image: ListingImage) -> dict[str, object]:
 def _listing_summary(row: Listing) -> dict[str, object]:
     return {
         "id": row.id,
+        "seller_id": row.seller_id,
         "category_id": row.category_id,
         "title": row.title,
         "description": row.description,
