@@ -182,6 +182,8 @@ def decide_report(
         user = db.scalar(select(User).where(User.id == seller.user_id).with_for_update()) if seller else None
         if user is None:
             raise HTTPException(status_code=404, detail="Reported seller no longer exists")
+        if action == "unblock_seller" and not user.is_suspended:
+            raise HTTPException(status_code=409, detail="Seller account is not suspended")
         if action == "block_seller" and not user.is_suspended:
             user.auth_version += 1
         user.is_suspended = action == "block_seller"
