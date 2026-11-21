@@ -967,6 +967,9 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     assert blocked_listing.status_code == 200
     assert blocked_listing.json()["status"] == "in_review"
     assert client.get(f"/api/v1/listings/{listing_id}").status_code == 404
+    premature_dismiss = client.post(f"/api/v1/admin/reports/{listing_report_id}/decision",
+        headers=admin_headers, json={"decision": "dismiss", "note": "Must restore before dismissal"})
+    assert premature_dismiss.status_code == 409
     restored_listing = client.post(f"/api/v1/admin/reports/{listing_report_id}/decision",
         headers=admin_headers, json={"decision": "restore_listing", "note": "Listing evidence did not support removal"})
     assert restored_listing.status_code == 200
@@ -1003,6 +1006,9 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
         "phone_number": seller_phone, "password": "synthetic-report-seller-701",
     }).status_code == 401
     assert client.get("/api/v1/sellers/me", headers=seller_headers).status_code == 401
+    suspended_report_close = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
+        headers=admin_headers, json={"decision": "resolve", "note": "Cannot close while suspended"})
+    assert suspended_report_close.status_code == 409
     assert client.get(f"/api/v1/listings/{visible_listing_id}").status_code == 404
     assert visible_listing_id not in {
         row["id"] for row in client.get("/api/v1/listings").json()
@@ -1014,6 +1020,10 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     duplicate_reinstatement = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
         headers=admin_headers, json={"decision": "unblock_seller", "note": "Duplicate action must fail"})
     assert duplicate_reinstatement.status_code == 409
+    resolved_seller_report = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
+        headers=admin_headers, json={"decision": "resolve", "note": "Seller reinstated after review"})
+    assert resolved_seller_report.status_code == 200
+    assert resolved_seller_report.json()["status"] == "resolved"
     assert client.post("/api/v1/auth/login", json={
         "phone_number": seller_phone, "password": "synthetic-report-seller-701",
     }).status_code == 200
@@ -1025,7 +1035,7 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
 
     db = TestingSession()
     assert db.get(User, admin.id).is_admin is True
-    assert db.get(Report, seller_report_id).status == "in_review"
+    assert db.get(Report, seller_report_id).status == "resolved"
     actions = {
         row.action for row in db.query(AuditEvent).filter(
             AuditEvent.resource_id.in_([listing_report_id, seller_report_id])
