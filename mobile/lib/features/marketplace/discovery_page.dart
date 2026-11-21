@@ -38,6 +38,8 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   String _sort = 'newest';
   String? _error;
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = false;
 
   String? _loadedLocale;
 
@@ -59,7 +61,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() { _loading = true; _loadingMore = false; _error = null; });
     if (widget.apiBaseUrl.trim().isEmpty) {
       if (mounted) {
         setState(() {
@@ -79,6 +81,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       final listingUri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
         queryParameters: {
           'limit': '50',
+          'offset': '0',
           'sort': _sort,
           if (_searchQuery.trim().isNotEmpty) 'q': _searchQuery.trim(),
           if (_categoryId != null) 'category_id': _categoryId!,
@@ -106,11 +109,44 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         _categories = categories;
         _locations = locations;
         _listings = listings;
+        _hasMore = listings.length == 50;
       });
     } catch (error) {
       if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || _loadingMore || !_hasMore || widget.apiBaseUrl.trim().isEmpty) return;
+    setState(() => _loadingMore = true);
+    try {
+      final language = Localizations.localeOf(context).languageCode;
+      final uri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
+        queryParameters: {
+          'limit': '50',
+          'offset': _listings.length.toString(),
+          'sort': _sort,
+          if (_searchQuery.trim().isNotEmpty) 'q': _searchQuery.trim(),
+          if (_categoryId != null) 'category_id': _categoryId!,
+          if (_locationId != null) 'location_id': _locationId!,
+        },
+      );
+      final response = await widget.client.get(uri);
+      if (response.statusCode != 200) {
+        throw Exception(marketString(context, en: 'More listings could not be loaded.', am: 'ተጨማሪ ዝርዝሮችን መጫን አልተቻለም።', mdy: ''));
+      }
+      final rows = (jsonDecode(response.body) as List<dynamic>).cast<Map<String, dynamic>>();
+      if (!mounted) return;
+      setState(() {
+        _listings = [..._listings, ...rows];
+        _hasMore = rows.length == 50;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -296,8 +332,22 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
             : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
-                itemCount: visibleListings.length,
+                itemCount: visibleListings.length + (_hasMore ? 1 : 0),
                 itemBuilder: (context, index) {
+                  if (index == visibleListings.length) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      child: OutlinedButton(
+                        onPressed: _loadingMore ? null : _loadMore,
+                        child: _loadingMore
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(marketString(context, en: 'Load more listings', am: 'ተጨማሪ ዝርዝሮችን ጫን', mdy: '')),
+                      ),
+                    );
+                  }
                   final item = visibleListings[index];
                   final category = (_categories.firstWhere(
                     (entry) => entry['id'] == item['category_id'],
