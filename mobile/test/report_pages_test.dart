@@ -64,6 +64,46 @@ void main() {
     client.close();
   });
 
+  testWidgets('report submission errors do not hide listing details', (tester) async {
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/listings/listing-error')) {
+        return http.Response(jsonEncode({
+          'id': 'listing-error', 'seller_id': 'seller-profile-1',
+          'title': 'Synthetic listing remains visible', 'description': 'Test-only item',
+          'price_minor': 10000, 'location': 'Koybe', 'images': [],
+        }), 200);
+      }
+      if (request.url.path.endsWith('/auth/login')) {
+        return http.Response('{"access_token":"synthetic-report-token"}', 200);
+      }
+      if (request.url.path.endsWith('/reports') && request.method == 'POST') {
+        return http.Response(jsonEncode({'detail': 'Report service temporarily unavailable.'}), 503);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(MaterialApp(home: ListingDetailPage(
+      apiBaseUrl: 'https://market.example.test/api/v1',
+      client: client,
+      listingId: 'listing-error',
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Report listing'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000802');
+    await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-report-password-802');
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first,
+      'The listing contains a materially false claim about the item.');
+    await tester.tap(find.text('Submit report'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Synthetic listing remains visible'), findsOneWidget);
+    expect(find.textContaining('Report service temporarily unavailable.'), findsOneWidget);
+    client.close();
+  });
+
   testWidgets('my reports page shows private status and review note', (tester) async {
     final client = MockClient((request) async {
       expect(request.headers['Authorization'], 'Bearer report-access-token');
