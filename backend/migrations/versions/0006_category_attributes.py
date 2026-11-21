@@ -11,10 +11,11 @@ depends_on = None
 def upgrade() -> None:
     op.add_column("categories", sa.Column("parent_id", sa.String(36), nullable=True))
     op.add_column("categories", sa.Column("attributes_schema", sa.JSON(), nullable=False, server_default="[]"))
-    op.create_foreign_key(
-        "fk_categories_parent_id_categories",
-        "categories", "categories", ["parent_id"], ["id"],
-    )
+    with op.batch_alter_table("categories") as batch:
+        batch.create_foreign_key(
+            "fk_categories_parent_id_categories",
+            "categories", ["parent_id"], ["id"],
+        )
     op.create_index("ix_categories_parent_id", "categories", ["parent_id"])
     op.add_column("listings", sa.Column("attributes", sa.JSON(), nullable=False, server_default="{}"))
 
@@ -57,6 +58,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("listings", "attributes")
     op.drop_index("ix_categories_parent_id", table_name="categories")
-    op.drop_constraint("fk_categories_parent_id_categories", "categories", type_="foreignkey")
-    op.drop_column("categories", "attributes_schema")
-    op.drop_column("categories", "parent_id")
+    with op.batch_alter_table("categories") as batch:
+        batch.drop_constraint("fk_categories_parent_id_categories", type_="foreignkey")
+        batch.drop_column("attributes_schema")
+        batch.drop_column("parent_id")
