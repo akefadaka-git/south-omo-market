@@ -212,7 +212,7 @@ void main() {
     expect(find.text('Sort listings'), findsOneWidget);
     expect(listingRequests.first.queryParameters['sort'], 'newest');
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Price: low to high').last);
     await tester.pumpAndSettle();
@@ -363,7 +363,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('female').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Save changes'));
+    await tester.scrollUntilVisible(
+      find.text('Save changes'), 250, scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
