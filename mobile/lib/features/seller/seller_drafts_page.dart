@@ -400,12 +400,23 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: _categoryId,
-          decoration: InputDecoration(labelText: marketString(context, en: 'Category', am: 'ምድብ', mdy: '')),
-          items: _categories.map((item) => DropdownMenuItem(
-            value: item['id'], child: Text(marketString(context, en: item['name']!, am: const {'Livestock':'እንስሳት','Agriculture':'ግብርና','Food and groceries':'ምግብና ሸቀጣ ሸቀጦች','Shops and products':'ሱቆችና ምርቶች','Services':'አገልግሎቶች','Property and rentals':'ንብረትና ኪራይ'}[item['name']] ?? item['name']!, mdy: '')),
+          decoration: InputDecoration(labelText: marketString(context, en: 'Subcategory', am: 'ንዑስ ምድብ', mdy: '')),
+          items: _categories.map((item) => DropdownMenuItem<String>(
+            value: item['id'] as String, child: Text(item['name'] as String? ?? ''),
           )).toList(),
-          onChanged: (value) => setState(() => _categoryId = value),
+          onChanged: (value) => setState(() {
+            if (_categoryId != value) {
+              _categoryId = value;
+              _attributeValues = {};
+              _attributeErrors = {};
+            }
+          }),
         ),
+        if (_categories.isEmpty)
+          Text(marketString(context,
+            en: 'Categories are loading or unavailable. Retry after reconnecting.',
+            am: 'ምድቦች በመጫን ላይ ናቸው ወይም አይገኙም። ከተገናኙ በኋላ እንደገና ይሞክሩ።', mdy: '')),
+        _buildAttributeFields(),
         const SizedBox(height: 8),
         TextField(controller: _title, decoration: InputDecoration(labelText: marketString(context, en: 'Listing title', am: 'የዝርዝር ርዕስ', mdy: ''))),
         TextField(
@@ -422,7 +433,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
         const SizedBox(height: 12),
         Wrap(spacing: 8, children: [
           FilledButton.icon(
-            onPressed: _busy ? null : _saveDraft,
+            onPressed: _busy || _categories.isEmpty ? null : _saveDraft,
             icon: const Icon(Icons.save_outlined),
             label: Text(marketString(context, en: 'Save draft offline', am: 'ረቂቁን ከመስመር ውጭ አስቀምጥ', mdy: '')),
           ),
@@ -461,6 +472,10 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
                   _clientSyncId = draft['client_sync_id'] as String?;
                   _selectedDraftSynced = draft['sync_state'] == 'synced';
                   _categoryId = draft['category_id'] as String?;
+                  _attributeValues = Map<String, dynamic>.from(
+                    jsonDecode((draft['attributes_json'] as String?) ?? '{}') as Map<String, dynamic>,
+                  );
+                  _attributeErrors = {};
                   _title.text = draft['title'] as String;
                   _description.text = draft['description'] as String? ?? '';
                   _price.text = ((draft['price_minor'] as int) / 100).toStringAsFixed(2);
