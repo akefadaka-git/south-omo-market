@@ -288,6 +288,12 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
       setState(() => _error = marketString(context, en: 'A synchronized server draft cannot be edited offline. Start a new draft.', am: 'ከአገልጋዩ ጋር የተመሳሰለ ረቂቅ ከመስመር ውጭ ማስተካከል አይቻልም። አዲስ ረቂቅ ይጀምሩ።', mdy: ''));
       return;
     }
+    if (!_validateAttributes()) {
+      setState(() => _error = marketString(context,
+        en: 'Please correct the highlighted category fields.',
+        am: 'እባክዎ ምልክት የተደረገባቸውን የምድብ መስኮች ያስተካክሉ።', mdy: ''));
+      return;
+    }
     final id = _draftId ?? _uuid.v4();
     final syncId = _clientSyncId ?? id;
     await _store.saveDraft({
@@ -296,6 +302,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
       'category_id': _categoryId,
       'title': title,
       'description': _description.text.trim(),
+      'attributes_json': jsonEncode(_attributeValues),
       'price_minor': (amount * 100).round(),
       'location_label': location,
       'sync_state': 'pending',
