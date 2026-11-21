@@ -297,6 +297,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
         child: DropdownButtonFormField<String>(
+          key: const Key('marketplace-sort'),
           value: _sort,
           decoration: InputDecoration(
             labelText: marketString(context, en: 'Sort listings', am: 'ዝርዝሮችን ደርድር', mdy: ''),
