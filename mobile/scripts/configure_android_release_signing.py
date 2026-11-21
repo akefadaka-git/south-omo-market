@@ -17,6 +17,9 @@ def required(name: str) -> str:
 def main() -> None:
     keystore = Path(required("ANDROID_KEYSTORE_PATH")).resolve()
     required("ANDROID_KEY_ALIAS")
+    application_id = required("ANDROID_APPLICATION_ID")
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+", application_id):
+        raise SystemExit("ANDROID_APPLICATION_ID must be a valid dotted Android application ID.")
     required("ANDROID_KEYSTORE_PASSWORD")
     required("ANDROID_KEY_PASSWORD")
     if not keystore.is_file():
@@ -27,6 +30,14 @@ def main() -> None:
 
     gradle = Path(__file__).resolve().parents[1] / "android" / "app" / "build.gradle.kts"
     source = gradle.read_text(encoding="utf-8")
+    source, app_id_count = re.subn(
+        r'applicationId\s*=\s*"[^"]+"',
+        f'applicationId = "{application_id}"',
+        source,
+        count=1,
+    )
+    if app_id_count != 1:
+        raise SystemExit("Could not safely set the owner-approved Android application ID.")
     if 'create("release")' in source or 'create("upload")' in source:
         raise SystemExit("Release signing configuration already exists; refusing to overwrite it.")
 
