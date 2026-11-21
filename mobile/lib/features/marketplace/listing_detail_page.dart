@@ -25,6 +25,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   Map<String, dynamic>? _listing;
   final _messageController = TextEditingController();
   String? _error;
+  String? _loadError;
   String? _notice;
   bool _sending = false;
 
@@ -141,9 +142,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         Uri.parse('${widget.apiBaseUrl}/listings/${widget.listingId}'),
       );
       if (response.statusCode != 200) throw Exception(marketString(context, en: 'Listing is no longer available.', am: 'ይህ ዝርዝር ከእንግዲህ አይገኝም።', mdy: ''));
-      if (mounted) setState(() => _listing = jsonDecode(response.body) as Map<String, dynamic>);
+      if (mounted) setState(() { _listing = jsonDecode(response.body) as Map<String, dynamic>; _loadError = null; });
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+      if (mounted) setState(() => _loadError = error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -152,8 +153,19 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     final listing = _listing;
     return Scaffold(
       appBar: AppBar(title: Text(marketString(context, en: 'Listing details', am: 'የዝርዝር መረጃ', mdy: ''))),
-      body: _error != null
-        ? Center(child: Text(_error!))
+      body: _loadError != null
+        ? Center(child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Semantics(liveRegion: true, child: Text(_loadError!, textAlign: TextAlign.center)),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+                label: Text(marketString(context, en: 'Try again', am: 'እንደገና ሞክር', mdy: '')),
+              ),
+            ]),
+          ))
         : listing == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
@@ -166,6 +178,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Image.network(
                     Uri.parse('${widget.apiBaseUrl}/').resolve(image['url'] as String).toString(),
+                    semanticLabel: marketString(
+                      context,
+                      en: 'Listing photo: ${listing['title']}',
+                      am: 'የዝርዝሩ ፎቶ: ${listing['title']}',
+                      mdy: '',
+                    ),
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => SizedBox(
                       height: 80, child: Center(child: Text(marketString(context, en: 'Photo unavailable', am: 'ፎቶው አልተገኘም', mdy: ''))),
@@ -210,13 +228,19 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                 icon: const Icon(Icons.send),
                 label: Text(_sending ? marketString(context, en: 'Sending…', am: 'በመላክ ላይ…', mdy: '') : marketString(context, en: 'Send inquiry', am: 'ጥያቄ ላክ', mdy: '')),
               ),
-              if (_notice != null) Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(_notice!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+              if (_notice != null) Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(_notice!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                ),
               ),
-              if (_error != null) Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              if (_error != null) Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                ),
               ),
             ]),
     );
