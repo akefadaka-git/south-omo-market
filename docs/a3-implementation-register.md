@@ -13,7 +13,7 @@
 | Public marketplace discovery | Published listings, category/location filters, listing details | IMPLEMENTED |
 | Public discovery search | API searches title, description and location; bounded query length | IMPLEMENTED |
 | Discovery sorting | Stable newest, price ascending and price descending ordering | IMPLEMENTED |
-| Discovery pagination | Mobile load-more control backed by API limit/offset; page append and has-more detection | IMPLEMENTED; widget regression added, execution pending |
+| Discovery pagination | Mobile limit/offset; duplicate-safe page append with independent fetched-row offset; empty-page termination; retry and filter-reset boundary regressions | IMPLEMENTED; widget tests added, execution pending |
 | Seller identity and listing lifecycle | Registration/login, seller profile, draft, submit-for-review, moderation | IMPLEMENTED |
 | Seller inquiry workflow | Buyer inquiry and seller inbox/status handling | IMPLEMENTED |
 | Offline seller drafts | SQLite local drafts and retryable synchronization | IMPLEMENTED |
