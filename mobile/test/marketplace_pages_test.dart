@@ -257,6 +257,43 @@ void main() {
       reason: 'An empty final page must disable further pagination');
     client.close();
   });
+
+  testWidgets('marketplace initial-load retry requests the first page again', (tester) async {
+    final listingRequests = <Uri>[];
+    var firstListingRequestFails = true;
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/categories')) return http.Response('[]', 200);
+      if (request.url.path.endsWith('/locations')) return http.Response('[]', 200);
+      if (request.url.path.endsWith('/listings')) {
+        listingRequests.add(request.url);
+        if (firstListingRequestFails) {
+          firstListingRequestFails = false;
+          return http.Response('temporarily unavailable', 503);
+        }
+        return http.Response(jsonEncode([
+          {'id': 'retry-listing', 'title': 'Recovered listing',
+           'description': '', 'category_id': 'cat-livestock',
+           'price_minor': 10000, 'location': 'Koybe', 'images': <Object>[]},
+        ]), 200);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(MaterialApp(home: MarketplaceDiscoveryPage(
+      apiBaseUrl: 'https://market.example.test/api/v1', client: client,
+    )));
+    await tester.pumpAndSettle();
+    expect(find.text('Retry connection'), findsOneWidget);
+
+    await tester.tap(find.text('Retry connection'));
+    await tester.pumpAndSettle();
+
+    expect(listingRequests, hasLength(2));
+    expect(listingRequests.map((uri) => uri.queryParameters['offset']), ['0', '0']);
+    expect(find.text('Recovered listing'), findsOneWidget);
+    client.close();
+  });
+
 }
 
 
