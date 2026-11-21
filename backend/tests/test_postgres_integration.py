@@ -45,7 +45,27 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0005_localized_geography"
+            assert revision == "0007_catalogue_expansion"
+            expanded_categories = connection.execute(text("""
+                SELECT COUNT(*) FROM categories
+                WHERE slug IN (
+                    'livestock-camels-pack-animals', 'livestock-beekeeping-products',
+                    'agriculture-coffee-cash-crops', 'agriculture-farm-inputs-irrigation',
+                    'food-honey-spices-ingredients', 'food-grain-flour',
+                    'retail-building-materials', 'retail-solar-energy-batteries',
+                    'retail-vehicle-motorcycle-parts', 'services-farm-machinery-irrigation',
+                    'services-veterinary-animal-health', 'services-construction-trades',
+                    'services-household-personal', 'services-business-digital',
+                    'services-transport-local', 'services-education-community',
+                    'rentals-event-equipment', 'rentals-workspace-shops',
+                    'jobs-hospitality-services', 'jobs-apprenticeships-short-term'
+                )
+            """)).scalar_one()
+            assert expanded_categories == 20
+            assert connection.execute(text("""
+                SELECT COUNT(*) FROM categories
+                WHERE json_array_length(attributes_schema) > 0
+            """)).scalar_one() >= 39
             trigger = connection.execute(text("""
                 SELECT COUNT(*) FROM pg_trigger
                 WHERE tgname = 'audit_events_append_only' AND NOT tgisinternal
