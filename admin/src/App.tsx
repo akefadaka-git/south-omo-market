@@ -150,7 +150,7 @@ export default function App() {
       }
       await refreshAdminData(token);
       setNote('');
-      setMessage(`Report action completed: ${decision.replaceAll('_', ' ')}.`);
+      setMessage(`Report action completed: ${decision.replace(/_/g, ' ')}.`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unexpected report action error.');
     } finally {
@@ -160,7 +160,7 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
-    refreshAdminData(token).catch((reason: unknown) => {
+    Promise.all([loadQueue(token), loadReports(token), loadAudit(token)]).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : 'Could not refresh administration data.');
     });
   }, [token, loadQueue, loadReports, loadAudit]);
@@ -204,7 +204,7 @@ export default function App() {
           <div style={{ display: 'grid', gap: 16 }}>
             {reports.map((report) => (
               <article key={report.id} aria-labelledby={`report-${report.id}`} style={{ border: '1px solid #ddd', borderRadius: 12, padding: 18 }}>
-                <h3 id={`report-${report.id}`}>{report.reason.replaceAll('_', ' ')} · {report.status.replaceAll('_', ' ')}</h3>
+                <h3 id={`report-${report.id}`}>{report.reason.replace(/_/g, ' ')} · {report.status.replace(/_/g, ' ')}</h3>
                 <p>{report.description}</p>
                 <p><strong>Target:</strong> {report.target?.type === 'listing'
                   ? `Listing: ${report.target.title ?? report.target.id} · Seller: ${report.target.seller_name ?? 'unknown'}`
