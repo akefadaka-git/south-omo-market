@@ -99,7 +99,13 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           if (sellerId != null) 'seller_id': sellerId,
           'reason': report['reason'],
           'description': report['description'],
-          'evidence': [],
+          'evidence': (report['evidence_summary'] ?? '').isNotEmpty
+              ? [{
+                  'summary': report['evidence_summary'],
+                  if ((report['evidence_reference'] ?? '').isNotEmpty)
+                    'reference': report['evidence_reference'],
+                }]
+              : [],
         }),
       );
       if (response.statusCode != 201) {
@@ -225,11 +231,15 @@ class _ReportComposeDialog extends StatefulWidget {
 class _ReportComposeDialogState extends State<_ReportComposeDialog> {
   final _formKey = GlobalKey<FormState>();
   final _description = TextEditingController();
+  final _evidenceSummary = TextEditingController();
+  final _evidenceReference = TextEditingController();
   String _reason = 'misleading_information';
 
   @override
   void dispose() {
     _description.dispose();
+    _evidenceSummary.dispose();
+    _evidenceReference.dispose();
     super.dispose();
   }
 
@@ -268,6 +278,25 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
           validator: (value) => (value == null || value.trim().length < 10)
             ? 'Please provide at least 10 characters.' : null,
         ),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: _evidenceSummary,
+          minLines: 2,
+          maxLines: 3,
+          maxLength: 3000,
+          decoration: const InputDecoration(
+            labelText: 'Evidence summary (optional)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        TextFormField(
+          controller: _evidenceReference,
+          maxLength: 500,
+          decoration: const InputDecoration(
+            labelText: 'Evidence reference (optional)',
+            helperText: 'Do not enter a private URL or sensitive personal information.',
+          ),
+        ),
       ])),
     ),
     actions: [
@@ -275,7 +304,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
       FilledButton(
         onPressed: () {
           if (!_formKey.currentState!.validate()) return;
-          Navigator.pop(context, {'reason': _reason, 'description': _description.text.trim()});
+          Navigator.pop(context, {'reason': _reason, 'description': _description.text.trim(), 'evidence_summary': _evidenceSummary.text.trim(), 'evidence_reference': _evidenceReference.text.trim()});
         },
         child: const Text('Submit report'),
       ),
