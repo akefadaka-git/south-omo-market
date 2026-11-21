@@ -142,6 +142,14 @@ def decide_report(
     if report.status in {"resolved", "dismissed"} and payload.decision not in {"unblock_seller"}:
         raise HTTPException(status_code=409, detail="Report is already closed")
 
+    if payload.decision in {"resolve", "dismiss"} and report.seller_id:
+        seller = db.get(SellerProfile, report.seller_id)
+        seller_user = db.get(User, seller.user_id) if seller else None
+        if seller_user is not None and seller_user.is_suspended:
+            raise HTTPException(status_code=409, detail="Reinstate the seller before closing this report")
+    if payload.decision == "dismiss" and report.previous_target_status is not None:
+        raise HTTPException(status_code=409, detail="Restore the listing before dismissing this report")
+
     now = datetime.now(timezone.utc)
     action = payload.decision
     resource_type = "report"
