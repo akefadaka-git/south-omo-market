@@ -212,7 +212,7 @@ void main() {
     expect(find.text('Sort listings'), findsOneWidget);
     expect(listingRequests.first.queryParameters['sort'], 'newest');
 
-    await tester.tap(find.text('Sort listings'));
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Price: low to high').last);
     await tester.pumpAndSettle();
@@ -348,7 +348,9 @@ void main() {
     expect(find.text('Livestock'), findsNothing,
       reason: 'Parent categories must not be selectable for listing drafts');
 
-    await tester.ensureVisible(find.text('Save changes'));
+    await tester.scrollUntilVisible(
+      find.text('Save changes'), 250, scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
