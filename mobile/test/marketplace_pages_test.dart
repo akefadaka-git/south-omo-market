@@ -59,12 +59,13 @@ void main() {
         return http.Response(jsonEncode([
           {'id': 'listing-1', 'category_id': 'cat-1', 'title': savedTitle,
            'description': 'Draft', 'price_minor': 10000, 'location': 'Koybe',
-           'status': status, 'images': []},
+           'status': status, 'images': [], 'attributes': {}},
         ]), 200);
       }
       if (request.url.path.endsWith('/categories')) {
         return http.Response(jsonEncode([
-          {'id': 'cat-1', 'name': 'Livestock'},
+          {'id': 'cat-1', 'name': 'Cattle', 'parent_id': 'cat-root',
+           'is_leaf': true, 'attributes_schema': []},
         ]), 200);
       }
       if (request.method == 'PATCH' && request.url.path.endsWith('/listings/listing-1')) {
@@ -75,6 +76,7 @@ void main() {
           'id': 'listing-1', 'category_id': 'cat-1', 'title': savedTitle,
           'description': body['description'], 'price_minor': body['price_minor'],
           'location': body['location_label'], 'status': status, 'images': [],
+          'attributes': body['attributes'] ?? {},
         }), 200);
       }
       if (request.method == 'POST' && request.url.path.endsWith('/listings/listing-1/submit')) {
