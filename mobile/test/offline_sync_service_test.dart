@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +15,7 @@ class FakeDraftStore extends LocalDraftStore {
       'category_id': '00000000-0000-4000-8000-000000000001',
       'title': 'Synthetic offline goats',
       'description': 'Queued test draft',
+      'attributes_json': jsonEncode({'breed': 'Local', 'age_months': 24, 'sex': 'female'}),
       'price_minor': 450000,
       'location_label': 'Koybe',
     },
@@ -53,6 +55,8 @@ void main() {
       requests++;
       expect(request.url.path, '/api/v1/listings/sync');
       expect(request.headers['Authorization'], 'Bearer synthetic-token');
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      expect(body['attributes'], {'breed': 'Local', 'age_months': 24, 'sex': 'female'});
       return http.Response(
         '{"id":"server-listing-123","status":"draft","idempotent":false}',
         200,
