@@ -221,8 +221,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(listingRequests.last.queryParameters['offset'], '50');
+    await tester.scrollUntilVisible(
+      find.text('Synthetic listing 49'),
+      -300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Synthetic listing 49'), findsOneWidget,
       reason: 'A listing repeated at the page boundary must not be rendered twice');
+    await tester.scrollUntilVisible(
+      find.text('Load more listings'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Synthetic listing 98'), findsOneWidget);
     expect(find.text('Load more listings'), findsOneWidget);
 
