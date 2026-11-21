@@ -20,6 +20,8 @@ def production_s3_settings(**overrides):
         "privacy_notice_url": "https://market.example.test/privacy",
         "data_protection_impact_assessment_completed": True,
         "processing_records_completed": True,
+        "data_protection_officer_applicability_assessed": True,
+        "data_protection_officer_required": True,
         "data_protection_officer_contact": "privacy@example.test",
         "seller_phone_verification_ready": True,
     }
@@ -94,8 +96,10 @@ def test_production_requires_dpia_processing_records_and_dpo() -> None:
         Settings(**production_s3_settings(data_protection_impact_assessment_completed=False))
     with pytest.raises(ValueError, match="PROCESSING_RECORDS"):
         Settings(**production_s3_settings(processing_records_completed=False))
+    with pytest.raises(ValueError, match="DPO applicability assessment"):
+        Settings(**production_s3_settings(data_protection_officer_applicability_assessed=False))
     with pytest.raises(ValueError, match="DATA_PROTECTION_OFFICER_CONTACT"):
-        Settings(**production_s3_settings(data_protection_officer_contact=""))
+        Settings(**production_s3_settings(data_protection_officer_required=True, data_protection_officer_contact=""))
 
 
 def test_production_requires_real_seller_phone_verification() -> None:
