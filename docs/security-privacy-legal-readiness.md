@@ -39,8 +39,8 @@ Do not collect Fayda numbers, identity-document images, precise location traces,
 | Cross-border transfer (Articles 21–22) | Map every transfer and remote access; obtain counsel/Authority decision and prior approval where required, especially sensitive data | MISSING |
 | Privacy notice / transparency (Article 24) | Publish controller identity/contact, representative and DPO contacts, purposes, lawful bases, required/optional data, consequences, recipients, transfers, retention, rights, consent withdrawal and complaint route | MISSING |
 | Data subject rights | Implement and test access, correction, objection/withdrawal where applicable, and secure erasure; identify exceptions and legal holds | MISSING |
-| Data protection impact assessment (Article 42) | Complete a DPIA covering location data, marketplace messaging, public listings, reports/evidence, children/minors and provider transfers | MISSING |
-| Data Protection Officer (Article 42) | Determine applicability and formally designate/contact a DPO as required | MISSING |
+| Data protection impact assessment (Articles 42 and 47) | Complete a DPIA covering location data, marketplace messaging, public listings, reports/evidence, children/minors and provider transfers | MISSING |
+| Data Protection Officer (Articles 40–42) | Determine applicability and formally designate/contact a DPO as required | MISSING |
 | Processing records (Article 42) | Maintain a record of processing activities, data categories, purposes, recipients, locations, retention and safeguards | MISSING |
 | Security (Articles 17 and 42) | Independent penetration/security review, least privilege, secret rotation, encryption, monitoring, recovery test and regular control assessment | PARTIAL |
 | Breach notification (Article 43) | Incident response plan and on-call owner process capable of notifying the Authority within 72 hours after awareness, with required incident details | MISSING |
