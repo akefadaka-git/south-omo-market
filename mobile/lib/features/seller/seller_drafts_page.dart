@@ -57,7 +57,9 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
       if (results.any((result) => result != ConnectivityResult.none)) _syncNow();
     });
-    _initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initialize();
+    });
   }
 
   Future<void> _initialize() async {
