@@ -204,9 +204,6 @@ def decide_report(
         ))
     elif action in {"block_seller", "unblock_seller"}:
         seller_id = report.seller_id
-        if report.listing_id:
-            listing = db.get(Listing, report.listing_id)
-            seller_id = listing.seller_id if listing else None
         if not seller_id:
             raise HTTPException(status_code=404, detail="Reported seller no longer exists")
         seller = db.get(SellerProfile, seller_id)
