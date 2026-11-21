@@ -10,6 +10,26 @@ type QueueItem = {
   seller_name: string;
 };
 
+type Evidence = { summary: string; reference?: string };
+type ReportItem = {
+  id: string;
+  reporter_user_id: string | null;
+  reason: string;
+  description: string;
+  evidence: Evidence[];
+  status: 'pending' | 'in_review' | 'resolved' | 'dismissed';
+  review_note: string | null;
+  target: {
+    type: 'listing' | 'seller';
+    id: string;
+    title?: string;
+    status?: string;
+    seller_name?: string;
+    suspended?: boolean;
+  } | null;
+  created_at: string;
+};
+
 type AuditEvent = {
   id: string;
   actor_id: string | null;
@@ -27,30 +47,47 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [reports, setReports] = useState<ReportItem[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const authHeaders = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` });
+
   const loadQueue = useCallback(async (accessToken: string) => {
     const response = await fetch(`${API_BASE}/admin/moderation/queue`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: authHeaders(accessToken),
     });
     if (!response.ok) throw new Error(response.status === 403 ? 'Administrator access required.' : 'Could not load moderation queue.');
     setQueue(await response.json() as QueueItem[]);
   }, []);
 
+  const loadReports = useCallback(async (accessToken: string) => {
+    const headers = authHeaders(accessToken);
+    const [pendingResponse, reviewResponse] = await Promise.all([
+      fetch(`${API_BASE}/admin/reports?status=pending`, { headers }),
+      fetch(`${API_BASE}/admin/reports?status=in_review`, { headers }),
+    ]);
+    if (!pendingResponse.ok || !reviewResponse.ok) throw new Error('Could not load abuse reports.');
+    const [pending, inReview] = await Promise.all([
+      pendingResponse.json() as Promise<ReportItem[]>,
+      reviewResponse.json() as Promise<ReportItem[]>,
+    ]);
+    setReports([...pending, ...inReview]);
+  }, []);
+
   const loadAudit = useCallback(async (accessToken: string) => {
-    const response = await fetch(`${API_BASE}/admin/audit-events?resource_type=listing&limit=20`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    const response = await fetch(`${API_BASE}/admin/audit-events?limit=30`, {
+      headers: authHeaders(accessToken),
     });
     if (!response.ok) throw new Error('Could not load moderation history.');
     setAuditEvents(await response.json() as AuditEvent[]);
   }, []);
 
   async function refreshAdminData(accessToken: string) {
-    await Promise.all([loadQueue(accessToken), loadAudit(accessToken)]);
+    await Promise.all([loadQueue(accessToken), loadReports(accessToken), loadAudit(accessToken)]);
   }
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
@@ -68,7 +105,7 @@ export default function App() {
       await refreshAdminData(data.access_token);
       setToken(data.access_token);
       setPassword('');
-      setMessage('Signed in. Moderation queue loaded.');
+      setMessage('Signed in. Moderation and report queues loaded.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unexpected sign-in error.');
     } finally {
@@ -83,7 +120,7 @@ export default function App() {
     try {
       const response = await fetch(`${API_BASE}/admin/moderation/${listingId}/decision`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision, note: note || null }),
       });
       if (!response.ok) throw new Error(response.status === 403 ? 'Administrator access required.' : 'Moderation action failed.');
@@ -97,17 +134,41 @@ export default function App() {
     }
   }
 
+  async function decideReport(reportId: string, decision: string) {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/admin/reports/${reportId}/decision`, {
+        method: 'POST',
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, note: note || null }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(body.detail ?? 'Report action failed.');
+      }
+      await refreshAdminData(token);
+      setNote('');
+      setMessage(`Report action completed: ${decision.replaceAll('_', ' ')}.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unexpected report action error.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   useEffect(() => {
     if (!token) return;
     refreshAdminData(token).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : 'Could not refresh administration data.');
     });
-  }, [token, loadQueue, loadAudit]);
+  }, [token, loadQueue, loadReports, loadAudit]);
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', margin: '2rem auto', maxWidth: 960, padding: 24 }}>
       <p style={{ color: '#356859', fontWeight: 700 }}>SOUTH OMO MARKET</p>
-      <h1>Administration · Listing moderation</h1>
+      <h1>Administration · Moderation and trust</h1>
       <p>Access is restricted to accounts provisioned with administrator privileges.</p>
       {!token && (
         <form onSubmit={signIn} style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
@@ -119,10 +180,10 @@ export default function App() {
       {token && (
         <section>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2>Pending review ({queue.length})</h2>
-            <button disabled={busy} onClick={() => refreshAdminData(token).catch((reason: unknown) => setError(String(reason)))}>Refresh</button>
+            <h2>Pending listing review ({queue.length})</h2>
+            <button disabled={busy} onClick={() => refreshAdminData(token).catch((reason: unknown) => setError(String(reason)))}>Refresh all</button>
           </div>
-          <label>Moderation note (optional)<textarea value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} /></label>
+          <label>Moderation note (optional)<textarea value={note} maxLength={2000} onChange={(event) => setNote(event.target.value)} /></label>
           {queue.length === 0 && <p>No listings are waiting for review.</p>}
           <div style={{ display: 'grid', gap: 16 }}>
             {queue.map((item) => (
@@ -137,14 +198,46 @@ export default function App() {
               </article>
             ))}
           </div>
-          <h2>Recent moderation history</h2>
-          {auditEvents.length === 0 && <p>No moderation decisions recorded yet.</p>}
+
+          <h2>Reports and complaints ({reports.length})</h2>
+          {reports.length === 0 && <p>No open reports.</p>}
+          <div style={{ display: 'grid', gap: 16 }}>
+            {reports.map((report) => (
+              <article key={report.id} aria-labelledby={`report-${report.id}`} style={{ border: '1px solid #ddd', borderRadius: 12, padding: 18 }}>
+                <h3 id={`report-${report.id}`}>{report.reason.replaceAll('_', ' ')} · {report.status.replaceAll('_', ' ')}</h3>
+                <p>{report.description}</p>
+                <p><strong>Target:</strong> {report.target?.type === 'listing'
+                  ? `Listing: ${report.target.title ?? report.target.id} · Seller: ${report.target.seller_name ?? 'unknown'}`
+                  : `Seller: ${report.target?.seller_name ?? report.target?.id ?? 'unavailable'}`}</p>
+                <p><strong>Submitted:</strong> {new Date(report.created_at).toLocaleString()}</p>
+                {report.evidence.length > 0 && (
+                  <section aria-label="Submitted evidence">
+                    <strong>Evidence supplied</strong>
+                    <ul>{report.evidence.map((item, index) => (
+                      <li key={index}>{item.summary}{item.reference ? ` · Reference: ${item.reference}` : ''}</li>
+                    ))}</ul>
+                  </section>
+                )}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {report.status === 'pending' && <button disabled={busy} onClick={() => decideReport(report.id, 'investigate')}>Start investigation</button>}
+                  {report.target?.type === 'listing' && <button disabled={busy} onClick={() => decideReport(report.id, 'block_listing')}>Block listing</button>}
+                  {report.target?.type === 'seller' && !report.target.suspended && <button disabled={busy} onClick={() => decideReport(report.id, 'block_seller')}>Suspend seller</button>}
+                  {report.target?.type === 'seller' && report.target.suspended && <button disabled={busy} onClick={() => decideReport(report.id, 'unblock_seller')}>Reinstate seller</button>}
+                  <button disabled={busy} onClick={() => decideReport(report.id, 'resolve')}>Resolve</button>
+                  <button disabled={busy} onClick={() => decideReport(report.id, 'dismiss')}>Dismiss</button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <h2>Recent audit history</h2>
+          {auditEvents.length === 0 && <p>No moderation events recorded yet.</p>}
           <div style={{ display: 'grid', gap: 8 }}>
             {auditEvents.map((event) => (
               <article key={event.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12 }}>
-                <strong>{event.action.replace('listing.moderation.', '')}</strong>
-                <p>Listing: {event.resource_id}</p>
-                <small>{new Date(event.created_at).toLocaleString()} · Administrator: {event.actor_id ?? 'system provisioning'}</small>
+                <strong>{event.action}</strong>
+                <p>{event.resource_type}: {event.resource_id}</p>
+                <small>{new Date(event.created_at).toLocaleString()} · Administrator/actor: {event.actor_id ?? 'system provisioning'}</small>
                 {typeof event.metadata.note === 'string' && event.metadata.note && <p>Note: {event.metadata.note}</p>}
               </article>
             ))}
