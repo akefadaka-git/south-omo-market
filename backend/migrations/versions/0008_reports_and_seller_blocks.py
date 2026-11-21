@@ -27,6 +27,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("evidence", sa.JSON(), nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="pending"),
+        sa.Column("previous_target_status", sa.String(24), nullable=True),
         sa.Column("reviewed_by", sa.String(36), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
         sa.Column("review_note", sa.Text(), nullable=True),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
