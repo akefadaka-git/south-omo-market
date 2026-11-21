@@ -348,6 +348,8 @@ void main() {
     expect(find.text('Livestock'), findsNothing,
       reason: 'Parent categories must not be selectable for listing drafts');
 
+    await tester.ensureVisible(find.text('Save changes'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
     expect(patchCount, 0, reason: 'Required category attributes must block saving');
@@ -358,6 +360,8 @@ void main() {
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('female').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Save changes'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
