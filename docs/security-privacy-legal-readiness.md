@@ -66,6 +66,8 @@ The Ministry of Justice lists the older Trade Practice and Consumers' Protection
 
 These controls are not a substitute for a security assessment or evidence of production configuration.
 
+Production configuration now fails closed unless the owner supplies an Ethiopia residency attestation and evidence reference, legal-review approval, an HTTPS privacy-notice URL, completed DPIA and processing records, a documented DPO applicability assessment (and contact if appointment is required), and an explicit seller-phone-verification readiness attestation. The flags do not validate the evidence themselves; counsel/owner sign-off and provider-location evidence remain mandatory.
+
 ## Required next controls before real users
 
 1. Keep all current Singapore-hosted environments synthetic-only.
