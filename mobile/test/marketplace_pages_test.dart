@@ -372,6 +372,7 @@ void main() {
 
     expect(patchCount, 1);
     expect(patchBody['attributes'], {
+      'vaccinated': false,
       'breed': 'Local zebu',
       'age_months': 36,
       'sex': 'female',
