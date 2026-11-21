@@ -667,3 +667,65 @@ def test_public_discovery_searches_descriptions_and_sorts_prices() -> None:
 
     invalid_sort = client.get("/api/v1/listings", params={"sort": "random"})
     assert invalid_sort.status_code == 422
+
+
+def test_category_hierarchy_and_category_specific_listing_attributes() -> None:
+    from app.models import SellerProfile, User
+
+    root_id = "00000000-0000-4000-8000-000000000001"
+    child_id = "30000000-0000-4000-8000-000000000001"
+    db = TestingSession()
+    root = db.get(Category, root_id)
+    if root is None:
+        root = Category(id=root_id, slug="hierarchy-root", name_en="Livestock", is_active=True)
+        db.add(root)
+    child = db.get(Category, child_id)
+    if child is None:
+        db.add(Category(
+            id=child_id, slug="hierarchy-cattle", name_en="Cattle",
+            parent_id=root_id, is_active=True,
+            attributes_schema=[
+                {"key": "breed", "type": "text", "required": True, "max_length": 80},
+                {"key": "age_months", "type": "number", "required": True, "min": 0, "max": 600},
+                {"key": "sex", "type": "choice", "required": True, "options": ["female", "male"]},
+            ],
+        ))
+    db.commit()
+    db.close()
+
+    roots = client.get("/api/v1/categories", params={"roots_only": "true"})
+    assert roots.status_code == 200
+    root_row = next(row for row in roots.json() if row["id"] == root_id)
+    assert root_row["is_leaf"] is False
+
+    children = client.get("/api/v1/categories", params={"parent_id": root_id})
+    assert children.status_code == 200
+    child_row = next(row for row in children.json() if row["id"] == child_id)
+    assert child_row["parent_id"] == root_id
+    assert child_row["is_leaf"] is True
+    assert {field["key"] for field in child_row["attributes_schema"]} == {"breed", "age_months", "sex"}
+
+    _user_id, token = _register_seller("+251900000499")
+    headers = {"Authorization": f"Bearer {token}"}
+    root_listing = client.post("/api/v1/listings", headers=headers, json={
+        "category_id": root_id, "title": "Root category listing",
+        "price_minor": 1000, "location_label": "Koybe",
+    })
+    assert root_listing.status_code == 422
+
+    payload = {
+        "category_id": child_id, "title": "Synthetic cattle listing",
+        "description": "Test only", "price_minor": 250000,
+        "location_label": "Koybe",
+        "attributes": {"breed": "Local", "age_months": 36, "sex": "female"},
+    }
+    created = client.post("/api/v1/listings", headers=headers, json=payload)
+    assert created.status_code == 201
+    mine = client.get("/api/v1/listings/my", headers=headers)
+    assert mine.status_code == 200
+    saved = next(row for row in mine.json() if row["id"] == created.json()["id"])
+    assert saved["attributes"] == payload["attributes"]
+
+    invalid = {**payload, "attributes": {"breed": "Local", "age_months": 900, "sex": "unknown"}}
+    rejected = client.post("/api/v1/listings", headers=headers, json=invalid)
+    assert rejected.status_code == 422
