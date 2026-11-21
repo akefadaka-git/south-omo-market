@@ -1,5 +1,18 @@
 # A3 implementation register — South Omo Market
 
+## Latest exact-head automated verification
+
+- Exact feature head: `53607b25c695b7e4bc27f9a4a028ee012e53fbed`
+- GitHub Actions run #797: PASS — https://github.com/akefadaka-git/south-omo-market/actions/runs/44921104886
+- Backend: Ruff passed; 36 tests passed.
+- PostgreSQL migration/audit-trigger integration: 1 passed.
+- S3-compatible storage integration: 3 passed.
+- Admin: Vite 8.3.8 build passed; Vitest 1 test passed; `npm audit --audit-level=high` reported 0 vulnerabilities.
+- Mobile: Flutter analysis passed; 31 tests passed.
+- Android release job was SKIPPED because production release is not enabled and no production API URL is configured. Physical-device acceptance remains NOT RUN.
+- Overall A4 remains NOT VERIFIED because legal, data-residency, recovery, phone verification, localization sign-off and physical-device acceptance are still open.
+
+
 **Branch:** `feat/a3-platform-foundation`  
 **Baseline:** frozen A2 `main` at `1e0dc04d66b0b80b29ce81b28084c1d8211ce708`  
 **Purpose:** evidence-based implementation register. This file is not an A3 closure certificate.
@@ -13,28 +26,28 @@
 | Public marketplace discovery | Published listings, category/location filters, listing details | IMPLEMENTED |
 | Public discovery search | API searches title, description and location; bounded query length | IMPLEMENTED |
 | Discovery sorting | Stable newest, price ascending and price descending ordering | IMPLEMENTED |
-| Discovery pagination | Mobile limit/offset; duplicate-safe page append with independent fetched-row offset; empty-page termination; retry and filter-reset boundary regressions | IMPLEMENTED; widget tests added, execution pending |
+| Discovery pagination | Mobile limit/offset; duplicate-safe page append with independent fetched-row offset; empty-page termination; retry and filter-reset boundary regressions | IMPLEMENTED; widget tests passed at run #797 |
 | Seller identity and listing lifecycle | Registration/login, seller profile, draft, submit-for-review, moderation | IMPLEMENTED |
 | Seller inquiry workflow | Buyer inquiry and seller inbox/status handling | IMPLEMENTED |
 | Offline seller drafts | SQLite local drafts and retryable synchronization | IMPLEMENTED |
 | Listing media | Validated image decode/re-encode, ownership checks, idempotent client image IDs, provider-neutral storage adapter; no-cost Ethiopia-hosted object storage and recoverable backups remain unavailable under current constraints | IMPLEMENTED; production persistence BLOCKED |
 | Moderation and audit | Admin-only listing decisions and append-only audit event protection | IMPLEMENTED |
-| Reports and complaints | Authenticated listing/seller reports, bounded evidence summaries/references, reporter status view, admin pending/in-review queue, investigation/resolve/dismiss decisions, listing removal, reversible listing removal/restoration, seller account suspension/reinstatement, permanent pre-suspension token revocation, public hiding of suspended sellers' listings/media and append-only audit events; API, mobile and admin UI slices added | IMPLEMENTED; backend and mobile regression suites pass at SHA `ba45faa225775a18434b5aee3f50a36940c90264` |
+| Reports and complaints | Authenticated listing/seller reports, bounded evidence summaries/references, reporter status view, admin pending/in-review queue, investigation/resolve/dismiss decisions, listing removal, reversible listing removal/restoration, seller account suspension/reinstatement, permanent pre-suspension token revocation, public hiding of suspended sellers' listings/media and append-only audit events; API, mobile and admin UI slices added | IMPLEMENTED; backend and mobile regression suites pass at exact head `53607b25c695b7e4bc27f9a4a028ee012e53fbed` (run #797) |
 | Backend health/readiness | Liveness and database readiness endpoints | IMPLEMENTED |
-| Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers; invalid YAML shell message corrected | IMPLEMENTED; exact-head run #769 passed at `ba45faa225775a18434b5aee3f50a36940c90264`; subsequent admin dependency upgrade awaiting CI |
-| Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | ADDED; execution pending |
-| Category hierarchy data model | Self-referencing category parent, original seed plus additive migration `0007_catalogue_expansion` with 24 additional leaves across all seven top-level groups; root/child API and leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
-| Category-specific listing attributes | Expanded typed schemas across livestock, agriculture, food, retail, services, rentals and jobs; API validates required fields, text limits, numeric ranges, finite numbers, booleans, choices, unknown keys and malformed schema; create/update/offline-sync enforcement | IMPLEMENTED; backend regression coverage added, execution pending |
-| Grouped mobile category browser | Removed hard-coded topic chips; renders API root categories and actual leaf subcategories | IMPLEMENTED; Flutter test execution pending |
+| Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers; invalid YAML shell message corrected | IMPLEMENTED; exact-head run #797 passed at `53607b25c695b7e4bc27f9a4a028ee012e53fbed`; YAML pre-job defect fixed |
+| Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | VERIFIED; backend/mobile tests passed at run #797 |
+| Category hierarchy data model | Self-referencing category parent, original seed plus additive migration `0007_catalogue_expansion` with 24 additional leaves across all seven top-level groups; root/child API and leaf-category enforcement | VERIFIED; PostgreSQL migration-chain test passed at run #797; isolated Neon branch migration remains separate |
+| Category-specific listing attributes | Expanded typed schemas across livestock, agriculture, food, retail, services, rentals and jobs; API validates required fields, text limits, numeric ranges, finite numbers, booleans, choices, unknown keys and malformed schema; create/update/offline-sync enforcement | VERIFIED; backend and Flutter regression tests passed at run #797 |
+| Grouped mobile category browser | Removed hard-coded topic chips; renders API root categories and actual leaf subcategories | VERIFIED; Flutter suite passed at run #797 |
 | Category-driven seller creation/editor | API-loaded leaf categories; schema-driven text, number, choice and boolean controls; required/range/length/choice validation; field-level feedback; edit PATCH persists attributes | IMPLEMENTED; Flutter test execution pending |
-| Offline category-specific drafts | SQLite v4 `attributes_json` and category-catalogue cache migrations; schema validation runs before local save; category-specific JSON is persisted/restored offline and included in sync payload | IMPLEMENTED; backend and Flutter regression tests passed at run #769 |
+| Offline category-specific drafts | SQLite v4 `attributes_json` and category-catalogue cache migrations; schema validation runs before local save; category-specific JSON is persisted/restored offline and included in sync payload | IMPLEMENTED; backend and Flutter regression tests passed at run #797 |
 
 ## Explicitly unresolved A3 scope
 
 These items must not be marked complete without implementation and evidence:
 
-1. **Catalogue depth:** additive migration `0007_catalogue_expansion` adds 24 leaf categories and schemas beyond the initial seeds; schemas use the currently supported text, number, choice and boolean field types. Still open: run migration on an isolated test database, execute backend/mobile tests, field-pilot catalogue review and any scope adjustments approved from that review.
-2. **Pagination boundary tests:** widget regressions now cover duplicate IDs across pages, empty final page, initial-load retry and sort/filter reset; execute the tests on the exact current head before marking verified.
+1. **Catalogue depth:** additive migration `0007_catalogue_expansion` adds 24 leaf categories and schemas beyond the initial seeds; the PostgreSQL migration chain and backend/mobile regression suites pass in run #797. Still open: apply only to the isolated Neon testing branch when separately authorized, field-pilot catalogue review and any scope adjustments approved from that review.
+2. **Pagination boundary tests:** duplicate IDs across pages, empty final page, initial-load retry and sort/filter reset regressions passed in the 31-test Flutter suite at run #797.
 3. **Maale localization:** human-reviewed translations, terminology register, script/font validation and Maale-speaking approval. Empty strings are not translations and must not be presented as such.
 4. **Seller phone ownership:** no provider is integrated. SMSHub advertises 10 one-time free credits after identity/KYC approval, but its standard service is prepaid (Ethio Telecom 1 credit, Safaricom 2); this is a limited pilot allowance, not a durable no-cost service. Africa's Talking sandbox does not deliver to real handsets. Do not configure or use a paid path, simulate OTP, or imply a phone number is verified. Reassess only if a genuinely no-cost live-delivery agreement is available.
 5. **Private intelligence integration:** no approved service contract, credentials or provider SDK is available. Keep the marketplace functional without it; do not invent an integration.
@@ -46,12 +59,11 @@ These items must not be marked complete without implementation and evidence:
 
 ## Verification gates
 
-- Run backend lint and tests, including report lifecycle, permanent token revocation, suspended-seller public visibility, category hierarchy/attribute regression, PostgreSQL migration integration, S3 adapter tests, admin build/tests, Flutter analysis/tests (including schema-driven seller forms, offline attribute sync and report screens) and Android build on the exact current head.
-- The current GitHub Actions push run is failing before job creation: the run is completed with failure but returns zero jobs and zero check runs. No test steps ran and no actionable logs are available. Treat root cause as UNRESOLVED; do not treat the failed run as code-test evidence.
+- Backend, PostgreSQL, S3, admin and Flutter suites have all passed on the exact current head in run #797. The earlier zero-job workflow failure was caused by an invalid YAML plain scalar containing `: `; it was fixed with a block scalar. CI now creates named jobs correctly.
 - Verify Alembic migration chain against an isolated Neon testing branch; do not run migrations against a production database.
 - Verify live `/health`, `/ready`, and public discovery endpoints only after a real HTTPS staging URL exists.
 - Install and exercise the resulting APK on a physical Android device. CI build success alone is not device acceptance.
-- Record exact workflow URL, tested SHA, artifact ID and checksum before closing A4.
+- Exact verification URL and SHA are recorded above. The generated admin dependency lockfile is retained as a CI artifact for review: https://github.com/akefadaka-git/south-omo-market/actions/runs/44921104886/artifacts/14712799104. It is not yet committed as `admin/package-lock.json`.
 
 ## Governance
 

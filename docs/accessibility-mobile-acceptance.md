@@ -1,6 +1,6 @@
 # Accessibility and physical Android acceptance
 
-**Status:** PARTIAL / NOT ACCEPTED. Widget tests and semantic labels are not equivalent to physical-device or assistive-technology acceptance. The report-error visibility and Maale English-fallback regression tests are added; execution on the latest accessibility changes is pending.
+**Status:** PARTIAL / NOT ACCEPTED. Automated Flutter analysis and 31 widget/unit tests passed at exact head `53607b25c695b7e4bc27f9a4a028ee012e53fbed` (GitHub Actions run #797). Widget tests and semantic labels are not equivalent to physical-device or assistive-technology acceptance.
 
 ## Baseline target
 
@@ -41,7 +41,7 @@ Use WCAG 2.2 AA as the web/admin and mobile interaction reference, plus Android 
 - My Reports includes a refresh tooltip, live-region loading/error/empty states, retry action and visible status text.
 - Listing-detail loading failures are separated from report/inquiry action failures; action feedback uses live regions and no longer replaces the listing content.
 - Listing photographs expose a semantic label based on the listing title.
-- Amharic report labels have been integrated provisionally; native-speaker review is still required.
+- Amharic report labels have been integrated provisionally; native-speaker review is still required. Empty Maale strings correctly fall back to English; this is not Maale localization approval.
 
 ## Acceptance evidence required
 
