@@ -35,6 +35,8 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
   List<Map<String, dynamic>> _categories = [];
   Map<String, dynamic>? _selected;
   String? _categoryId;
+  Map<String, dynamic> _attributeValues = {};
+  Map<String, String> _attributeErrors = {};
   String? _error;
   String? _message;
   bool _loading = true;
@@ -89,12 +91,162 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
     setState(() {
       _selected = listing;
       _categoryId = listing['category_id'] as String?;
+      _attributeValues = Map<String, dynamic>.from(
+        (listing['attributes'] as Map<String, dynamic>?) ?? const {},
+      );
+      _attributeErrors = {};
       _title.text = listing['title'] as String? ?? '';
       _description.text = listing['description'] as String? ?? '';
       _price.text = (((listing['price_minor'] as num?) ?? 0) / 100).toStringAsFixed(2);
       _location.text = listing['location'] as String? ?? '';
       _message = null; _error = null;
     });
+  }
+
+  List<Map<String, dynamic>> get _selectedAttributeSchema {
+    final categoryId = _categoryId;
+    if (categoryId == null) return const [];
+    final category = _categories.where((item) => item['id'] == categoryId).firstOrNull;
+    if (category == null) return const [];
+    return (category['attributes_schema'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  String _attributeLabel(Map<String, dynamic> definition) {
+    final raw = (definition['label'] ?? definition['name'] ?? definition['key'] ?? '').toString();
+    if (raw.isEmpty) return '';
+    return raw.replaceAll('_', ' ').split(' ').map((part) =>
+      part.isEmpty ? part : '${part[0].toUpperCase()}${part.substring(1)}').join(' ');
+  }
+
+  bool _validateAttributes() {
+    final errors = <String, String>{};
+    for (final definition in _selectedAttributeSchema) {
+      final key = definition['key']?.toString();
+      if (key == null || key.isEmpty) continue;
+      final value = _attributeValues[key];
+      final required = definition['required'] == true;
+      final type = definition['type']?.toString();
+      if (value == null || (value is String && value.trim().isEmpty)) {
+        if (required) errors[key] = marketString(context,
+          en: '${_attributeLabel(definition)} is required.',
+          am: 'ይህ መስክ መሞላት አለበት።', mdy: '');
+        continue;
+      }
+      if (type == 'text') {
+        final max = (definition['max_length'] as num?)?.toInt() ?? 500;
+        if (value is! String || value.trim().isEmpty || value.length > max) {
+          errors[key] = marketString(context, en: 'Enter text up to $max characters.', am: 'እስከ $max ቁምፊዎች ያስገቡ።', mdy: '');
+        }
+      } else if (type == 'number') {
+        if (value is! num || (definition['min'] is num && value < definition['min']) ||
+            (definition['max'] is num && value > definition['max'])) {
+          final min = definition['min']?.toString();
+          final max = definition['max']?.toString();
+          errors[key] = marketString(context,
+            en: 'Enter a number${min == null ? '' : ' from $min'}${max == null ? '' : ' to $max'}.',
+            am: 'በተፈቀደው ክልል ውስጥ ቁጥር ያስገቡ።', mdy: '');
+        }
+      } else if (type == 'choice') {
+        final options = (definition['options'] as List<dynamic>? ?? const []).map((e) => e.toString()).toSet();
+        if (value is! String || !options.contains(value)) {
+          errors[key] = marketString(context, en: 'Choose one of the available options.', am: 'ከተዘረዘሩት አማራጮች አንዱን ይምረጡ።', mdy: '');
+        }
+      } else if (type == 'boolean' && value is! bool) {
+        errors[key] = marketString(context, en: 'Choose yes or no.', am: 'አዎ ወይም አይ ይምረጡ።', mdy: '');
+      }
+    }
+    setState(() => _attributeErrors = errors);
+    return errors.isEmpty;
+  }
+
+  Widget _buildAttributeFields() {
+    final schema = _selectedAttributeSchema;
+    if (schema.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Text(marketString(context, en: 'Category details', am: 'የምድቡ ዝርዝር መረጃ', mdy: ''),
+          style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 6),
+        Text(marketString(context,
+          en: 'These fields are specific to the selected subcategory.',
+          am: 'እነዚህ መስኮች ለተመረጠው ንዑስ ምድብ ብቻ ናቸው።', mdy: ''),
+          style: Theme.of(context).textTheme.bodySmall),
+        ...schema.map((definition) {
+          final key = definition['key']?.toString() ?? '';
+          if (key.isEmpty) return const SizedBox.shrink();
+          final label = _attributeLabel(definition);
+          final required = definition['required'] == true;
+          final type = definition['type']?.toString();
+          final error = _attributeErrors[key];
+          final decoration = InputDecoration(
+            labelText: required ? '$label *' : label,
+            errorText: error,
+            helperText: definition['help']?.toString(),
+          );
+          if (type == 'boolean') {
+            return SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(required ? '$label *' : label),
+              subtitle: error == null ? null : Text(error,
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              value: (_attributeValues[key] as bool?) ?? false,
+              onChanged: _selected?['status'] == 'draft'
+                ? (value) => setState(() {
+                    _attributeValues[key] = value;
+                    _attributeErrors.remove(key);
+                  }) : null,
+            );
+          }
+          if (type == 'choice') {
+            final options = (definition['options'] as List<dynamic>? ?? const [])
+                .map((value) => value.toString()).toList();
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: DropdownButtonFormField<String>(
+                value: options.contains(_attributeValues[key]) ? _attributeValues[key] as String : null,
+                decoration: decoration,
+                items: options.map((option) => DropdownMenuItem(
+                  value: option, child: Text(option.replaceAll('_', ' ')))).toList(),
+                onChanged: _selected?['status'] == 'draft'
+                  ? (value) => setState(() {
+                      if (value == null) { _attributeValues.remove(key); }
+                      else { _attributeValues[key] = value; }
+                      _attributeErrors.remove(key);
+                    }) : null,
+              ),
+            );
+          }
+          final isNumber = type == 'number';
+          return Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: TextFormField(
+              key: ValueKey('${_selected?['id']}:$_categoryId:$key'),
+              initialValue: _attributeValues[key]?.toString() ?? '',
+              enabled: _selected?['status'] == 'draft',
+              keyboardType: isNumber
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : TextInputType.text,
+              maxLength: isNumber ? null : ((definition['max_length'] as num?)?.toInt() ?? 500),
+              decoration: decoration,
+              onChanged: (raw) => setState(() {
+                if (raw.trim().isEmpty) {
+                  _attributeValues.remove(key);
+                } else if (isNumber) {
+                  _attributeValues[key] = num.tryParse(raw.trim()) ?? raw;
+                } else {
+                  _attributeValues[key] = raw;
+                }
+                _attributeErrors.remove(key);
+              }),
+            ),
+          );
+        }),
+      ],
+    );
   }
 
   Future<void> _save() async {
@@ -109,6 +261,12 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
       setState(() => _error = marketString(context, en: 'Enter a valid title, category, price and location.', am: 'ትክክለኛ ርዕስ፣ ምድብ፣ ዋጋ እና አካባቢ ያስገቡ።', mdy: ''));
       return;
     }
+    if (!_validateAttributes()) {
+      setState(() => _error = marketString(context,
+        en: 'Please correct the highlighted category fields.',
+        am: 'እባክዎ ምልክት የተደረገባቸውን የምድብ መስኮች ያስተካክሉ።', mdy: ''));
+      return;
+    }
     setState(() { _busy = true; _error = null; _message = null; });
     try {
       final response = await widget.client.patch(
@@ -120,9 +278,19 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
           'description': _description.text.trim(),
           'price_minor': (amount * 100).round(),
           'location_label': _location.text.trim(),
+          'attributes': _attributeValues,
         }),
       );
-      if (response.statusCode != 200) throw Exception(marketString(context, en: 'Draft update failed (${response.statusCode}).', am: 'ረቂቁን ማዘመን አልተሳካም (${response.statusCode})።', mdy: ''));
+      if (response.statusCode != 200) {
+        String detail = '';
+        try {
+          final body = jsonDecode(response.body) as Map<String, dynamic>;
+          detail = body['detail']?.toString() ?? '';
+        } catch (_) {}
+        throw Exception(detail.isNotEmpty ? detail :
+          marketString(context, en: 'Draft update failed (${response.statusCode}).',
+            am: 'ረቂቁን ማዘመን አልተሳካም (${response.statusCode})።', mdy: ''));
+      }
       final updated = jsonDecode(response.body) as Map<String, dynamic>;
       setState(() { _selected = updated; _message = marketString(context, en: 'Draft changes saved.', am: 'የረቂቁ ለውጦች ተቀምጠዋል።', mdy: ''); });
       await _load();
@@ -210,11 +378,18 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
           DropdownButtonFormField<String>(
             value: _categoryId,
             decoration: InputDecoration(labelText: marketString(context, en: 'Category', am: 'ምድብ', mdy: '')),
-            items: _categories.map((category) => DropdownMenuItem<String>(
+            items: _categories.where((category) => category['is_leaf'] == true).map((category) => DropdownMenuItem<String>(
               value: category['id'] as String, child: Text(category['name'] as String),
             )).toList(),
-            onChanged: _selected!['status'] == 'draft' ? (value) => setState(() => _categoryId = value) : null,
+            onChanged: _selected!['status'] == 'draft' ? (value) => setState(() {
+              if (_categoryId != value) {
+                _categoryId = value;
+                _attributeValues = {};
+                _attributeErrors = {};
+              }
+            }) : null,
           ),
+          _buildAttributeFields(),
           TextField(controller: _title, decoration: InputDecoration(labelText: marketString(context, en: 'Title', am: 'ርዕስ', mdy: '')),
             enabled: _selected!['status'] == 'draft'),
           TextField(controller: _description, decoration: InputDecoration(labelText: marketString(context, en: 'Description', am: 'መግለጫ', mdy: '')),
