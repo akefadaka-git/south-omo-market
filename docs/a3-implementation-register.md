@@ -26,7 +26,7 @@
 | Category-specific listing attributes | JSON attribute schemas, typed required/optional validation, bounds/choice validation, create/update/offline-sync persistence | IMPLEMENTED; test execution pending |
 | Grouped mobile category browser | Removed hard-coded topic chips; renders API root categories and actual leaf subcategories | IMPLEMENTED; Flutter test execution pending |
 | Category-driven seller creation/editor | API-loaded leaf categories; schema-driven text, number, choice and boolean controls; required/range/length/choice validation; field-level feedback; edit PATCH persists attributes | IMPLEMENTED; Flutter test execution pending |
-| Offline category-specific drafts | SQLite v3 `attributes_json` migration; dynamic fields persisted locally and restored; sync payload carries structured attributes to backend | IMPLEMENTED; storage/sync tests added; execution pending |
+| Offline category-specific drafts | SQLite v4 `attributes_json` and category-catalogue cache migrations; dynamic fields persisted/restored offline; sync payload carries structured attributes to backend | IMPLEMENTED; storage/sync tests added; execution pending |
 
 ## Explicitly unresolved A3 scope
 
