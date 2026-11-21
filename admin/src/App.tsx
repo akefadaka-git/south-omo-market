@@ -20,6 +20,7 @@ type ReportItem = {
   evidence: Evidence[];
   status: 'pending' | 'in_review' | 'resolved' | 'dismissed';
   review_note: string | null;
+  previous_target_status: string | null;
   target: {
     type: 'listing' | 'seller';
     id: string;
@@ -220,7 +221,8 @@ export default function App() {
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {report.status === 'pending' && <button disabled={busy} onClick={() => decideReport(report.id, 'investigate')}>Start investigation</button>}
-                  {report.target?.type === 'listing' && <button disabled={busy} onClick={() => decideReport(report.id, 'block_listing')}>Block listing</button>}
+                  {report.target?.type === 'listing' && report.target.status !== 'rejected' && <button disabled={busy} onClick={() => decideReport(report.id, 'block_listing')}>Block listing</button>}
+                  {report.target?.type === 'listing' && report.target.status === 'rejected' && report.previous_target_status && <button disabled={busy} onClick={() => decideReport(report.id, 'restore_listing')}>Restore listing</button>}
                   {report.target?.type === 'seller' && !report.target.suspended && <button disabled={busy} onClick={() => decideReport(report.id, 'block_seller')}>Suspend seller</button>}
                   {report.target?.type === 'seller' && report.target.suspended && <button disabled={busy} onClick={() => decideReport(report.id, 'unblock_seller')}>Reinstate seller</button>}
                   <button disabled={busy} onClick={() => decideReport(report.id, 'resolve')}>Resolve</button>
