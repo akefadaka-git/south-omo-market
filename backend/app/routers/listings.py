@@ -44,34 +44,90 @@ class ListingSyncCreate(ListingCreate):
 
 
 def _validated_attributes(category: Category, values: dict[str, object]) -> dict[str, object]:
+    """Validate submitted values against the active leaf category's schema."""
+    import math
+
     schema = category.attributes_schema or []
-    definitions = {item.get("key"): item for item in schema if isinstance(item, dict) and isinstance(item.get("key"), str)}
+    if not isinstance(schema, list):
+        raise HTTPException(status_code=500, detail="Category attribute schema is invalid")
+
+    definitions: dict[str, dict[str, object]] = {}
+    supported_types = {"text", "number", "boolean", "choice"}
+    for item in schema:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=500, detail="Category attribute schema is invalid")
+        key = item.get("key")
+        kind = item.get("type")
+        if not isinstance(key, str) or not key.strip() or key in definitions:
+            raise HTTPException(status_code=500, detail="Category attribute schema has an invalid or duplicate key")
+        if kind not in supported_types or not isinstance(item.get("required", False), bool):
+            raise HTTPException(status_code=500, detail=f"Category attribute schema is invalid for {key}")
+        if kind == "text":
+            maximum = item.get("max_length", 500)
+            if isinstance(maximum, bool) or not isinstance(maximum, int) or maximum < 1:
+                raise HTTPException(status_code=500, detail=f"Category text limit is invalid for {key}")
+        if kind == "number":
+            minimum = item.get("min")
+            maximum = item.get("max")
+            for bound in (minimum, maximum):
+                if bound is not None and (
+                    isinstance(bound, bool) or not isinstance(bound, (int, float))
+                    or not math.isfinite(bound)
+                ):
+                    raise HTTPException(status_code=500, detail=f"Category numeric bound is invalid for {key}")
+            if minimum is not None and maximum is not None and minimum > maximum:
+                raise HTTPException(status_code=500, detail=f"Category numeric range is invalid for {key}")
+        if kind == "choice":
+            options = item.get("options")
+            if (
+                not isinstance(options, list) or not options
+                or any(not isinstance(option, str) or not option.strip() for option in options)
+                or len(options) != len(set(options))
+            ):
+                raise HTTPException(status_code=500, detail=f"Category options are invalid for {key}")
+        definitions[key] = item
+
     unknown = set(values) - set(definitions)
     if unknown:
-        raise HTTPException(status_code=422, detail={"attributes": f"Unknown fields: {', '.join(sorted(unknown))}"})
+        raise HTTPException(
+            status_code=422,
+            detail={"attributes": f"Unknown fields: {', '.join(sorted(unknown))}"},
+        )
+
     cleaned: dict[str, object] = {}
     for key, definition in definitions.items():
         value = values.get(key)
+        kind = definition["type"]
         if value is None:
             if definition.get("required", False):
                 raise HTTPException(status_code=422, detail={"attributes": f"{key} is required"})
             continue
-        kind = definition.get("type")
-        valid = (
-            (kind == "text" and isinstance(value, str))
-            or (kind == "number" and isinstance(value, (int, float)) and not isinstance(value, bool))
-            or (kind == "boolean" and isinstance(value, bool))
-            or (kind == "choice" and isinstance(value, str) and value in definition.get("options", []))
-        )
-        if not valid:
-            raise HTTPException(status_code=422, detail={"attributes": f"Invalid value for {key}"})
+
         if kind == "text":
+            if not isinstance(value, str):
+                raise HTTPException(status_code=422, detail={"attributes": f"Invalid value for {key}"})
             value = value.strip()
-            if not value or len(value) > int(definition.get("max_length", 500)):
-                raise HTTPException(status_code=422, detail={"attributes": f"Invalid text length for {key}"})
-        if kind == "number":
-            if ("min" in definition and value < definition["min"]) or ("max" in definition and value > definition["max"]):
+            if not value and definition.get("required", False):
+                raise HTTPException(status_code=422, detail={"attributes": f"{key} is required"})
+            if len(value) > int(definition.get("max_length", 500)):
+                raise HTTPException(status_code=422, detail={"attributes": f"Text is too long for {key}"})
+        elif kind == "number":
+            if (
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+            ):
+                raise HTTPException(status_code=422, detail={"attributes": f"Invalid number for {key}"})
+            if (
+                ("min" in definition and value < definition["min"])
+                or ("max" in definition and value > definition["max"])
+            ):
                 raise HTTPException(status_code=422, detail={"attributes": f"Value out of range for {key}"})
+        elif kind == "boolean":
+            if not isinstance(value, bool):
+                raise HTTPException(status_code=422, detail={"attributes": f"Invalid boolean for {key}"})
+        elif kind == "choice":
+            if not isinstance(value, str) or value not in definition["options"]:
+                raise HTTPException(status_code=422, detail={"attributes": f"Invalid choice for {key}"})
         cleaned[key] = value
     return cleaned
 
