@@ -26,6 +26,7 @@ Only after the production API and data-residency blocker are cleared, configure 
 Configure these non-secret repository variables:
 
 - `API_BASE_URL`: production HTTPS API base ending in `/api/v1`.
+- `ANDROID_APPLICATION_ID`: owner-approved permanent dotted package ID (confirm before first production publication; changing it later creates a different Android app identity).
 - `PRODUCTION_RELEASE_ENABLED`: set to `true` only when the owner authorizes a production signing build.
 
 Before enabling the variable, configure the GitHub `production-signing` environment with required reviewers/approval rules and ensure only trusted maintainers can change release secrets, variables and tags.
@@ -55,6 +56,7 @@ The regular CI workflow creates a random, short-lived test keystore and signs te
 - [ ] Owner-held key generated, fingerprint recorded, and two encrypted offline backups verified.
 - [ ] GitHub signing secrets added without exposing values in logs.
 - [ ] Required reviewer protection configured on `production-signing`.
+- [ ] Permanent Android application ID and versionCode/versionName are approved and recorded.
 - [ ] Version/tag points to a reviewed commit reachable from `main`.
 - [ ] App Bundle signature and certificate fingerprint verified.
 - [ ] Physical Android install/update/rollback acceptance completed.
