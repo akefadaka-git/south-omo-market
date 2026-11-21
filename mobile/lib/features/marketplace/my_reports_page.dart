@@ -63,7 +63,11 @@ class _MyReportsPageState extends State<MyReportsPage> {
       )],
     ),
     body: _loading
-      ? const Center(child: CircularProgressIndicator())
+      ? Center(child: Semantics(
+          liveRegion: true,
+          label: marketString(context, en: 'Loading reports', am: 'ሪፖርቶች በመጫን ላይ', mdy: ''),
+          child: const CircularProgressIndicator(),
+        ))
       : _error != null
         ? Center(child: Padding(
             padding: const EdgeInsets.all(24),
@@ -74,7 +78,10 @@ class _MyReportsPageState extends State<MyReportsPage> {
             ]),
           ))
         : _reports.isEmpty
-          ? Center(child: Text(marketString(context, en: 'You have not submitted any reports.', am: 'ምንም ሪፖርት አላስገቡም።', mdy: '')))
+          ? Center(child: Semantics(
+              liveRegion: true,
+              child: Text(marketString(context, en: 'You have not submitted any reports.', am: 'ምንም ሪፖርት አላስገቡም።', mdy: '')),
+            ))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.separated(
