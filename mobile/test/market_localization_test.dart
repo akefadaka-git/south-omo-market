@@ -49,4 +49,21 @@ void main() {
     ));
     expect(label, 'ግምገማ በመጠባበቅ ላይ');
   });
+  testWidgets('Maale strings fall back to English until reviewed translations exist', (tester) async {
+    late String submitLabel;
+    late String statusLabel;
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('mdy'),
+      supportedLocales: const [Locale('mdy'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      home: Builder(builder: (context) {
+        submitLabel = marketString(context, en: 'Submit report', am: 'ሪፖርት ላክ', mdy: '');
+        statusLabel = marketStatusLabel(context, 'in_review');
+        return const SizedBox.shrink();
+      }),
+    ));
+    expect(submitLabel, 'Submit report');
+    expect(statusLabel, 'Under review');
+  });
+
 }
