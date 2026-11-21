@@ -21,11 +21,12 @@ This checklist is a deployment handoff aid. Completing the document does not mea
 - Set APP_ENV=production and generate a unique JWT_SECRET of at least 32 characters.
 - Set DATABASE_URL to a managed PostgreSQL database with TLS and least-privilege credentials.
 - Set RATE_LIMIT_STORAGE_URI to a private Redis endpoint (rediss:// where supported). Production startup rejects memory://.
-- Set IMAGE_STORAGE_BACKEND=s3, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY. Keep S3_USE_SSL=true and use an HTTPS S3_ENDPOINT_URL if a custom endpoint is required. A no-cost pilot candidate is Cloudflare R2: 10 GB-month standard storage, 1 million Class A operations, 10 million Class B operations and free egress on its published free allowance; verify current account terms and enforce a strict usage ceiling before enabling it. R2 bucket lock is configured through Cloudflare controls, not the S3 Object Lock API.
+- Set IMAGE_STORAGE_BACKEND=s3 only after the provider confirms that application objects, replicas, logs and backups are stored in Ethiopia. The Personal Data Protection Proclamation No. 1321/2024, Article 22(1), requires local personal data to be stored on a server/data centre in Ethiopia. Cloudflare R2 has no published Ethiopia location and is not approved for production personal data. Do not route real user media to an offshore free tier without a written legal/Authority determination.
 - Do not store secrets in source control, public build variables, or application logs.
 
 ## Object storage
 
+- Verify physical data location in Ethiopia for primary data, replicas, backups, support access and logs before storing any locally collected personal data. Keep the current Singapore test environment synthetic-only.
 - Block public access at the account and bucket level.
 - Require TLS for object API requests and enable provider-side encryption at rest.
 - Use separate least-privilege identities for application access, backup and restore.
