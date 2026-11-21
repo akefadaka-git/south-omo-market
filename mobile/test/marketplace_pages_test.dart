@@ -155,4 +155,65 @@ void main() {
     client.close();
   });
 
+
+  testWidgets('discovery exposes sorting and loads the next listing page', (tester) async {
+    final listingRequests = <Uri>[];
+    final firstPage = List.generate(50, (index) => {
+      'id': 'listing-$index',
+      'title': 'Synthetic listing $index',
+      'description': 'Synthetic test listing',
+      'category_id': 'cat-livestock',
+      'price_minor': 10000 + index,
+      'location': 'Koybe',
+      'images': <Object>[],
+    });
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/categories')) {
+        return http.Response(jsonEncode([
+          {'id': 'cat-livestock', 'name': 'Livestock'},
+        ]), 200);
+      }
+      if (request.url.path.endsWith('/locations')) {
+        return http.Response(jsonEncode([
+          {'id': 'loc-koybe', 'name': 'Koybe', 'level': 'locality'},
+        ]), 200);
+      }
+      if (request.url.path.endsWith('/listings')) {
+        listingRequests.add(request.url);
+        final offset = int.tryParse(request.url.queryParameters['offset'] ?? '0') ?? 0;
+        return http.Response(jsonEncode(offset == 0 ? firstPage : [
+          {
+            'id': 'listing-50',
+            'title': 'Synthetic listing 50',
+            'description': 'Synthetic test listing',
+            'category_id': 'cat-livestock',
+            'price_minor': 10050,
+            'location': 'Koybe',
+            'images': <Object>[],
+          },
+        ]), 200);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(MaterialApp(home: MarketplaceDiscoveryPage(
+      apiBaseUrl: 'https://market.example.test/api/v1', client: client,
+    )));
+    await tester.pumpAndSettle();
+    expect(find.text('Sort listings'), findsOneWidget);
+    expect(listingRequests.first.queryParameters['sort'], 'newest');
+
+    await tester.scrollUntilVisible(
+      find.text('Load more listings'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Load more listings'));
+    await tester.pumpAndSettle();
+
+    expect(listingRequests.last.queryParameters['offset'], '50');
+    expect(find.text('Synthetic listing 50'), findsOneWidget);
+    client.close();
+  });
+
 }
