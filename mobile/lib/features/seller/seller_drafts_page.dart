@@ -112,6 +112,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
       if (!mounted) return;
       setState(() {
         _categories = leaves;
+        _error = null;
         if (_categoryId == null && leaves.isNotEmpty) _categoryId = leaves.first['id'] as String;
       });
     } catch (error) {
@@ -121,6 +122,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
         if (leaves.isNotEmpty && mounted) {
           setState(() {
             _categories = leaves;
+            _error = null;
             if (_categoryId == null) _categoryId = leaves.first['id'] as String;
             _message = marketString(context,
               en: 'Using the last saved category catalogue while offline.',
