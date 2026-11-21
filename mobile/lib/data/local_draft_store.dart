@@ -1,10 +1,12 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 class LocalDraftStore {
   static const _databaseName = 'south_omo_market.db';
-  static const _databaseVersion = 3;
+  static const _databaseVersion = 4;
   LocalDraftStore({String? databasePath}) : _databasePath = databasePath;
 
   final String? _databasePath;
@@ -49,6 +51,13 @@ class LocalDraftStore {
         await db.execute(
           'CREATE INDEX ix_listing_draft_images_draft_id ON listing_draft_images(draft_id)',
         );
+        await db.execute('''
+          CREATE TABLE category_catalogue_cache (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            payload TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -87,9 +96,36 @@ class LocalDraftStore {
         if (oldVersion < 3) {
           await db.execute("ALTER TABLE listing_drafts ADD COLUMN attributes_json TEXT NOT NULL DEFAULT '{}'");
         }
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE category_catalogue_cache (
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              payload TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+          ''');
+        }
       },
     );
     return _database!;
+  }
+
+
+  Future<void> saveCategoryCatalogue(List<Map<String, dynamic>> categories) async {
+    final db = await database;
+    await db.insert('category_catalogue_cache', {
+      'id': 1,
+      'payload': jsonEncode(categories),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> cachedCategoryCatalogue() async {
+    final db = await database;
+    final rows = await db.query('category_catalogue_cache', where: 'id = 1', limit: 1);
+    if (rows.isEmpty) return [];
+    final decoded = jsonDecode(rows.single['payload'] as String) as List<dynamic>;
+    return decoded.cast<Map<String, dynamic>>();
   }
 
   Future<void> close() async {
