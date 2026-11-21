@@ -112,7 +112,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         final detail = (jsonDecode(response.body) as Map<String, dynamic>)['detail'];
         throw Exception(detail is String ? detail : 'Report could not be submitted (${response.statusCode}).');
       }
-      if (mounted) setState(() => _notice = 'Report submitted. You can follow its status in My reports.');
+      if (mounted) setState(() => _notice = marketString(context, en: 'Report submitted. You can follow its status in My reports.', am: 'ሪፖርቱ ተልኳል። ሁኔታውን በሪፖርቶቼ ውስጥ መከታተል ይችላሉ።', mdy: ''));
     } catch (error) {
       if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -276,7 +276,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
             border: OutlineInputBorder(),
           ),
           validator: (value) => (value == null || value.trim().length < 10)
-            ? 'Please provide at least 10 characters.' : null,
+            ? marketString(context, en: 'Please provide at least 10 characters.', am: 'ቢያንስ 10 ቁምፊዎችን ያስገቡ።', mdy: '') : null,
         ),
         const SizedBox(height: 10),
         TextFormField(
@@ -284,7 +284,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
           minLines: 2,
           maxLines: 3,
           maxLength: 3000,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: marketString(context, en: 'Evidence summary (optional)', am: 'የማስረጃ ማጠቃለያ (አማራጭ)', mdy: ''),
             border: OutlineInputBorder(),
           ),
