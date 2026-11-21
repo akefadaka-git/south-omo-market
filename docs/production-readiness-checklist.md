@@ -21,7 +21,7 @@ This checklist is a deployment handoff aid. Completing the document does not mea
 - Set APP_ENV=production and generate a unique JWT_SECRET of at least 32 characters.
 - Set DATABASE_URL to a managed PostgreSQL database with TLS and least-privilege credentials.
 - Set RATE_LIMIT_STORAGE_URI to a private Redis endpoint (rediss:// where supported). Production startup rejects memory://.
-- Set IMAGE_STORAGE_BACKEND=s3, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY. Keep S3_USE_SSL=true and use an HTTPS S3_ENDPOINT_URL if a custom endpoint is required.
+- Set IMAGE_STORAGE_BACKEND=s3, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY. Keep S3_USE_SSL=true and use an HTTPS S3_ENDPOINT_URL if a custom endpoint is required. A no-cost pilot candidate is Cloudflare R2: 10 GB-month standard storage, 1 million Class A operations, 10 million Class B operations and free egress on its published free allowance; verify current account terms and enforce a strict usage ceiling before enabling it. R2 bucket lock is configured through Cloudflare controls, not the S3 Object Lock API.
 - Do not store secrets in source control, public build variables, or application logs.
 
 ## Object storage
