@@ -97,6 +97,8 @@ def list_public_listings(
     offset: int = Query(default=0, ge=0),
     category_id: str | None = None,
     location_id: str | None = None,
+    q: str | None = Query(default=None, min_length=1, max_length=120),
+    sort: str = Query(default="newest", pattern="^(newest|price_asc|price_desc)$"),
     db: Session = Depends(get_db),
 ) -> list[dict[str, object]]:
     query = select(Listing).where(Listing.status == "published")
@@ -104,8 +106,20 @@ def list_public_listings(
         query = query.where(Listing.category_id == category_id)
     if location_id:
         query = query.where(Listing.location_id == location_id)
+    if q:
+        term = f"%{q.strip().casefold()}%"
+        query = query.where(
+            func.lower(Listing.title).like(term)
+            | func.lower(Listing.description).like(term)
+            | func.lower(Listing.location_label).like(term)
+        )
+    ordering = {
+        "newest": (Listing.created_at.desc(), Listing.id),
+        "price_asc": (Listing.price_minor.asc(), Listing.created_at.desc(), Listing.id),
+        "price_desc": (Listing.price_minor.desc(), Listing.created_at.desc(), Listing.id),
+    }[sort]
     rows = db.scalars(
-        query.order_by(Listing.created_at.desc(), Listing.id).offset(offset).limit(limit)
+        query.order_by(*ordering).offset(offset).limit(limit)
     ).all()
     return [
         {
