@@ -22,7 +22,7 @@
 | Backend health/readiness | Liveness and database readiness endpoints | IMPLEMENTED |
 | Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers | IMPLEMENTED; execution still requires GitHub Actions to run |
 | Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | ADDED; execution pending |
-| Category hierarchy data model | Self-referencing category parent, original seed plus additive migration `0007_catalogue_expansion` with 20 additional leaves across all seven top-level groups; root/child API and leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
+| Category hierarchy data model | Self-referencing category parent, original seed plus additive migration `0007_catalogue_expansion` with 24 additional leaves across all seven top-level groups; root/child API and leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
 | Category-specific listing attributes | Expanded typed schemas across livestock, agriculture, food, retail, services, rentals and jobs; API validates required fields, text limits, numeric ranges, finite numbers, booleans, choices, unknown keys and malformed schema; create/update/offline-sync enforcement | IMPLEMENTED; backend regression coverage added, execution pending |
 | Grouped mobile category browser | Removed hard-coded topic chips; renders API root categories and actual leaf subcategories | IMPLEMENTED; Flutter test execution pending |
 | Category-driven seller creation/editor | API-loaded leaf categories; schema-driven text, number, choice and boolean controls; required/range/length/choice validation; field-level feedback; edit PATCH persists attributes | IMPLEMENTED; Flutter test execution pending |
@@ -32,7 +32,7 @@
 
 These items must not be marked complete without implementation and evidence:
 
-1. **Catalogue depth:** additive migration `0007_catalogue_expansion` adds 20 leaf categories and schemas beyond the initial seeds; schemas use the currently supported text, number, choice and boolean field types. Still open: run migration on an isolated test database, execute backend/mobile tests, field-pilot catalogue review and any scope adjustments approved from that review.
+1. **Catalogue depth:** additive migration `0007_catalogue_expansion` adds 24 leaf categories and schemas beyond the initial seeds; schemas use the currently supported text, number, choice and boolean field types. Still open: run migration on an isolated test database, execute backend/mobile tests, field-pilot catalogue review and any scope adjustments approved from that review.
 2. **Pagination boundary tests:** widget regressions now cover duplicate IDs across pages, empty final page, initial-load retry and sort/filter reset; execute the tests on the exact current head before marking verified.
 3. **Maale localization:** human-reviewed translations, terminology register, script/font validation and Maale-speaking approval. Empty strings are not translations and must not be presented as such.
 4. **Seller phone ownership:** OTP verification is not implemented because no SMS provider has been selected or integrated. Do not simulate verification or imply a phone number is verified.
