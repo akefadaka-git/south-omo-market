@@ -1,7 +1,6 @@
 # A3 implementation register — South Omo Market
 
 **Branch:** `feat/a3-platform-foundation`  
-**Current head:** `7c884e44f120b6b7f8756caca71ebaa3c58c35df`  
 **Baseline:** frozen A2 `main` at `1e0dc04d66b0b80b29ce81b28084c1d8211ce708`  
 **Purpose:** evidence-based implementation register. This file is not an A3 closure certificate.
 
