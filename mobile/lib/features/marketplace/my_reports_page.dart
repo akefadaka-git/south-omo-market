@@ -55,9 +55,9 @@ class _MyReportsPageState extends State<MyReportsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('My reports'),
+      title: Text(marketString(context, en: 'My reports', am: 'ሪፖርቶቼ', mdy: '')),
       actions: [IconButton(
-        tooltip: 'Refresh reports',
+        tooltip: marketString(context, en: 'Refresh reports', am: 'ሪፖርቶችን አድስ', mdy: ''),
         onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh),
       )],
@@ -70,11 +70,11 @@ class _MyReportsPageState extends State<MyReportsPage> {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 12),
-              FilledButton(onPressed: _load, child: const Text('Try again')),
+              FilledButton(onPressed: _load, child: Text(marketString(context, en: 'Try again', am: 'እንደገና ሞክር', mdy: ''))),
             ]),
           ))
         : _reports.isEmpty
-          ? const Center(child: Text('You have not submitted any reports.'))
+          ? Center(child: Text(marketString(context, en: 'You have not submitted any reports.', am: 'ምንም ሪፖርት አላስገቡም።', mdy: '')))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.separated(
@@ -83,7 +83,9 @@ class _MyReportsPageState extends State<MyReportsPage> {
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final report = _reports[index];
-                  final target = report['listing_id'] != null ? 'Listing report' : 'Seller report';
+                  final target = report['listing_id'] != null
+                    ? marketString(context, en: 'Listing report', am: 'የዝርዝር ሪፖርት', mdy: '')
+                    : marketString(context, en: 'Seller report', am: 'የሻጭ ሪፖርት', mdy: '');
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -92,16 +94,16 @@ class _MyReportsPageState extends State<MyReportsPage> {
                           Expanded(child: Text(target, style: Theme.of(context).textTheme.titleMedium)),
                           Chip(label: Text(marketStatusLabel(context, report['status'] as String? ?? 'pending'))),
                         ]),
-                        Text((report['reason'] as String? ?? 'other').replaceAll('_', ' ')),
+                        Text(marketReportReasonLabel(context, report['reason'] as String? ?? 'other')),
                         const SizedBox(height: 6),
                         Text(report['description'] as String? ?? ''),
                         if (report['review_note'] is String && (report['review_note'] as String).isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          Text('Review update: ${report['review_note']}'),
+                          Text(marketString(context, en: 'Review update: ${report['review_note']}', am: 'የግምገማ ማሳወቂያ: ${report['review_note']}', mdy: '')),
                         ],
                         const SizedBox(height: 8),
                         Text(
-                          'Submitted: ${report['created_at'] ?? ''}',
+                          marketString(context, en: 'Submitted: ${report['created_at'] ?? ''}', am: 'የተላከበት ጊዜ: ${report['created_at'] ?? ''}', mdy: ''),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ]),
