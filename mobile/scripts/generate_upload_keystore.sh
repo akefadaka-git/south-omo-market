@@ -26,6 +26,7 @@ alias="${ANDROID_KEY_ALIAS:-south-omo-market-upload}"
 keytool -genkeypair -v \
   -keystore "$destination" \
   -alias "$alias" \
+  -storetype JKS \
   -keyalg RSA \
   -keysize 4096 \
   -validity 10000 \
