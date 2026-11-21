@@ -59,6 +59,20 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
+    if (widget.apiBaseUrl.trim().isEmpty) {
+      if (mounted) {
+        setState(() {
+          _error = marketString(
+            context,
+            en: 'The API server is not configured for this app build.',
+            am: 'ለዚህ መተግበሪያ የኤፒአይ ሰርቨር አልተዋቀረም።',
+            mdy: '',
+          );
+          _loading = false;
+        });
+      }
+      return;
+    }
     try {
       final categoryLanguage = Localizations.localeOf(context).languageCode;
       final listingUri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
@@ -231,7 +245,24 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       Expanded(child: _loading
         ? const Center(child: CircularProgressIndicator())
         : _error != null
-          ? Center(child: Text(_error!, textAlign: TextAlign.center))
+          ? Center(child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(_error!, textAlign: TextAlign.center),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  key: const Key('retry-marketplace-load'),
+                  onPressed: _loading ? null : _load,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(marketString(
+                    context,
+                    en: 'Retry connection',
+                    am: 'እንደገና ይሞክሩ',
+                    mdy: '',
+                  )),
+                ),
+              ]),
+            ))
           : visibleListings.isEmpty
             ? Center(child: Text(
                 query.isEmpty
