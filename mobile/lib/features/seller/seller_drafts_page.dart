@@ -390,9 +390,13 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
     for (final definition in _selectedAttributeSchema) {
       final key = definition['key']?.toString();
       if (key == null || key.isEmpty) continue;
-      final value = _attributeValues[key];
+      var value = _attributeValues[key];
       final required = definition['required'] == true;
       final type = definition['type']?.toString();
+      if (type == 'boolean' && value == null) {
+        value = false;
+        _attributeValues[key] = false;
+      }
       if (value == null || (value is String && value.trim().isEmpty)) {
         if (required) errors[key] = marketString(context,
           en: '${_attributeLabel(definition)} is required.',
