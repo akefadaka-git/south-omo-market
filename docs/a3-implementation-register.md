@@ -13,6 +13,7 @@
 | Public marketplace discovery | Published listings, category/location filters, listing details | IMPLEMENTED |
 | Public discovery search | API searches title, description and location; bounded query length | IMPLEMENTED |
 | Discovery sorting | Stable newest, price ascending and price descending ordering | IMPLEMENTED |
+| Discovery pagination | Mobile load-more control backed by API limit/offset; page append and has-more detection | IMPLEMENTED; regression coverage pending |
 | Seller identity and listing lifecycle | Registration/login, seller profile, draft, submit-for-review, moderation | IMPLEMENTED |
 | Seller inquiry workflow | Buyer inquiry and seller inbox/status handling | IMPLEMENTED |
 | Offline seller drafts | SQLite local drafts and retryable synchronization | IMPLEMENTED |
@@ -27,7 +28,7 @@
 These items must not be marked complete without implementation and evidence:
 
 1. **Catalogue depth:** governed subcategory hierarchy, grouped browsing and category-specific seller forms/attributes.
-2. **Pagination UX:** API limit/offset exists; mobile discovery still needs explicit pagination or infinite-scroll behavior and boundary tests.
+2. **Pagination boundary tests:** load-more UI and API limit/offset integration are implemented; verify page boundaries, duplicate prevention, empty final page, retry behavior and filter changes in automated/widget tests.
 3. **Maale localization:** human-reviewed translations, terminology register, script/font validation and Maale-speaking approval. Empty strings are not translations and must not be presented as such.
 4. **Seller phone ownership:** OTP verification is not implemented because no SMS provider has been selected or integrated. Do not simulate verification or imply a phone number is verified.
 5. **Private intelligence integration:** no approved service contract, credentials or provider SDK is available. Keep the marketplace functional without it; do not invent an integration.
