@@ -28,10 +28,11 @@ def upgrade() -> None:
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
-    op.create_check_constraint(
-        "ck_reports_exactly_one_target", "reports",
-        "(listing_id IS NOT NULL AND seller_id IS NULL) OR (listing_id IS NULL AND seller_id IS NOT NULL)",
-    )
+    with op.batch_alter_table("reports") as batch:
+        batch.create_check_constraint(
+            "ck_reports_exactly_one_target",
+            "(listing_id IS NOT NULL AND seller_id IS NULL) OR (listing_id IS NULL AND seller_id IS NOT NULL)",
+        )
     op.create_index("ix_reports_reporter_user_id", "reports", ["reporter_user_id"])
     op.create_index("ix_reports_listing_id", "reports", ["listing_id"])
     op.create_index("ix_reports_seller_id", "reports", ["seller_id"])
@@ -43,6 +44,7 @@ def downgrade() -> None:
     op.drop_index("ix_reports_seller_id", table_name="reports")
     op.drop_index("ix_reports_listing_id", table_name="reports")
     op.drop_index("ix_reports_reporter_user_id", table_name="reports")
-    op.drop_constraint("ck_reports_exactly_one_target", "reports", type_="check")
+    with op.batch_alter_table("reports") as batch:
+        batch.drop_constraint("ck_reports_exactly_one_target", type_="check")
     op.drop_table("reports")
     op.drop_column("users", "is_suspended")
