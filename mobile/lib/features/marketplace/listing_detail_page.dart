@@ -178,17 +178,17 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                 OutlinedButton.icon(
                   onPressed: _sending ? null : () => _report(listingId: widget.listingId, sellerId: null),
                   icon: const Icon(Icons.flag_outlined),
-                  label: const Text('Report listing'),
+                  label: Text(marketString(context, en: 'Report listing', am: 'ዝርዝሩን ሪፖርት አድርግ', mdy: '')),
                 ),
                 if (listing['seller_id'] is String)
                   OutlinedButton.icon(
                     onPressed: _sending ? null : () => _report(listingId: null, sellerId: listing['seller_id'] as String),
                     icon: const Icon(Icons.person_off_outlined),
-                    label: const Text('Report seller'),
+                    label: Text(marketString(context, en: 'Report seller', am: 'ሻጩን ሪፖርት አድርግ', mdy: '')),
                   ),
                 TextButton(
                   onPressed: _sending ? null : _openMyReports,
-                  child: const Text('My reports'),
+                  child: Text(marketString(context, en: 'My reports', am: 'ሪፖርቶቼ', mdy: '')),
                 ),
               ]),
               const SizedBox(height: 24),
@@ -245,22 +245,22 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Report concern'),
+    title: Text(marketString(context, en: 'Report concern', am: 'ችግር ሪፖርት አድርግ', mdy: '')),
     content: Form(
       key: _formKey,
       child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         DropdownButtonFormField<String>(
           value: _reason,
-          decoration: const InputDecoration(labelText: 'Reason'),
+          decoration: InputDecoration(labelText: marketString(context, en: 'Reason', am: 'ምክንያት', mdy: '')),
           items: const [
-            DropdownMenuItem(value: 'fraud', child: Text('Fraud or scam')),
-            DropdownMenuItem(value: 'misleading_information', child: Text('Misleading information')),
-            DropdownMenuItem(value: 'prohibited_item', child: Text('Prohibited item')),
-            DropdownMenuItem(value: 'harassment', child: Text('Harassment')),
-            DropdownMenuItem(value: 'unsafe_activity', child: Text('Unsafe activity')),
-            DropdownMenuItem(value: 'impersonation', child: Text('Impersonation')),
-            DropdownMenuItem(value: 'spam', child: Text('Spam')),
-            DropdownMenuItem(value: 'other', child: Text('Other')),
+            DropdownMenuItem(value: 'fraud', child: Text(marketString(context, en: 'Fraud or scam', am: 'ማጭበርበር', mdy: ''))),
+            DropdownMenuItem(value: 'misleading_information', child: Text(marketString(context, en: 'Misleading information', am: 'አሳሳች መረጃ', mdy: ''))),
+            DropdownMenuItem(value: 'prohibited_item', child: Text(marketString(context, en: 'Prohibited item', am: 'የተከለከለ ዕቃ', mdy: ''))),
+            DropdownMenuItem(value: 'harassment', child: Text(marketString(context, en: 'Harassment', am: 'ማዋከብ', mdy: ''))),
+            DropdownMenuItem(value: 'unsafe_activity', child: Text(marketString(context, en: 'Unsafe activity', am: 'አደገኛ ተግባር', mdy: ''))),
+            DropdownMenuItem(value: 'impersonation', child: Text(marketString(context, en: 'Impersonation', am: 'ሌላን መምሰል', mdy: ''))),
+            DropdownMenuItem(value: 'spam', child: Text(marketString(context, en: 'Spam', am: 'አላስፈላጊ መልዕክት', mdy: ''))),
+            DropdownMenuItem(value: 'other', child: Text(marketString(context, en: 'Other', am: 'ሌላ', mdy: ''))),
           ],
           onChanged: (value) { if (value != null) setState(() => _reason = value); },
         ),
@@ -271,8 +271,8 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
           maxLines: 5,
           maxLength: 4000,
           decoration: const InputDecoration(
-            labelText: 'Describe the concern',
-            helperText: 'Include relevant facts. Do not include passwords or sensitive personal data.',
+            labelText: marketString(context, en: 'Describe the concern', am: 'ችግሩን ይግለጹ', mdy: ''),
+            helperText: marketString(context, en: 'Include relevant facts. Do not include passwords or sensitive personal data.', am: 'ተዛማጅ እውነታዎችን ያካትቱ። የይለፍ ቃል ወይም ሚስጥራዊ የግል መረጃ አያስገቡ።', mdy: ''),
             border: OutlineInputBorder(),
           ),
           validator: (value) => (value == null || value.trim().length < 10)
@@ -285,7 +285,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
           maxLines: 3,
           maxLength: 3000,
           decoration: const InputDecoration(
-            labelText: 'Evidence summary (optional)',
+            labelText: marketString(context, en: 'Evidence summary (optional)', am: 'የማስረጃ ማጠቃለያ (አማራጭ)', mdy: ''),
             border: OutlineInputBorder(),
           ),
         ),
@@ -293,20 +293,20 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
           controller: _evidenceReference,
           maxLength: 500,
           decoration: const InputDecoration(
-            labelText: 'Evidence reference (optional)',
-            helperText: 'Do not enter a private URL or sensitive personal information.',
+            labelText: marketString(context, en: 'Evidence reference (optional)', am: 'የማስረጃ መለያ (አማራጭ)', mdy: ''),
+            helperText: marketString(context, en: 'Do not enter a private URL or sensitive personal information.', am: 'የግል ዩአርኤል ወይም ሚስጥራዊ የግል መረጃ አያስገቡ።', mdy: ''),
           ),
         ),
       ])),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+      TextButton(onPressed: () => Navigator.pop(context), child: Text(marketString(context, en: 'Cancel', am: 'ይቅር', mdy: ''))),
       FilledButton(
         onPressed: () {
           if (!_formKey.currentState!.validate()) return;
           Navigator.pop(context, {'reason': _reason, 'description': _description.text.trim(), 'evidence_summary': _evidenceSummary.text.trim(), 'evidence_reference': _evidenceReference.text.trim()});
         },
-        child: const Text('Submit report'),
+        child: Text(marketString(context, en: 'Submit report', am: 'ሪፖርት ላክ', mdy: '')),
       ),
     ],
   );
