@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.routers import admin, categories, health, identity, inquiries, listings, locations, sellers
+from app.routers import admin, categories, health, identity, inquiries, listings, locations, reports, sellers
 from app.core.rate_limit import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -16,7 +16,9 @@ app.include_router(locations.router, prefix=settings.api_v1_prefix, tags=["locat
 app.include_router(sellers.router, prefix=settings.api_v1_prefix, tags=["sellers"])
 app.include_router(listings.router, prefix=settings.api_v1_prefix, tags=["listings"])
 app.include_router(inquiries.router, prefix=settings.api_v1_prefix, tags=["inquiries"])
+app.include_router(reports.router, prefix=settings.api_v1_prefix)
 app.include_router(admin.router, prefix=settings.api_v1_prefix)
+
 
 @app.get("/", include_in_schema=False)
 def root() -> dict[str, str]:
