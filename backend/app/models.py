@@ -61,6 +61,7 @@ class Listing(Base):
     category_id: Mapped[str] = mapped_column(ForeignKey("categories.id"), index=True)
     title: Mapped[str] = mapped_column(String(180))
     description: Mapped[str] = mapped_column(Text, default="")
+    attributes: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     price_minor: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(3), default="ETB")
     location_label: Mapped[str] = mapped_column(String(160))
