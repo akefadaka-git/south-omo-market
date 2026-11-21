@@ -212,6 +212,14 @@ void main() {
     expect(find.text('Sort listings'), findsOneWidget);
     expect(listingRequests.first.queryParameters['sort'], 'newest');
 
+    await tester.tap(find.text('Sort listings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Price: low to high').last);
+    await tester.pumpAndSettle();
+    expect(listingRequests.last.queryParameters['sort'], 'price_asc');
+    expect(listingRequests.last.queryParameters['offset'], '0',
+      reason: 'Changing a filter must reset pagination to the first page');
+
     await tester.scrollUntilVisible(
       find.text('Load more listings'),
       300,
