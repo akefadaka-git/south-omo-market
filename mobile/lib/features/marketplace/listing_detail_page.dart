@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../l10n/market_strings.dart';
 import 'buyer_auth_dialog.dart';
+import 'my_reports_page.dart';
 
 class ListingDetailPage extends StatefulWidget {
   const ListingDetailPage({
@@ -76,6 +77,58 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     }
   }
 
+
+  Future<void> _report({required String? listingId, required String? sellerId}) async {
+    setState(() { _sending = true; _error = null; _notice = null; });
+    try {
+      final token = await showDialog<String>(
+        context: context,
+        builder: (_) => BuyerAuthDialog(apiBaseUrl: widget.apiBaseUrl, client: widget.client),
+      );
+      if (token == null || !mounted) return;
+      final report = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (_) => _ReportComposeDialog(),
+      );
+      if (report == null || !mounted) return;
+      final response = await widget.client.post(
+        Uri.parse('\${widget.apiBaseUrl}/reports'),
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+        body: jsonEncode({
+          if (listingId != null) 'listing_id': listingId,
+          if (sellerId != null) 'seller_id': sellerId,
+          'reason': report['reason'],
+          'description': report['description'],
+          'evidence': [],
+        }),
+      );
+      if (response.statusCode != 201) {
+        final detail = (jsonDecode(response.body) as Map<String, dynamic>)['detail'];
+        throw Exception(detail is String ? detail : 'Report could not be submitted (\${response.statusCode}).');
+      }
+      if (mounted) setState(() => _notice = 'Report submitted. You can follow its status in My reports.');
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _openMyReports() async {
+    final token = await showDialog<String>(
+      context: context,
+      builder: (_) => BuyerAuthDialog(apiBaseUrl: widget.apiBaseUrl, client: widget.client),
+    );
+    if (token == null || !mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => MyReportsPage(
+        apiBaseUrl: widget.apiBaseUrl,
+        client: widget.client,
+        accessToken: token,
+      ),
+    ));
+  }
+
   Future<void> _load() async {
     try {
       final response = await widget.client.get(
@@ -114,6 +167,24 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   ),
                 ),
               Text(listing['description'] as String? ?? ''),
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                OutlinedButton.icon(
+                  onPressed: _sending ? null : () => _report(listingId: widget.listingId, sellerId: null),
+                  icon: const Icon(Icons.flag_outlined),
+                  label: const Text('Report listing'),
+                ),
+                if (listing['seller_id'] is String)
+                  OutlinedButton.icon(
+                    onPressed: _sending ? null : () => _report(listingId: null, sellerId: listing['seller_id'] as String),
+                    icon: const Icon(Icons.person_off_outlined),
+                    label: const Text('Report seller'),
+                  ),
+                TextButton(
+                  onPressed: _sending ? null : _openMyReports,
+                  child: const Text('My reports'),
+                ),
+              ]),
               const SizedBox(height: 24),
               Text(marketString(context, en: 'Contact seller', am: 'ሻጩን ያነጋግሩ', mdy: ''), style: Theme.of(context).textTheme.titleLarge),
               Text(marketString(context, en: 'Sign in or create a buyer account to send your inquiry. Your registered phone number is shared with the seller.', am: 'ጥያቄዎን ለመላክ ይግቡ ወይም የገዢ መለያ ይፍጠሩ። የተመዘገበው ስልክ ቁጥርዎ ለሻጩ ይታያል።', mdy: '')),
@@ -144,5 +215,71 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
             ]),
     );
   }
+}
+
+class _ReportComposeDialog extends StatefulWidget {
+  @override
+  State<_ReportComposeDialog> createState() => _ReportComposeDialogState();
+}
+
+class _ReportComposeDialogState extends State<_ReportComposeDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _description = TextEditingController();
+  String _reason = 'misleading_information';
+
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Report concern'),
+    content: Form(
+      key: _formKey,
+      child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        DropdownButtonFormField<String>(
+          value: _reason,
+          decoration: const InputDecoration(labelText: 'Reason'),
+          items: const [
+            DropdownMenuItem(value: 'fraud', child: Text('Fraud or scam')),
+            DropdownMenuItem(value: 'misleading_information', child: Text('Misleading information')),
+            DropdownMenuItem(value: 'prohibited_item', child: Text('Prohibited item')),
+            DropdownMenuItem(value: 'harassment', child: Text('Harassment')),
+            DropdownMenuItem(value: 'unsafe_activity', child: Text('Unsafe activity')),
+            DropdownMenuItem(value: 'impersonation', child: Text('Impersonation')),
+            DropdownMenuItem(value: 'spam', child: Text('Spam')),
+            DropdownMenuItem(value: 'other', child: Text('Other')),
+          ],
+          onChanged: (value) { if (value != null) setState(() => _reason = value); },
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _description,
+          minLines: 3,
+          maxLines: 5,
+          maxLength: 4000,
+          decoration: const InputDecoration(
+            labelText: 'Describe the concern',
+            helperText: 'Include relevant facts. Do not include passwords or sensitive personal data.',
+            border: OutlineInputBorder(),
+          ),
+          validator: (value) => (value == null || value.trim().length < 10)
+            ? 'Please provide at least 10 characters.' : null,
+        ),
+      ])),
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+      FilledButton(
+        onPressed: () {
+          if (!_formKey.currentState!.validate()) return;
+          Navigator.pop(context, {'reason': _reason, 'description': _description.text.trim()});
+        },
+        child: const Text('Submit report'),
+      ),
+    ],
+  );
 }
 
