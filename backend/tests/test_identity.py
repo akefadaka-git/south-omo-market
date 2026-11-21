@@ -991,7 +991,7 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
 
     db = TestingSession()
     assert db.get(User, admin.id).is_admin is True
-    assert db.get(Report, seller_report_id).status == "resolved"
+    assert db.get(Report, seller_report_id).status == "in_review"
     actions = {
         row.action for row in db.query(AuditEvent).filter(
             AuditEvent.resource_id.in_([listing_report_id, seller_report_id])
