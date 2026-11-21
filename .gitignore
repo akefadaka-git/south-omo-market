@@ -29,3 +29,8 @@ build/
 .idea/
 .vscode/
 .DS_Store
+
+# Android signing material (never commit)
+*.jks
+*.keystore
+key.properties
