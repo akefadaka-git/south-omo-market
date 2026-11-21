@@ -16,7 +16,7 @@ def required(name: str) -> str:
 
 def main() -> None:
     keystore = Path(required("ANDROID_KEYSTORE_PATH")).resolve()
-    alias = required("ANDROID_KEY_ALIAS")
+    required("ANDROID_KEY_ALIAS")
     required("ANDROID_KEYSTORE_PASSWORD")
     required("ANDROID_KEY_PASSWORD")
     if not keystore.is_file():
