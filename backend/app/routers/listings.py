@@ -125,6 +125,8 @@ def list_public_listings(
         {
             "id": row.id,
             "title": row.title,
+            "description": row.description,
+            "category_id": row.category_id,
             "price_minor": row.price_minor,
             "currency": row.currency,
             "location": row.location_label,
