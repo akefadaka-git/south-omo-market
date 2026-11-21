@@ -415,9 +415,13 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
           }),
         ),
         if (_categories.isEmpty)
-          Text(marketString(context,
-            en: 'Categories are loading or unavailable. Retry after reconnecting.',
-            am: 'ምድቦች በመጫን ላይ ናቸው ወይም አይገኙም። ከተገናኙ በኋላ እንደገና ይሞክሩ።', mdy: '')),
+          Row(children: [
+            Expanded(child: Text(marketString(context,
+              en: 'Categories are unavailable. Reconnect and retry.',
+              am: 'ምድቦች አይገኙም። እንደገና ተገናኝተው ይሞክሩ።', mdy: ''))),
+            TextButton(onPressed: _loadCategories,
+              child: Text(marketString(context, en: 'Retry', am: 'እንደገና ሞክር', mdy: ''))),
+          ]),
         _buildAttributeFields(),
         const SizedBox(height: 8),
         TextField(controller: _title, decoration: InputDecoration(labelText: marketString(context, en: 'Listing title', am: 'የዝርዝር ርዕስ', mdy: ''))),
@@ -473,7 +477,9 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
                   _draftId = draft['id'] as String;
                   _clientSyncId = draft['client_sync_id'] as String?;
                   _selectedDraftSynced = draft['sync_state'] == 'synced';
-                  _categoryId = draft['category_id'] as String?;
+                  final savedCategoryId = draft['category_id'] as String?;
+                  _categoryId = _categories.any((category) => category['id'] == savedCategoryId)
+                      ? savedCategoryId : null;
                   _attributeValues = Map<String, dynamic>.from(
                     jsonDecode((draft['attributes_json'] as String?) ?? '{}') as Map<String, dynamic>,
                   );
