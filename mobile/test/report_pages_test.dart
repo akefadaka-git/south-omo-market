@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -100,7 +101,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Synthetic listing remains visible'), findsOneWidget);
-    expect(find.textContaining('Report service temporarily unavailable.'), findsOneWidget);
+    final errorFinder = find.textContaining('Report service temporarily unavailable.');
+    expect(errorFinder, findsOneWidget);
+    expect(
+      tester.getSemantics(errorFinder).getSemanticsData().hasFlag(SemanticsFlag.isLiveRegion),
+      isTrue,
+    );
+    client.close();
+  });
+
+  testWidgets('my reports empty state is exposed as a live announcement', (tester) async {
+    final client = MockClient((request) async => http.Response('[]', 200));
+    await tester.pumpWidget(MaterialApp(home: MyReportsPage(
+      apiBaseUrl: 'https://market.example.test/api/v1',
+      client: client,
+      accessToken: 'report-access-token',
+    )));
+    await tester.pumpAndSettle();
+    final emptyFinder = find.text('You have not submitted any reports.');
+    expect(emptyFinder, findsOneWidget);
+    expect(
+      tester.getSemantics(emptyFinder).getSemanticsData().hasFlag(SemanticsFlag.isLiveRegion),
+      isTrue,
+    );
     client.close();
   });
 
