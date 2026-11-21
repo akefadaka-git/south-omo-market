@@ -26,7 +26,7 @@ def get_current_user(
         user = db.get(User, payload.get("sub"))
     except (jwt.InvalidTokenError, TypeError):
         user = None
-    if user is None or not user.is_active or user.is_suspended:
+    if user is None or not user.is_active or user.is_suspended or payload.get("ver", 0) != user.auth_version:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
     return user
 
