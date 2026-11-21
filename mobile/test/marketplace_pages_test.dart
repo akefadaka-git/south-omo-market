@@ -212,7 +212,7 @@ void main() {
     expect(find.text('Sort listings'), findsOneWidget);
     expect(listingRequests.first.queryParameters['sort'], 'newest');
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+    await tester.tap(find.byKey(const Key('marketplace-sort')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Price: low to high').last);
     await tester.pumpAndSettle();
