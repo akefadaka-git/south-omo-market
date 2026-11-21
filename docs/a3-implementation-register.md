@@ -18,7 +18,8 @@
 | Seller inquiry workflow | Buyer inquiry and seller inbox/status handling | IMPLEMENTED |
 | Offline seller drafts | SQLite local drafts and retryable synchronization | IMPLEMENTED |
 | Listing media | Validated image decode/re-encode, ownership checks, idempotent client image IDs, provider-neutral storage adapter | IMPLEMENTED |
-| Moderation and audit | Admin-only decisions and append-only audit event protection | IMPLEMENTED |
+| Moderation and audit | Admin-only listing decisions and append-only audit event protection | IMPLEMENTED |
+| Reports and complaints | Authenticated listing/seller reports, bounded evidence summaries/references, reporter status view, admin pending/in-review queue, investigation/resolve/dismiss decisions, listing removal, seller account suspension/reinstatement and append-only audit events; API, mobile and admin UI slices added | IMPLEMENTED; test execution pending |
 | Backend health/readiness | Liveness and database readiness endpoints | IMPLEMENTED |
 | Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers | IMPLEMENTED; execution still requires GitHub Actions to run |
 | Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | ADDED; execution pending |
@@ -35,11 +36,11 @@ These items must not be marked complete without implementation and evidence:
 1. **Catalogue depth:** additive migration `0007_catalogue_expansion` adds 24 leaf categories and schemas beyond the initial seeds; schemas use the currently supported text, number, choice and boolean field types. Still open: run migration on an isolated test database, execute backend/mobile tests, field-pilot catalogue review and any scope adjustments approved from that review.
 2. **Pagination boundary tests:** widget regressions now cover duplicate IDs across pages, empty final page, initial-load retry and sort/filter reset; execute the tests on the exact current head before marking verified.
 3. **Maale localization:** human-reviewed translations, terminology register, script/font validation and Maale-speaking approval. Empty strings are not translations and must not be presented as such.
-4. **Seller phone ownership:** OTP verification is not implemented because no SMS provider has been selected or integrated. Do not simulate verification or imply a phone number is verified.
+4. **Seller phone ownership:** no provider is integrated. SMSHub advertises 10 one-time free credits after identity/KYC approval, but its standard service is prepaid (Ethio Telecom 1 credit, Safaricom 2); this is a limited pilot allowance, not a durable no-cost service. Africa's Talking sandbox does not deliver to real handsets. Do not configure or use a paid path, simulate OTP, or imply a phone number is verified. Reassess only if a genuinely no-cost live-delivery agreement is available.
 5. **Private intelligence integration:** no approved service contract, credentials or provider SDK is available. Keep the marketplace functional without it; do not invent an integration.
 6. **Operational media persistence:** local storage is suitable only for disposable staging. Production needs a selected persistent object store, access policy, lifecycle and recovery tests.
-7. **Accessibility and localization acceptance:** complete screen-by-screen Amharic review, text scaling, semantics, contrast, keyboard/screen-reader checks and physical-device validation.
-8. **Security and privacy acceptance:** independent review, abuse/report workflow completeness, data retention/deletion and applicable legal review.
+7. **Accessibility and localization acceptance:** complete screen-by-screen Amharic review, text scaling, semantics, contrast, keyboard/screen-reader checks and physical-device validation. Maale translations remain unprovided and require native-speaker review; no translations are fabricated.
+8. **Security and privacy acceptance:** report workflow baseline is now implemented; independent review, evidence-attachment security, abuse escalation policy, data retention/deletion and applicable Ethiopian legal/data-protection review remain open.
 9. **Release signing:** CI's ephemeral signing key is for test artifacts only. A production signing identity and owner-controlled recovery are not configured.
 
 ## Verification gates
