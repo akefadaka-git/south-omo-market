@@ -125,6 +125,7 @@ class Report(Base):
     description: Mapped[str] = mapped_column(Text)
     evidence: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    previous_target_status: Mapped[str | None] = mapped_column(String(24), nullable=True)
     reviewed_by: Mapped[str | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
