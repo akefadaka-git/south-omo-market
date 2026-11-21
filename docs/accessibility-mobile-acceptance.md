@@ -1,6 +1,6 @@
 # Accessibility and physical Android acceptance
 
-**Status:** PARTIAL / NOT ACCEPTED. Widget tests and semantic labels are not equivalent to physical-device or assistive-technology acceptance.
+**Status:** PARTIAL / NOT ACCEPTED. Widget tests and semantic labels are not equivalent to physical-device or assistive-technology acceptance. The report-error visibility and Maale English-fallback regression tests are added; execution on the latest accessibility changes is pending.
 
 ## Baseline target
 
@@ -38,7 +38,9 @@ Use WCAG 2.2 AA as the web/admin and mobile interaction reference, plus Android 
 
 - Report listing and report seller actions use visible text labels, not icon-only controls.
 - Report form fields have labels, length limits and validation.
-- My Reports includes a refresh tooltip, loading state, retry state and visible status text.
+- My Reports includes a refresh tooltip, live-region loading/error/empty states, retry action and visible status text.
+- Listing-detail loading failures are separated from report/inquiry action failures; action feedback uses live regions and no longer replaces the listing content.
+- Listing photographs expose a semantic label based on the listing title.
 - Amharic report labels have been integrated provisionally; native-speaker review is still required.
 
 ## Acceptance evidence required
