@@ -1002,6 +1002,9 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     reinstated = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
         headers=admin_headers, json={"decision": "unblock_seller", "note": "Review cleared"})
     assert reinstated.status_code == 200
+    duplicate_reinstatement = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
+        headers=admin_headers, json={"decision": "unblock_seller", "note": "Duplicate action must fail"})
+    assert duplicate_reinstatement.status_code == 409
     assert client.post("/api/v1/auth/login", json={
         "phone_number": seller_phone, "password": "synthetic-report-seller-701",
     }).status_code == 200
