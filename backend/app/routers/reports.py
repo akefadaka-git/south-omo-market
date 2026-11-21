@@ -74,6 +74,18 @@ def create_report(
         status="pending",
     )
     db.add(report)
+    db.flush()
+    db.add(AuditEvent(
+        actor_id=reporter.id,
+        action="report.created",
+        resource_type="report",
+        resource_id=report.id,
+        event_metadata={
+            "target_type": "listing" if listing is not None else "seller",
+            "target_id": listing.id if listing is not None else seller.id,
+            "reason": report.reason,
+        },
+    ))
     db.commit()
     db.refresh(report)
     return {
