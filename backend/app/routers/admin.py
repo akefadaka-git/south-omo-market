@@ -184,8 +184,6 @@ def decide_report(
             raise HTTPException(status_code=404, detail="Reported seller no longer exists")
         user.is_suspended = action == "block_seller"
         report.status = "resolved" if action == "block_seller" else report.status
-        resource_type = "user"
-        resource_id = user.id
         metadata.update({"target_type": "seller_account", "seller_id": seller.id, "suspended": user.is_suspended})
         db.add(AuditEvent(
             actor_id=admin.id, action="seller.account_suspended" if user.is_suspended else "seller.account_reinstated",
