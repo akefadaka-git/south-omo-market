@@ -106,7 +106,10 @@ class _SellerListingsPageState extends State<SellerListingsPage> {
   List<Map<String, dynamic>> get _selectedAttributeSchema {
     final categoryId = _categoryId;
     if (categoryId == null) return const [];
-    final category = _categories.where((item) => item['id'] == categoryId).firstOrNull;
+    Map<String, dynamic>? category;
+    for (final item in _categories) {
+      if (item['id'] == categoryId) { category = item; break; }
+    }
     if (category == null) return const [];
     return (category['attributes_schema'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
