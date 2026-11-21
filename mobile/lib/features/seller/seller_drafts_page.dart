@@ -107,6 +107,7 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
         throw HttpException('Category catalogue unavailable (${response.statusCode})');
       }
       final rows = (jsonDecode(response.body) as List<dynamic>).cast<Map<String, dynamic>>();
+      await _store.saveCategoryCatalogue(rows);
       final leaves = rows.where((row) => row['is_leaf'] == true).toList();
       if (!mounted) return;
       setState(() {
@@ -114,6 +115,20 @@ class _SellerDraftsPageState extends State<SellerDraftsPage> {
         if (_categoryId == null && leaves.isNotEmpty) _categoryId = leaves.first['id'] as String;
       });
     } catch (error) {
+      try {
+        final cached = await _store.cachedCategoryCatalogue();
+        final leaves = cached.where((row) => row['is_leaf'] == true).toList();
+        if (leaves.isNotEmpty && mounted) {
+          setState(() {
+            _categories = leaves;
+            if (_categoryId == null) _categoryId = leaves.first['id'] as String;
+            _message = marketString(context,
+              en: 'Using the last saved category catalogue while offline.',
+              am: 'ከመስመር ውጭ ስለሆኑ በመጨረሻ የተቀመጠው የምድብ ዝርዝር እየተጠቀሙ ነው።', mdy: '');
+          });
+          return;
+        }
+      } catch (_) {}
       if (mounted) setState(() => _error = marketString(context,
         en: 'Could not load listing categories: $error',
         am: 'የዝርዝር ምድቦችን መጫን አልተቻለም፦ $error', mdy: ''));
