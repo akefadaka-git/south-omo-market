@@ -31,6 +31,15 @@ void main() {
     final savedDraft = (await store.pendingDrafts()).single;
     expect(savedDraft['id'], id);
     expect(savedDraft['attributes_json'], '{"breed":"Local","age_months":24,"sex":"female"}');
+    await store.saveCategoryCatalogue([
+      {'id': 'cat-cattle', 'name': 'Cattle', 'parent_id': 'cat-livestock',
+       'is_leaf': true, 'attributes_schema': [
+         {'key': 'breed', 'type': 'text', 'required': true},
+       ]},
+    ]);
+    final cachedCategories = await store.cachedCategoryCatalogue();
+    expect(cachedCategories.single['id'], 'cat-cattle');
+    expect((cachedCategories.single['attributes_schema'] as List).length, 1);
 
     await store.addImage(
       id: 'f09a5c0d-54e2-43d6-a11f-123456789abc',
