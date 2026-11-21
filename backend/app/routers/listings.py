@@ -72,7 +72,7 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
             for bound in (minimum, maximum):
                 if bound is not None and (
                     isinstance(bound, bool) or not isinstance(bound, (int, float))
-                    or not math.isfinite(bound)
+                    or (isinstance(bound, float) and not math.isfinite(bound))
                 ):
                     raise HTTPException(status_code=500, detail=f"Category numeric bound is invalid for {key}")
             if minimum is not None and maximum is not None and minimum > maximum:
@@ -114,7 +114,7 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
         elif kind == "number":
             if (
                 isinstance(value, bool) or not isinstance(value, (int, float))
-                or not math.isfinite(value)
+                or (isinstance(value, float) and not math.isfinite(value))
             ):
                 raise HTTPException(status_code=422, detail={"attributes": f"Invalid number for {key}"})
             if (
