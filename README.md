@@ -1,2 +1,54 @@
-# south-omo-market
-South Omo Market is an Amharic-first, Maale-enabled Android marketplace connecting buyers, sellers, traders and local businesses across South Omo, Ethiopia. Built for affordable smartphones, low-connectivity environments and sustainable local commerce.
+# South Omo Market
+
+Amharic-first, Maale-enabled local classified marketplace for buyers, sellers, traders and businesses in South Omo, Ethiopia.
+
+MVP geography: Koybe and Jinka. Sellers publish listings; buyers discover and contact sellers directly. Initial settlement is cash/direct seller payment.
+
+Excluded: wallets, escrow, cryptocurrency, loans, delivery fleet, complex GPS, social feed, AI recommendations, nationwide expansion and complex payment systems.
+
+Stack: Flutter Android + SQLite local drafts; FastAPI modular monolith; PostgreSQL; SQLAlchemy 2; Alembic; React + TypeScript admin; versioned REST/OpenAPI.
+
+Repository layout: backend/ API; mobile/ Flutter client; admin/ moderation console; docs/ decisions and controls.
+
+Development uses synthetic data only. Hosting, SMS/OTP, object storage and payment providers remain unselected. No repository license has been granted. Maale terminology and translations require human review before release. Physical market validation is mandatory before commercial launch. Deployment and commercial activation require separate owner approval.
+
+This is an implementation foundation, not a production-ready marketplace.
+
+
+## Listing photos and offline drafts (A3)
+
+- The API accepts JPEG, PNG and WebP uploads for seller-owned draft listings only.
+- Each upload is decoded and verified, EXIF orientation is applied, and the image is re-encoded as JPEG before storage. The configured defaults are 5 MiB per upload, five images per listing and 20 megapixels per image.
+- Uploads use a client-generated UUID. Repeating an upload with the same UUID for the same listing returns the existing image record, making mobile retries safe.
+- Pending-review and rejected listings do not expose image bytes. Image retrieval is served through the API only after a listing is published.
+- `ListingImageStorage` is the provider-neutral storage contract. The local adapter writes to a private directory with restrictive permissions. An S3-compatible adapter is available through the boto3 API client; no production provider or credentials are selected.
+- Local storage is selected by default. Configure `IMAGE_STORAGE_BACKEND=s3`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` to select object storage. Optional settings are `S3_REGION` (default `us-east-1`), `S3_ENDPOINT_URL` (for a compatible endpoint), and `S3_USE_SSL` (default `true`; disable only for local test emulators). Keep the bucket private; the application does not make objects public and serves images through its publication-gated API endpoint.
+- If using local storage in production, configure `IMAGE_STORAGE_DIR` to an absolute, persistent, private volume outside the web root. Configure the reverse proxy/request body limit to match or exceed the application upload limit. Production startup rejects a relative local-storage path.
+- The mobile client stores drafts and queued photos in app-private storage. It assigns stable UUID idempotency keys, syncs drafts before photos when the seller workspace opens online or connectivity returns, and retries safely after interrupted network requests. Server sync creates a draft only; it does not publish or bypass moderation.
+- Legacy local drafts are retained during the SQLite schema upgrade. They receive a stable sync UUID and must be assigned an A1 category before they can sync.
+
+Verification includes synthetic API tests for image decoding/normalization, size and per-listing limits, unpublished-image privacy, image retry idempotency, offline draft replay/conflict handling, and SQLite migration upgrade/downgrade. CI also runs the complete Alembic chain against PostgreSQL 16, verifies the append-only audit trigger rejects UPDATE and DELETE, and exercises the S3 adapter with Moto's S3 API emulator. Moto verifies SDK/API contract behavior; it does not replace testing against the eventual production object-storage provider. Production bucket policy, credentials, backups, lifecycle/retention and restore remain unconfigured and require separate verification.
+
+
+## Mobile listing workflows and storage operations (A3)
+
+- The Android app opens on public published-listing discovery with category filtering and listing detail/photo views. Sellers enter their authenticated workspace separately.
+- Buyers can register or sign in from a listing detail and send an authenticated inquiry; the API derives buyer identity/contact from the signed-in account.
+- Sellers can review their own server-side listings, edit draft fields, upload photos to a draft, and submit a draft for moderation. Submitted/published listings are read-only in the seller editor.
+- First-time sellers are routed through profile setup after sign-in; the app checks the authenticated seller profile endpoint before opening the inbox.
+- Offline draft creation, local photo queueing and idempotent synchronization remain available. Sync creates drafts only; moderation remains required before public visibility.
+- Storage operations are documented in docs/storage-operations.md. The backup/restore script encrypts PostgreSQL dumps, copies listing objects to a separate backup bucket, verifies checksums, and refuses non-empty restore targets. It requires owner-managed provider credentials and passphrase custody.
+- The orphan-image scanner is dry-run by default, enforces a minimum seven-day grace period, compares storage keys with database metadata, and requires explicit --apply to delete candidates. It does not delete database records.
+- These safeguards are implemented and unit/syntax tested only. No production backup, restore, provider test, or orphan deletion has been executed. Production bucket policy, versioning/retention, credentials, monitoring, recovery objectives and a witnessed restore drill remain outstanding.
+
+
+## API abuse controls (A4 corrective work)
+
+- Account registration is limited to 20 attempts per source IP per hour.
+- Login is limited to 20 attempts per source IP per minute.
+- Buyer inquiry creation is limited to 20 attempts per source IP per hour.
+- Rate limits use a shared storage backend. Development/test defaults to process-local memory; production startup requires RATE_LIMIT_STORAGE_URI to use Redis (redis:// or rediss://), so multiple API workers share counters and production cannot silently fall back to per-process memory.
+- Configure Redis with private network access, authentication, TLS where supported, monitoring and capacity controls. The API uses the TCP peer address as its rate-limit key; configure the reverse proxy so the application sees the trusted proxy connection and do not rely on client-supplied forwarded headers.
+- Production S3 storage requires S3_USE_SSL=true and rejects custom HTTP endpoints. Configure the production bucket as private and enforce provider-side encryption and least-privilege IAM separately.
+
+- Production ingress, Redis, S3 policy, backup/recovery and cleanup release gates are listed in docs/production-readiness-checklist.md.

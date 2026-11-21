@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: south-omo-market-api-test
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install .
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /ready
+    autoDeployTrigger: "off"
+    envVars:
+      - key: APP_ENV
+        value: testing
+      - key: APP_NAME
+        value: South Omo Market API - testing
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: RATE_LIMIT_STORAGE_URI
+        value: memory://
+      - key: IMAGE_STORAGE_BACKEND
+        value: local
