@@ -872,3 +872,135 @@ def test_category_attribute_validator_rejects_malformed_schema_and_non_finite_va
     with pytest.raises(HTTPException) as malformed:
         _validated_attributes(category, {"amount": 1})
     assert malformed.value.status_code == 500
+
+
+def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
+    from app.admin_cli import set_admin_role
+    from app.models import AuditEvent, Report, SellerProfile, User
+
+    category_id = "70000000-0000-4000-8000-000000000001"
+    db = TestingSession()
+    if db.get(Category, category_id) is None:
+        db.add(Category(id=category_id, slug="report-test-category", name_en="Report test category", is_active=True))
+        db.commit()
+    db.close()
+
+    seller_phone = "+251900000701"
+    assert client.post("/api/v1/auth/register", json={
+        "phone_number": seller_phone, "display_name": "Report Test Seller",
+        "password": "synthetic-report-seller-701",
+    }).status_code == 201
+    seller_token = client.post("/api/v1/auth/login", json={
+        "phone_number": seller_phone, "password": "synthetic-report-seller-701",
+    }).json()["access_token"]
+    seller_headers = {"Authorization": f"Bearer {seller_token}"}
+    profile = client.post("/api/v1/sellers/me", headers=seller_headers, json={
+        "public_name": "Report Test Shop", "location_label": "Koybe",
+    })
+    assert profile.status_code == 201
+    seller_id = profile.json()["id"]
+    listing = client.post("/api/v1/listings", headers=seller_headers, json={
+        "category_id": category_id, "title": "Reported synthetic item",
+        "description": "Test-only report target", "price_minor": 50000,
+        "location_label": "Koybe",
+    })
+    assert listing.status_code == 201
+    listing_id = listing.json()["id"]
+    db = TestingSession()
+    db.get(Listing, listing_id).status = "published"
+    db.commit()
+    db.close()
+
+    reporter_phone = "+251900000702"
+    assert client.post("/api/v1/auth/register", json={
+        "phone_number": reporter_phone, "display_name": "Report Author",
+        "password": "synthetic-report-author-702",
+    }).status_code == 201
+    reporter_token = client.post("/api/v1/auth/login", json={
+        "phone_number": reporter_phone, "password": "synthetic-report-author-702",
+    }).json()["access_token"]
+    reporter_headers = {"Authorization": f"Bearer {reporter_token}"}
+
+    listing_report = client.post("/api/v1/reports", headers=reporter_headers, json={
+        "listing_id": listing_id,
+        "reason": "misleading_information",
+        "description": "The item description materially conflicts with the advertised item.",
+        "evidence": [{"summary": "Photograph and seller message show a different item.", "reference": "conversation reference 01"}],
+    })
+    assert listing_report.status_code == 201
+    listing_report_id = listing_report.json()["id"]
+    own_listing = client.post("/api/v1/reports", headers=seller_headers, json={
+        "listing_id": listing_id, "reason": "other",
+        "description": "This is an attempted self report.",
+    })
+    assert own_listing.status_code == 422
+    my_reports = client.get("/api/v1/reports/my", headers=reporter_headers)
+    assert my_reports.status_code == 200
+    assert my_reports.json()[0]["id"] == listing_report_id
+    assert my_reports.json()[0]["status"] == "pending"
+
+    admin_phone = "+251900000703"
+    assert client.post("/api/v1/auth/register", json={
+        "phone_number": admin_phone, "display_name": "Report Moderator",
+        "password": "synthetic-report-admin-703",
+    }).status_code == 201
+    db = TestingSession()
+    admin = set_admin_role(db, admin_phone, grant=True, operator="synthetic-report-test")
+    db.close()
+    admin_token = client.post("/api/v1/auth/login", json={
+        "phone_number": admin_phone, "password": "synthetic-report-admin-703",
+    }).json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    queue = client.get("/api/v1/admin/reports", headers=admin_headers)
+    assert queue.status_code == 200
+    queued = next(row for row in queue.json() if row["id"] == listing_report_id)
+    assert queued["evidence"][0]["reference"] == "conversation reference 01"
+    assert queued["target"]["type"] == "listing"
+
+    investigated = client.post(f"/api/v1/admin/reports/{listing_report_id}/decision",
+        headers=admin_headers, json={"decision": "investigate", "note": "Evidence review started"})
+    assert investigated.status_code == 200
+    assert investigated.json()["status"] == "in_review"
+    blocked_listing = client.post(f"/api/v1/admin/reports/{listing_report_id}/decision",
+        headers=admin_headers, json={"decision": "block_listing", "note": "Confirmed misleading listing"})
+    assert blocked_listing.status_code == 200
+    assert blocked_listing.json()["status"] == "resolved"
+    assert client.get(f"/api/v1/listings/{listing_id}").status_code == 404
+
+    seller_report = client.post("/api/v1/reports", headers=reporter_headers, json={
+        "seller_id": seller_id, "reason": "impersonation",
+        "description": "Seller profile appears to impersonate another local business.",
+        "evidence": [{"summary": "Name and contact details supplied for moderator review."}],
+    })
+    assert seller_report.status_code == 201
+    seller_report_id = seller_report.json()["id"]
+    blocked_seller = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
+        headers=admin_headers, json={"decision": "block_seller", "note": "Account suspended pending verified review"})
+    assert blocked_seller.status_code == 200
+    assert client.post("/api/v1/auth/login", json={
+        "phone_number": seller_phone, "password": "synthetic-report-seller-701",
+    }).status_code == 401
+
+    reinstated = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
+        headers=admin_headers, json={"decision": "unblock_seller", "note": "Review cleared"})
+    assert reinstated.status_code == 200
+    assert client.post("/api/v1/auth/login", json={
+        "phone_number": seller_phone, "password": "synthetic-report-seller-701",
+    }).status_code == 200
+
+    db = TestingSession()
+    assert db.get(User, admin.id).is_admin is True
+    assert db.get(Report, seller_report_id).status == "resolved"
+    actions = {
+        row.action for row in db.query(AuditEvent).filter(
+            AuditEvent.resource_id.in_([listing_report_id, seller_report_id])
+        ).all()
+    }
+    assert "report.created" in actions
+    assert "report.investigate" in actions
+    assert "report.block_listing" in actions
+    assert "report.block_seller" in actions
+    assert "report.unblock_seller" in actions
+    db.close()
+    assert client.get("/api/v1/admin/reports", headers=reporter_headers).status_code == 403
