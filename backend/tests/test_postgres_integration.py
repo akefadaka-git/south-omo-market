@@ -22,7 +22,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())
         assert {"users", "seller_profiles", "categories", "listings", "inquiries",
-                "audit_events", "listing_images", "locations", "alembic_version"} <= tables
+                "audit_events", "listing_images", "locations", "reports", "alembic_version"} <= tables
         assert "client_sync_id" in {
             column["name"] for column in inspector.get_columns("listings")
         }
@@ -45,7 +45,10 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0007_catalogue_expansion"
+            assert revision == "0008_reports_and_seller_blocks"
+            assert "is_suspended" in {column["name"] for column in inspector.get_columns("users")}
+            report_columns = {column["name"] for column in inspector.get_columns("reports")}
+            assert {"reporter_user_id", "listing_id", "seller_id", "reason", "description", "evidence", "status", "review_note"} <= report_columns
             expanded_categories = connection.execute(text("""
                 SELECT COUNT(*) FROM categories
                 WHERE slug IN (
