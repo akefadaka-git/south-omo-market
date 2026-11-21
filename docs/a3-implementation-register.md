@@ -17,17 +17,17 @@
 | Seller identity and listing lifecycle | Registration/login, seller profile, draft, submit-for-review, moderation | IMPLEMENTED |
 | Seller inquiry workflow | Buyer inquiry and seller inbox/status handling | IMPLEMENTED |
 | Offline seller drafts | SQLite local drafts and retryable synchronization | IMPLEMENTED |
-| Listing media | Validated image decode/re-encode, ownership checks, idempotent client image IDs, provider-neutral storage adapter | IMPLEMENTED |
+| Listing media | Validated image decode/re-encode, ownership checks, idempotent client image IDs, provider-neutral storage adapter; no-cost Ethiopia-hosted object storage and recoverable backups remain unavailable under current constraints | IMPLEMENTED; production persistence BLOCKED |
 | Moderation and audit | Admin-only listing decisions and append-only audit event protection | IMPLEMENTED |
-| Reports and complaints | Authenticated listing/seller reports, bounded evidence summaries/references, reporter status view, admin pending/in-review queue, investigation/resolve/dismiss decisions, listing removal, reversible listing removal/restoration, seller account suspension/reinstatement, permanent pre-suspension token revocation, public hiding of suspended sellers' listings/media and append-only audit events; API, mobile and admin UI slices added | IMPLEMENTED; test execution pending |
+| Reports and complaints | Authenticated listing/seller reports, bounded evidence summaries/references, reporter status view, admin pending/in-review queue, investigation/resolve/dismiss decisions, listing removal, reversible listing removal/restoration, seller account suspension/reinstatement, permanent pre-suspension token revocation, public hiding of suspended sellers' listings/media and append-only audit events; API, mobile and admin UI slices added | IMPLEMENTED; backend and mobile regression suites pass at SHA `ba45faa225775a18434b5aee3f50a36940c90264` |
 | Backend health/readiness | Liveness and database readiness endpoints | IMPLEMENTED |
-| Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers | IMPLEMENTED; execution still requires GitHub Actions to run |
+| Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers; invalid YAML shell message corrected | IMPLEMENTED; exact-head run #769 passed at `ba45faa225775a18434b5aee3f50a36940c90264`; subsequent admin dependency upgrade awaiting CI |
 | Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | ADDED; execution pending |
 | Category hierarchy data model | Self-referencing category parent, original seed plus additive migration `0007_catalogue_expansion` with 24 additional leaves across all seven top-level groups; root/child API and leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
 | Category-specific listing attributes | Expanded typed schemas across livestock, agriculture, food, retail, services, rentals and jobs; API validates required fields, text limits, numeric ranges, finite numbers, booleans, choices, unknown keys and malformed schema; create/update/offline-sync enforcement | IMPLEMENTED; backend regression coverage added, execution pending |
 | Grouped mobile category browser | Removed hard-coded topic chips; renders API root categories and actual leaf subcategories | IMPLEMENTED; Flutter test execution pending |
 | Category-driven seller creation/editor | API-loaded leaf categories; schema-driven text, number, choice and boolean controls; required/range/length/choice validation; field-level feedback; edit PATCH persists attributes | IMPLEMENTED; Flutter test execution pending |
-| Offline category-specific drafts | SQLite v4 `attributes_json` and category-catalogue cache migrations; schema validation runs before local save; category-specific JSON is persisted/restored offline and included in sync payload | IMPLEMENTED; storage/sync regression tests added; execution pending |
+| Offline category-specific drafts | SQLite v4 `attributes_json` and category-catalogue cache migrations; schema validation runs before local save; category-specific JSON is persisted/restored offline and included in sync payload | IMPLEMENTED; backend and Flutter regression tests passed at run #769 |
 
 ## Explicitly unresolved A3 scope
 
