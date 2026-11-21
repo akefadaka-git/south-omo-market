@@ -201,7 +201,16 @@ def list_public_listings(
     sort: str = Query(default="newest", pattern="^(newest|price_asc|price_desc)$"),
     db: Session = Depends(get_db),
 ) -> list[dict[str, object]]:
-    query = select(Listing).where(Listing.status == "published")
+    query = (
+        select(Listing)
+        .join(SellerProfile, Listing.seller_id == SellerProfile.id)
+        .join(User, SellerProfile.user_id == User.id)
+        .where(
+            Listing.status == "published",
+            User.is_active.is_(True),
+            User.is_suspended.is_(False),
+        )
+    )
     if category_id:
         query = query.where(Listing.category_id == category_id)
     if location_id:
@@ -327,8 +336,18 @@ def sync_my_offline_draft(
 
 @router.get("/{listing_id}")
 def get_public_listing(listing_id: str, db: Session = Depends(get_db)) -> dict[str, object]:
-    row = db.get(Listing, listing_id)
-    if row is None or row.status != "published":
+    row = db.scalar(
+        select(Listing)
+        .join(SellerProfile, Listing.seller_id == SellerProfile.id)
+        .join(User, SellerProfile.user_id == User.id)
+        .where(
+            Listing.id == listing_id,
+            Listing.status == "published",
+            User.is_active.is_(True),
+            User.is_suspended.is_(False),
+        )
+    )
+    if row is None:
         raise HTTPException(status_code=404, detail="Listing not found")
     return _listing_summary(row)
 
@@ -485,10 +504,14 @@ def get_public_listing_image(
     row = db.scalar(
         select(ListingImage)
         .join(Listing, ListingImage.listing_id == Listing.id)
+        .join(SellerProfile, Listing.seller_id == SellerProfile.id)
+        .join(User, SellerProfile.user_id == User.id)
         .where(
             ListingImage.id == image_id,
             Listing.id == listing_id,
             Listing.status == "published",
+            User.is_active.is_(True),
+            User.is_suspended.is_(False),
         )
     )
     if row is None:
