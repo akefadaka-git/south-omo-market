@@ -256,6 +256,7 @@ def sync_my_offline_draft(
             "category_id": existing.category_id,
             "title": existing.title,
             "description": existing.description,
+            "attributes": existing.attributes or {},
             "price_minor": existing.price_minor,
             "location_label": existing.location_label,
             "location_id": existing.location_id,
