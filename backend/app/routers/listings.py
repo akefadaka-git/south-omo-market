@@ -325,8 +325,9 @@ def update_my_listing(
         raise HTTPException(status_code=404, detail="Category not found")
     if "category_id" in changes:
         _require_leaf_category(db, category)
-    if "attributes" in changes:
-        changes["attributes"] = _validated_attributes(category, changes["attributes"])
+    if "category_id" in changes or "attributes" in changes:
+        candidate_attributes = changes.get("attributes", listing.attributes or {})
+        changes["attributes"] = _validated_attributes(category, candidate_attributes)
     for field, value in changes.items():
         setattr(listing, field, value)
     db.commit()
