@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     privacy_notice_url: str | None = None
     data_protection_impact_assessment_completed: bool = False
     processing_records_completed: bool = False
+    data_protection_officer_applicability_assessed: bool = False
+    data_protection_officer_required: bool = False
     data_protection_officer_contact: str | None = None
     seller_phone_verification_ready: bool = False
 
@@ -94,8 +96,10 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires a completed DATA_PROTECTION_IMPACT_ASSESSMENT")
             if not self.processing_records_completed:
                 raise ValueError("Production requires completed PROCESSING_RECORDS")
-            if not (self.data_protection_officer_contact or "").strip():
-                raise ValueError("Production requires DATA_PROTECTION_OFFICER_CONTACT")
+            if not self.data_protection_officer_applicability_assessed:
+                raise ValueError("Production requires a documented DPO applicability assessment")
+            if self.data_protection_officer_required and not (self.data_protection_officer_contact or "").strip():
+                raise ValueError("Production requires DATA_PROTECTION_OFFICER_CONTACT when a DPO is required")
             if not self.seller_phone_verification_ready:
                 raise ValueError("Production requires verified real seller phone ownership controls")
         if min(self.max_listing_image_bytes, self.max_listing_images, self.max_listing_image_pixels) < 1:
