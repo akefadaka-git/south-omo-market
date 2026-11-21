@@ -968,6 +968,18 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     assert blocked_listing.json()["status"] == "resolved"
     assert client.get(f"/api/v1/listings/{listing_id}").status_code == 404
 
+    visible_listing = client.post("/api/v1/listings", headers=seller_headers, json={
+        "category_id": category_id, "title": "Seller suspension visibility check",
+        "description": "Synthetic second listing", "price_minor": 70000,
+        "location_label": "Koybe",
+    })
+    assert visible_listing.status_code == 201
+    visible_listing_id = visible_listing.json()["id"]
+    db = TestingSession()
+    db.get(Listing, visible_listing_id).status = "published"
+    db.commit()
+    db.close()
+
     seller_report = client.post("/api/v1/reports", headers=reporter_headers, json={
         "seller_id": seller_id, "reason": "impersonation",
         "description": "Seller profile appears to impersonate another local business.",
@@ -982,6 +994,10 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
         "phone_number": seller_phone, "password": "synthetic-report-seller-701",
     }).status_code == 401
     assert client.get("/api/v1/sellers/me", headers=seller_headers).status_code == 401
+    assert client.get(f"/api/v1/listings/{visible_listing_id}").status_code == 404
+    assert visible_listing_id not in {
+        row["id"] for row in client.get("/api/v1/listings").json()
+    }
 
     reinstated = client.post(f"/api/v1/admin/reports/{seller_report_id}/decision",
         headers=admin_headers, json={"decision": "unblock_seller", "note": "Review cleared"})
@@ -990,6 +1006,10 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
         "phone_number": seller_phone, "password": "synthetic-report-seller-701",
     }).status_code == 200
     assert client.get("/api/v1/sellers/me", headers=seller_headers).status_code == 401
+    assert client.get(f"/api/v1/listings/{visible_listing_id}").status_code == 200
+    assert visible_listing_id in {
+        row["id"] for row in client.get("/api/v1/listings").json()
+    }
 
     db = TestingSession()
     assert db.get(User, admin.id).is_admin is True
