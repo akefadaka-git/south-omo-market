@@ -159,6 +159,27 @@ def upgrade() -> None:
             choice("pay_basis", ["unpaid_training", "daily", "weekly", "monthly", "task"], True),
             text("duration", False, 80),
         ]),
+        category(21, "services-farm-labour-crop-care", "Farm labour and crop-care services", 5, [
+            text("service_area", True, 160),
+            choice("service_type", ["farm_labour", "planting", "weeding", "harvesting", "nursery_seedlings", "crop_care"], True),
+            choice("price_basis", ["hour", "day", "task", "negotiable"], True),
+        ]),
+        category(22, "services-livestock-handling-market", "Livestock handling and market services", 5, [
+            text("service_area", True, 160),
+            choice("service_type", ["animal_husbandry", "livestock_handling", "weighing", "market_preparation", "beekeeping_support"], True),
+            number("experience_years", False, 0, 80),
+        ]),
+        category(23, "rentals-accommodation-stays", "Rooms and accommodation rentals", 6, [
+            choice("property_type", ["room", "guesthouse", "house", "other"], True),
+            choice("rental_period", ["daily", "weekly", "monthly", "yearly"], True),
+            field("utilities_included", "boolean", False),
+        ]),
+        category(24, "jobs-market-retail-work", "Market and retail work", 7, [
+            text("employer", True, 160),
+            text("role", True, 120),
+            choice("pay_basis", ["daily", "weekly", "monthly", "task"], True),
+            choice("schedule", ["full_time", "part_time", "seasonal", "temporary"], True),
+        ]),
     ]
 
     op.bulk_insert(categories, rows)
@@ -177,6 +198,8 @@ def downgrade() -> None:
         "'services-household-personal', 'services-business-digital', "
         "'services-transport-local', 'services-education-community', "
         "'rentals-event-equipment', 'rentals-workspace-shops', "
-        "'jobs-hospitality-services', 'jobs-apprenticeships-short-term'"
+        "'jobs-hospitality-services', 'jobs-apprenticeships-short-term', '
+        'services-farm-labour-crop-care', 'services-livestock-handling-market', '
+        'rentals-accommodation-stays', 'jobs-market-retail-work'"
         ")"
     ))
