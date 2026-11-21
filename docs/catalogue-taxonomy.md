@@ -139,5 +139,5 @@ Enhanced discovery UI:
 
 - Existing broad API categories: livestock, agriculture, food and groceries, shops and products, services, property/equipment/rentals.
 - Existing app capabilities: public listing discovery, category/location filters, listing detail, buyer inquiry, seller onboarding/inbox, listing drafts and moderation workflow.
-- Implemented on the current feature branch: live public-discovery search across listing title and location, clear-search action, Amharic search label, and no-match state; existing category and location filters remain available.
-- Not yet implemented: full subcategory hierarchy, grouped category UI, sorting, category-specific listing forms/attributes, search over descriptions, full Maale translation and human language approval.
+- Implemented on the current feature branch: public discovery filters by category and location; server-side search across listing title, description and location; stable newest-first and price ascending/descending sorting; listing summaries expose description/category metadata; mobile search submits to the API and the UI exposes sort choices; clear-search and no-match states remain available.
+- Still open: a governed full subcategory hierarchy and grouped category browser; category-specific seller forms/validated attributes; pagination controls beyond the API's limit/offset contract; reviewed Maale translations and human language approval. These are not represented as complete by the current broad-category MVP.
