@@ -8,9 +8,12 @@ import '../marketplace_pages.dart';
 import '../features/seller/seller_pages.dart';
 import '../design/market_design_system.dart';
 
+/// A real server URL must be supplied at build time:
+/// flutter build apk --dart-define=API_BASE_URL=https://<host>/api/v1
+/// No emulator or localhost fallback is used in an installable build.
 const defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8000/api/v1',
+  defaultValue: '',
 );
 
 /// Branded launch gate: the splash is the real initial route.
