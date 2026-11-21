@@ -44,6 +44,7 @@ class OfflineSyncService {
             'category_id': draft['category_id'],
             'title': draft['title'],
             'description': draft['description'] ?? '',
+            'attributes': jsonDecode((draft['attributes_json'] as String?) ?? '{}'),
             'price_minor': draft['price_minor'],
             'location_label': draft['location_label'],
           }),
