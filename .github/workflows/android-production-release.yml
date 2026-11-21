@@ -1,0 +1,94 @@
+name: Android production signing (manual, gated)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-app-bundle:
+    name: Build owner-signed Android App Bundle
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.PRODUCTION_RELEASE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production-signing
+    env:
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require a reviewed release tag on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]]
+
+      - name: Require owner-controlled signing material and HTTPS API
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          [[ "$API_BASE_URL" == https://* ]]
+          [[ "$API_BASE_URL" == */api/v1 ]]
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.7"
+
+      - name: Generate Android platform scaffold
+        working-directory: mobile
+        run: flutter create --platforms=android --org=et.southomomarket .
+
+      - name: Resolve Flutter dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Materialize owner keystore outside the checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key_path="$RUNNER_TEMP/south-omo-market-upload.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          echo "ANDROID_KEYSTORE_PATH=$key_path" >> "$GITHUB_ENV"
+
+      - name: Configure generated Gradle release signing
+        working-directory: mobile
+        run: python3 scripts/configure_android_release_signing.py
+
+      - name: Build owner-signed production App Bundle
+        working-directory: mobile
+        run: flutter build appbundle --release --dart-define=API_BASE_URL="$API_BASE_URL"
+
+      - name: Verify signed App Bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="mobile/build/app/outputs/bundle/release/app-release.aab"
+          test -s "$bundle"
+          jarsigner -verify -verbose -certs "$bundle"
+          keytool -list -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: south-omo-market-${{ github.ref_name }}-owner-signed-aab
+          path: mobile/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
