@@ -217,3 +217,80 @@ void main() {
   });
 
 }
+
+
+  testWidgets('seller form renders schema fields, validates them and saves attributes', (tester) async {
+    var patchBody = <String, dynamic>{};
+    var patchCount = 0;
+    final schema = [
+      {'key': 'breed', 'type': 'text', 'required': true, 'max_length': 80},
+      {'key': 'age_months', 'type': 'number', 'required': true, 'min': 0, 'max': 600},
+      {'key': 'sex', 'type': 'choice', 'required': true, 'options': ['female', 'male']},
+      {'key': 'vaccinated', 'type': 'boolean', 'required': false},
+    ];
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/listings/my')) {
+        return http.Response(jsonEncode([
+          {'id': 'listing-schema', 'category_id': 'cat-cattle', 'title': 'Draft cattle',
+           'description': 'Test', 'price_minor': 120000, 'location': 'Koybe',
+           'status': 'draft', 'images': [], 'attributes': {}},
+        ]), 200);
+      }
+      if (request.url.path.endsWith('/categories')) {
+        return http.Response(jsonEncode([
+          {'id': 'cat-root', 'name': 'Livestock', 'parent_id': null,
+           'is_leaf': false, 'attributes_schema': []},
+          {'id': 'cat-cattle', 'name': 'Cattle', 'parent_id': 'cat-root',
+           'is_leaf': true, 'attributes_schema': schema},
+        ]), 200);
+      }
+      if (request.method == 'PATCH' && request.url.path.endsWith('/listings/listing-schema')) {
+        patchCount++;
+        patchBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode({
+          'id': 'listing-schema', 'category_id': 'cat-cattle',
+          'title': patchBody['title'], 'description': patchBody['description'],
+          'price_minor': patchBody['price_minor'], 'location': patchBody['location_label'],
+          'status': 'draft', 'images': [], 'attributes': patchBody['attributes'],
+        }), 200);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(MaterialApp(home: SellerListingsPage(
+      apiBaseUrl: 'https://market.example.test/api/v1',
+      accessToken: 'synthetic-token', client: client,
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Draft cattle'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Breed *'), findsOneWidget);
+    expect(find.text('Age Months *'), findsOneWidget);
+    expect(find.text('Sex *'), findsOneWidget);
+    expect(find.text('Vaccinated'), findsOneWidget);
+    expect(find.text('Livestock'), findsNothing,
+      reason: 'Parent categories must not be selectable for listing drafts');
+
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+    expect(patchCount, 0, reason: 'Required category attributes must block saving');
+    expect(find.textContaining('required'), findsWidgets);
+
+    await tester.enterText(find.byType(TextFormField).first, 'Local zebu');
+    await tester.enterText(find.byType(TextFormField).last, '36');
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('female').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+
+    expect(patchCount, 1);
+    expect(patchBody['attributes'], {
+      'breed': 'Local zebu',
+      'age_months': 36,
+      'sex': 'female',
+    });
+    client.close();
+  });
