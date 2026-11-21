@@ -22,6 +22,7 @@ class ListingCreate(BaseModel):
     category_id: str
     title: str = Field(min_length=3, max_length=180)
     description: str = Field(default="", max_length=5000)
+    attributes: dict[str, object] = Field(default_factory=dict)
     price_minor: int = Field(ge=0)
     location_label: str = Field(min_length=2, max_length=160)
     location_id: str | None = None
@@ -31,6 +32,7 @@ class ListingUpdate(BaseModel):
     category_id: str | None = None
     title: str | None = Field(default=None, min_length=3, max_length=180)
     description: str | None = Field(default=None, max_length=5000)
+    attributes: dict[str, object] | None = None
     price_minor: int | None = Field(default=None, ge=0)
     location_label: str | None = Field(default=None, min_length=2, max_length=160)
     location_id: str | None = None
@@ -39,6 +41,46 @@ class ListingUpdate(BaseModel):
 class ListingSyncCreate(ListingCreate):
     client_sync_id: UUID
 
+
+
+def _validated_attributes(category: Category, values: dict[str, object]) -> dict[str, object]:
+    schema = category.attributes_schema or []
+    definitions = {item.get("key"): item for item in schema if isinstance(item, dict) and isinstance(item.get("key"), str)}
+    unknown = set(values) - set(definitions)
+    if unknown:
+        raise HTTPException(status_code=422, detail={"attributes": f"Unknown fields: {', '.join(sorted(unknown))}"})
+    cleaned: dict[str, object] = {}
+    for key, definition in definitions.items():
+        value = values.get(key)
+        if value is None:
+            if definition.get("required", False):
+                raise HTTPException(status_code=422, detail={"attributes": f"{key} is required"})
+            continue
+        kind = definition.get("type")
+        valid = (
+            (kind == "text" and isinstance(value, str))
+            or (kind == "number" and isinstance(value, (int, float)) and not isinstance(value, bool))
+            or (kind == "boolean" and isinstance(value, bool))
+            or (kind == "choice" and isinstance(value, str) and value in definition.get("options", []))
+        )
+        if not valid:
+            raise HTTPException(status_code=422, detail={"attributes": f"Invalid value for {key}"})
+        if kind == "text":
+            value = value.strip()
+            if not value or len(value) > int(definition.get("max_length", 500)):
+                raise HTTPException(status_code=422, detail={"attributes": f"Invalid text length for {key}"})
+        if kind == "number":
+            if ("min" in definition and value < definition["min"]) or ("max" in definition and value > definition["max"]):
+                raise HTTPException(status_code=422, detail={"attributes": f"Value out of range for {key}"})
+        cleaned[key] = value
+    return cleaned
+
+
+def _require_leaf_category(db: Session, category: Category) -> None:
+    if db.scalar(select(Category.id).where(
+        Category.parent_id == category.id, Category.is_active.is_(True)
+    )) is not None:
+        raise HTTPException(status_code=422, detail="Choose a subcategory before creating a listing")
 
 def _resolve_location_id(db: Session, location_id: str | None, location_label: str) -> str | None:
     if location_id is not None:
@@ -70,6 +112,7 @@ def _listing_summary(row: Listing) -> dict[str, object]:
         "category_id": row.category_id,
         "title": row.title,
         "description": row.description,
+        "attributes": row.attributes or {},
         "price_minor": row.price_minor,
         "currency": row.currency,
         "location": row.location_label,
@@ -173,6 +216,7 @@ def sync_my_offline_draft(
             "category_id": existing.category_id,
             "title": existing.title,
             "description": existing.description,
+            "attributes": existing.attributes or {},
             "price_minor": existing.price_minor,
             "location_label": existing.location_label,
             "location_id": existing.location_id,
@@ -184,11 +228,14 @@ def sync_my_offline_draft(
     category = db.get(Category, payload.category_id)
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
+    _require_leaf_category(db, category)
+    attributes = _validated_attributes(category, payload.attributes)
     listing = Listing(
         seller_id=seller.id,
         category_id=category.id,
         title=payload.title,
         description=payload.description,
+        attributes=attributes,
         price_minor=payload.price_minor,
         location_label=payload.location_label,
         location_id=resolved_location_id,
@@ -240,10 +287,12 @@ def create_my_listing(
     category = db.get(Category, payload.category_id)
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
+    _require_leaf_category(db, category)
+    attributes = _validated_attributes(category, payload.attributes)
     resolved_location_id = _resolve_location_id(db, payload.location_id, payload.location_label)
     listing = Listing(
         seller_id=seller.id, category_id=category.id,
-        title=payload.title, description=payload.description,
+        title=payload.title, description=payload.description, attributes=attributes,
         price_minor=payload.price_minor, location_label=payload.location_label,
         location_id=resolved_location_id, status="draft",
     )
@@ -270,10 +319,13 @@ def update_my_listing(
         location = db.get(Location, changes["location_id"])
         if location is None or not location.is_active:
             raise HTTPException(status_code=404, detail="Location not found")
+    category = db.get(Category, changes.get("category_id", listing.category_id))
+    if category is None or not category.is_active:
+        raise HTTPException(status_code=404, detail="Category not found")
     if "category_id" in changes:
-        category = db.get(Category, changes["category_id"])
-        if category is None or not category.is_active:
-            raise HTTPException(status_code=404, detail="Category not found")
+        _require_leaf_category(db, category)
+    if "attributes" in changes:
+        changes["attributes"] = _validated_attributes(category, changes["attributes"])
     for field, value in changes.items():
         setattr(listing, field, value)
     db.commit()
