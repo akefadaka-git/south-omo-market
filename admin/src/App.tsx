@@ -225,8 +225,9 @@ export default function App() {
                   {report.target?.type === 'listing' && report.target.status === 'rejected' && report.previous_target_status && <button disabled={busy} onClick={() => decideReport(report.id, 'restore_listing')}>Restore listing</button>}
                   {report.target?.type === 'seller' && !report.target.suspended && <button disabled={busy} onClick={() => decideReport(report.id, 'block_seller')}>Suspend seller</button>}
                   {report.target?.type === 'seller' && report.target.suspended && <button disabled={busy} onClick={() => decideReport(report.id, 'unblock_seller')}>Reinstate seller</button>}
-                  <button disabled={busy} onClick={() => decideReport(report.id, 'resolve')}>Resolve</button>
-                  <button disabled={busy} onClick={() => decideReport(report.id, 'dismiss')}>Dismiss</button>
+                  {report.target?.type === 'seller' && report.target.suspended && <p role="status">Reinstate the seller before closing this report.</p>}
+                  <button disabled={busy || (report.target?.type === 'seller' && report.target.suspended)} onClick={() => decideReport(report.id, 'resolve')}>Resolve</button>
+                  <button disabled={busy || (report.target?.type === 'seller' && report.target.suspended) || Boolean(report.previous_target_status)} onClick={() => decideReport(report.id, 'dismiss')}>Dismiss</button>
                 </div>
               </article>
             ))}
