@@ -965,8 +965,17 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     blocked_listing = client.post(f"/api/v1/admin/reports/{listing_report_id}/decision",
         headers=admin_headers, json={"decision": "block_listing", "note": "Confirmed misleading listing"})
     assert blocked_listing.status_code == 200
-    assert blocked_listing.json()["status"] == "resolved"
+    assert blocked_listing.json()["status"] == "in_review"
     assert client.get(f"/api/v1/listings/{listing_id}").status_code == 404
+    restored_listing = client.post(f"/api/v1/admin/reports/{listing_report_id}/decision",
+        headers=admin_headers, json={"decision": "restore_listing", "note": "Listing evidence did not support removal"})
+    assert restored_listing.status_code == 200
+    assert restored_listing.json()["status"] == "in_review"
+    assert client.get(f"/api/v1/listings/{listing_id}").status_code == 200
+    resolved_listing_report = client.post(f"/api/v1/admin/reports/{listing_report_id}/decision",
+        headers=admin_headers, json={"decision": "resolve", "note": "Reviewed and restored"})
+    assert resolved_listing_report.status_code == 200
+    assert resolved_listing_report.json()["status"] == "resolved"
 
     visible_listing = client.post("/api/v1/listings", headers=seller_headers, json={
         "category_id": category_id, "title": "Seller suspension visibility check",
@@ -1025,6 +1034,7 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     assert "report.created" in actions
     assert "report.investigate" in actions
     assert "report.block_listing" in actions
+    assert "report.restore_listing" in actions
     assert "report.block_seller" in actions
     assert "report.unblock_seller" in actions
     db.close()
