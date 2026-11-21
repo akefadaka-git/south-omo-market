@@ -21,11 +21,13 @@ String marketStatusLabel(BuildContext context, String status) {
     'open': 'Open', 'read': 'Read', 'closed': 'Closed', 'draft': 'Draft',
     'pending': 'Pending', 'synced': 'Synced', 'published': 'Published',
     'pending_review': 'Pending review', 'rejected': 'Rejected',
+    'in_review': 'Under review', 'resolved': 'Resolved', 'dismissed': 'Dismissed',
   };
   const amharic = <String, String>{
     'open': 'ክፍት', 'read': 'ተነብቧል', 'closed': 'ተዘግቷል', 'draft': 'ረቂቅ',
     'pending': 'በመጠባበቅ ላይ', 'synced': 'ተመሳስሏል', 'published': 'ታትሟል',
     'pending_review': 'ግምገማ በመጠባበቅ ላይ', 'rejected': 'ውድቅ ተደርጓል',
+    'in_review': 'በግምገማ ላይ', 'resolved': 'ተፈትቷል', 'dismissed': 'ውድቅ ተደርጓል',
   };
   final language = Localizations.localeOf(context).languageCode;
   return (language == 'am' ? amharic : english)[status] ?? status;
