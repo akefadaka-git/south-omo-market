@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 from PIL import Image
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -729,3 +730,145 @@ def test_category_hierarchy_and_category_specific_listing_attributes() -> None:
     invalid = {**payload, "attributes": {"breed": "Local", "age_months": 900, "sex": "unknown"}}
     rejected = client.post("/api/v1/listings", headers=headers, json=invalid)
     assert rejected.status_code == 422
+
+
+
+def test_expanded_category_catalogue_and_listing_attribute_contract() -> None:
+    root_id = "50000000-0000-4000-8000-000000000001"
+    leaf_id = "50000000-0000-4000-8000-000000000002"
+    schema = [
+        {"key": "produce", "type": "text", "required": True, "max_length": 80},
+        {"key": "quantity", "type": "number", "required": True, "min": 1, "max": 10000},
+        {"key": "unit", "type": "choice", "required": True, "options": ["kg", "quintal"]},
+        {"key": "organic", "type": "boolean", "required": False},
+    ]
+    db = TestingSession()
+    if db.get(Category, root_id) is None:
+        db.add(Category(
+            id=root_id, slug="test-expanded-root", name_en="Test expanded catalogue",
+            is_active=True, attributes_schema=[],
+        ))
+    if db.get(Category, leaf_id) is None:
+        db.add(Category(
+            id=leaf_id, slug="test-expanded-produce", name_en="Test produce",
+            parent_id=root_id, is_active=True, attributes_schema=schema,
+        ))
+    db.commit()
+    db.close()
+
+    catalogue = client.get("/api/v1/categories", params={"parent_id": root_id})
+    assert catalogue.status_code == 200
+    assert len(catalogue.json()) == 1
+    assert catalogue.json()[0]["slug"] == "test-expanded-produce"
+    assert catalogue.json()[0]["is_leaf"] is True
+    assert catalogue.json()[0]["attributes_schema"] == schema
+
+    registration = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000601",
+        "display_name": "Catalogue Integration Seller",
+        "password": "synthetic-catalogue-password-601",
+    })
+    assert registration.status_code == 201
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": "+251900000601",
+        "password": "synthetic-catalogue-password-601",
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    profile = client.post("/api/v1/sellers/me", headers=headers, json={
+        "public_name": "Catalogue Test Seller", "location_label": "Koybe",
+    })
+    assert profile.status_code == 201
+
+    base_payload = {
+        "category_id": leaf_id,
+        "title": "Synthetic produce listing",
+        "description": "Catalogue contract test",
+        "price_minor": 25000,
+        "location_label": "Koybe",
+    }
+    missing = client.post("/api/v1/listings", headers=headers, json=base_payload)
+    assert missing.status_code == 422
+    invalid_choice = client.post("/api/v1/listings", headers=headers, json={
+        **base_payload,
+        "attributes": {"produce": "Maize", "quantity": 10, "unit": "truck"},
+    })
+    assert invalid_choice.status_code == 422
+    invalid_range = client.post("/api/v1/listings", headers=headers, json={
+        **base_payload,
+        "attributes": {"produce": "Maize", "quantity": 0, "unit": "kg"},
+    })
+    assert invalid_range.status_code == 422
+    unknown_field = client.post("/api/v1/listings", headers=headers, json={
+        **base_payload,
+        "attributes": {
+            "produce": "Maize", "quantity": 10, "unit": "kg", "unapproved": "value",
+        },
+    })
+    assert unknown_field.status_code == 422
+
+    created = client.post("/api/v1/listings", headers=headers, json={
+        **base_payload,
+        "attributes": {"produce": "Maize", "quantity": 10, "unit": "kg", "organic": False},
+    })
+    assert created.status_code == 201
+    listing_id = created.json()["id"]
+    saved = client.get("/api/v1/listings/my", headers=headers)
+    listing = next(item for item in saved.json() if item["id"] == listing_id)
+    assert listing["attributes"] == {
+        "produce": "Maize", "quantity": 10, "unit": "kg", "organic": False,
+    }
+
+    rejected_update = client.patch(f"/api/v1/listings/{listing_id}", headers=headers, json={
+        "attributes": {"produce": "Maize", "quantity": 10001, "unit": "kg"},
+    })
+    assert rejected_update.status_code == 422
+    accepted_update = client.patch(f"/api/v1/listings/{listing_id}", headers=headers, json={
+        "attributes": {"produce": "Sorghum", "quantity": 25, "unit": "quintal"},
+    })
+    assert accepted_update.status_code == 200
+    assert accepted_update.json()["attributes"]["produce"] == "Sorghum"
+
+    parent_listing = client.post("/api/v1/listings", headers=headers, json={
+        **base_payload, "category_id": root_id,
+        "attributes": {"produce": "Maize", "quantity": 10, "unit": "kg"},
+    })
+    assert parent_listing.status_code == 422
+
+    sync_payload = {
+        **base_payload,
+        "attributes": {"produce": "Teff", "quantity": 5, "unit": "kg"},
+        "client_sync_id": str(uuid4()),
+    }
+    rejected_sync = client.post("/api/v1/listings/sync", headers=headers, json={
+        **sync_payload, "attributes": {"produce": "Teff", "quantity": -1, "unit": "kg"},
+    })
+    assert rejected_sync.status_code == 422
+    accepted_sync = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
+    assert accepted_sync.status_code == 200
+    synced = client.get("/api/v1/listings/my", headers=headers)
+    synced_listing = next(
+        item for item in synced.json() if item["id"] == accepted_sync.json()["id"]
+    )
+    assert synced_listing["attributes"]["produce"] == "Teff"
+
+
+def test_category_attribute_validator_rejects_malformed_schema_and_non_finite_values() -> None:
+    from fastapi import HTTPException
+    from app.routers.listings import _validated_attributes
+
+    category = Category(
+        id="test-schema", slug="test-schema", name_en="Test schema", is_active=True,
+        attributes_schema=[
+            {"key": "amount", "type": "number", "required": True, "min": 0, "max": 10},
+        ],
+    )
+    with pytest.raises(HTTPException) as non_finite:
+        _validated_attributes(category, {"amount": float("nan")})
+    assert non_finite.value.status_code == 422
+
+    category.attributes_schema = [
+        {"key": "amount", "type": "unsupported", "required": True},
+    ]
+    with pytest.raises(HTTPException) as malformed:
+        _validated_attributes(category, {"amount": 1})
+    assert malformed.value.status_code == 500
