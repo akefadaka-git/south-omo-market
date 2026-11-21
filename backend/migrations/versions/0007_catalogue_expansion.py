@@ -167,5 +167,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     bind.execute(sa.text(
-        "DELETE FROM categories WHERE id LIKE '40000000-0000-4000-8000-%'"
+        "DELETE FROM categories WHERE slug IN ("
+        "'livestock-camels-pack-animals', 'livestock-beekeeping-products', "
+        "'agriculture-coffee-cash-crops', 'agriculture-farm-inputs-irrigation', "
+        "'food-honey-spices-ingredients', 'food-grain-flour', "
+        "'retail-building-materials', 'retail-solar-energy-batteries', "
+        "'retail-vehicle-motorcycle-parts', 'services-farm-machinery-irrigation', "
+        "'services-veterinary-animal-health', 'services-construction-trades', "
+        "'services-household-personal', 'services-business-digital', "
+        "'services-transport-local', 'services-education-community', "
+        "'rentals-event-equipment', 'rentals-workspace-shops', "
+        "'jobs-hospitality-services', 'jobs-apprenticeships-short-term'"
+        ")"
     ))
