@@ -23,7 +23,7 @@ This checklist is a deployment handoff aid. Completing the document does not mea
 - Set RATE_LIMIT_STORAGE_URI to a private Redis endpoint (rediss:// where supported). Production startup rejects memory://.
 - Set IMAGE_STORAGE_BACKEND=s3 only after the provider confirms that application objects, replicas, logs and backups are stored in Ethiopia. The Personal Data Protection Proclamation No. 1321/2024, Article 22(1), requires local personal data to be stored on a server/data centre in Ethiopia. Cloudflare R2 has no published Ethiopia location and is not approved for production personal data. Do not route real user media to an offshore free tier without a written legal/Authority determination.
 - Set `DATA_RESIDENCY_COUNTRY=ET`, `DATA_RESIDENCY_CONFIRMED=true` and `DATA_RESIDENCY_EVIDENCE_REF` only after provider-location and backup-location evidence is approved.
-- Set `PRODUCTION_LEGAL_REVIEW_CONFIRMED=true`, publish an HTTPS `PRIVACY_NOTICE_URL`, complete the DPIA and processing records, and set the DPO contact only after the responsible owner/counsel has signed off.
+- Set `PRODUCTION_LEGAL_REVIEW_CONFIRMED=true`, publish an HTTPS `PRIVACY_NOTICE_URL`, complete the DPIA and processing records, and set `DATA_PROTECTION_OFFICER_APPLICABILITY_ASSESSED=true` after counsel determines whether appointment is required. Set `DATA_PROTECTION_OFFICER_REQUIRED=true` and `DATA_PROTECTION_OFFICER_CONTACT` only when appointment is required.
 - Set `SELLER_PHONE_VERIFICATION_READY=true` only after a real live-delivery provider is integrated and verified; do not use a sandbox or simulate OTP.
 - Production startup fails closed if any of these release gates are absent. Do not store secrets in source control, public build variables, or application logs.
 
