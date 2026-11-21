@@ -25,12 +25,14 @@
 | Category hierarchy data model | Self-referencing category parent, seeded South Omo subcategories, root/child query, leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
 | Category-specific listing attributes | JSON attribute schemas, typed required/optional validation, bounds/choice validation, create/update/offline-sync persistence | IMPLEMENTED; test execution pending |
 | Grouped mobile category browser | Removed hard-coded topic chips; renders API root categories and actual leaf subcategories | IMPLEMENTED; Flutter test execution pending |
+| Category-driven seller creation/editor | API-loaded leaf categories; schema-driven text, number, choice and boolean controls; required/range/length/choice validation; field-level feedback; edit PATCH persists attributes | IMPLEMENTED; Flutter test execution pending |
+| Offline category-specific drafts | SQLite v3 `attributes_json` migration; dynamic fields persisted locally and restored; sync payload carries structured attributes to backend | IMPLEMENTED; storage/sync tests added; execution pending |
 
 ## Explicitly unresolved A3 scope
 
 These items must not be marked complete without implementation and evidence:
 
-1. **Catalogue depth:** backend hierarchy, initial subcategory seeds, attribute-validation primitives and API-backed grouped category browser are implemented. Still open: complete the entire catalogue coverage from `docs/catalogue-taxonomy.md`, build category-driven seller attribute forms, and verify category migration/API/widget behavior.
+1. **Catalogue depth:** backend hierarchy, initial subcategory seeds, attribute-validation primitives and API-backed grouped category browser are implemented. Still open: complete the entire catalogue coverage from `docs/catalogue-taxonomy.md`, verify category migration/API/widget behavior and complete any additional category-specific form types exposed by the approved catalogue.
 2. **Pagination boundary tests:** load-more UI, API limit/offset integration and a widget test for fetching the second page are implemented; execute the test and add boundary coverage for duplicate prevention, empty final page, retry behavior and filter changes.
 3. **Maale localization:** human-reviewed translations, terminology register, script/font validation and Maale-speaking approval. Empty strings are not translations and must not be presented as such.
 4. **Seller phone ownership:** OTP verification is not implemented because no SMS provider has been selected or integrated. Do not simulate verification or imply a phone number is verified.
@@ -42,7 +44,7 @@ These items must not be marked complete without implementation and evidence:
 
 ## Verification gates
 
-- Run backend lint and tests, including the new category hierarchy/attribute regression, PostgreSQL migration integration, S3 adapter tests, admin build/tests, Flutter analysis/tests and Android build on the exact current head.
+- Run backend lint and tests, including the category hierarchy/attribute regression, PostgreSQL migration integration, S3 adapter tests, admin build/tests, Flutter analysis/tests (including schema-driven seller forms and offline attribute sync) and Android build on the exact current head.
 - Verify Alembic migration chain against an isolated Neon testing branch; do not run migrations against a production database.
 - Verify live `/health`, `/ready`, and public discovery endpoints only after a real HTTPS staging URL exists.
 - Install and exercise the resulting APK on a physical Android device. CI build success alone is not device acceptance.
