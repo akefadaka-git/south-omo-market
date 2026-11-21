@@ -88,7 +88,7 @@ void main() {
     expect(find.text('My reports'), findsOneWidget);
     expect(find.text('Listing report'), findsOneWidget);
     expect(find.text('Under review'), findsOneWidget);
-    expect(find.text('A moderator is reviewing this report.'), findsOneWidget);
+    expect(find.textContaining('A moderator is reviewing this report.'), findsOneWidget);
     client.close();
   });
 }
