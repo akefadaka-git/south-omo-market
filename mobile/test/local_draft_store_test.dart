@@ -22,12 +22,15 @@ void main() {
       'category_id': '00000000-0000-4000-8000-000000000001',
       'title': 'Synthetic offline cattle',
       'description': '',
+      'attributes_json': '{"breed":"Local","age_months":24,"sex":"female"}',
       'price_minor': 123450,
       'location_label': 'Koybe',
       'sync_state': 'pending',
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     });
-    expect((await store.pendingDrafts()).single['id'], id);
+    final savedDraft = (await store.pendingDrafts()).single;
+    expect(savedDraft['id'], id);
+    expect(savedDraft['attributes_json'], '{"breed":"Local","age_months":24,"sex":"female"}');
 
     await store.addImage(
       id: 'f09a5c0d-54e2-43d6-a11f-123456789abc',
