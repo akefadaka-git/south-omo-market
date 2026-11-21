@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     max_listing_image_bytes: int = 5 * 1024 * 1024
     max_listing_images: int = 5
     max_listing_image_pixels: int = 20_000_000
+    data_residency_country: str = "unknown"
+    data_residency_confirmed: bool = False
+    data_residency_evidence_ref: str | None = None
+    production_legal_review_confirmed: bool = False
+    privacy_notice_url: str | None = None
+    data_protection_impact_assessment_completed: bool = False
+    processing_records_completed: bool = False
+    data_protection_officer_contact: str | None = None
+    seller_phone_verification_ready: bool = False
 
     def sqlalchemy_database_url(self, *, for_migrations: bool = False) -> str:
         """Return a SQLAlchemy URL using psycopg 3 and a direct URL for migrations."""
@@ -68,6 +77,27 @@ class Settings(BaseSettings):
                 raise ValueError("Production S3_ENDPOINT_URL must use HTTPS")
         if self.app_env == "production" and not self.rate_limit_storage_uri.startswith(("redis://", "rediss://")):
             raise ValueError("Production requires a shared Redis RATE_LIMIT_STORAGE_URI")
+        if self.app_env == "production":
+            if (
+                self.data_residency_country.upper() != "ET"
+                or not self.data_residency_confirmed
+                or not (self.data_residency_evidence_ref or "").strip()
+            ):
+                raise ValueError(
+                    "Production requires verified Ethiopia data residency and DATA_RESIDENCY_EVIDENCE_REF"
+                )
+            if not self.production_legal_review_confirmed:
+                raise ValueError("Production requires PRODUCTION_LEGAL_REVIEW_CONFIRMED=true")
+            if not self.privacy_notice_url or urlparse(self.privacy_notice_url).scheme != "https":
+                raise ValueError("Production requires an HTTPS PRIVACY_NOTICE_URL")
+            if not self.data_protection_impact_assessment_completed:
+                raise ValueError("Production requires a completed DATA_PROTECTION_IMPACT_ASSESSMENT")
+            if not self.processing_records_completed:
+                raise ValueError("Production requires completed PROCESSING_RECORDS")
+            if not (self.data_protection_officer_contact or "").strip():
+                raise ValueError("Production requires DATA_PROTECTION_OFFICER_CONTACT")
+            if not self.seller_phone_verification_ready:
+                raise ValueError("Production requires verified real seller phone ownership controls")
         if min(self.max_listing_image_bytes, self.max_listing_images, self.max_listing_image_pixels) < 1:
             raise ValueError("Image upload limits must be positive")
         return self
