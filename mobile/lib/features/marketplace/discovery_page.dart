@@ -40,6 +40,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   bool _loading = true;
   bool _loadingMore = false;
   bool _hasMore = false;
+  int _nextOffset = 0;
 
   String? _loadedLocale;
 
@@ -61,7 +62,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _loadingMore = false; _error = null; });
+    setState(() { _loading = true; _loadingMore = false; _error = null; _nextOffset = 0; });
     if (widget.apiBaseUrl.trim().isEmpty) {
       if (mounted) {
         setState(() {
@@ -109,6 +110,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
         _categories = categories;
         _locations = locations;
         _listings = listings;
+        _nextOffset = listings.length;
         _hasMore = listings.length == 50;
       });
     } catch (error) {
@@ -125,7 +127,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       final uri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
         queryParameters: {
           'limit': '50',
-          'offset': _listings.length.toString(),
+          'offset': _nextOffset.toString(),
           'sort': _sort,
           if (_searchQuery.trim().isNotEmpty) 'q': _searchQuery.trim(),
           if (_categoryId != null) 'category_id': _categoryId!,
@@ -139,7 +141,18 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       final rows = (jsonDecode(response.body) as List<dynamic>).cast<Map<String, dynamic>>();
       if (!mounted) return;
       setState(() {
-        _listings = [..._listings, ...rows];
+        final seenIds = _listings
+            .map((listing) => listing['id'])
+            .whereType<String>()
+            .toSet();
+        final uniqueRows = rows.where((row) {
+          final id = row['id'];
+          return id is! String || id.isEmpty || seenIds.add(id);
+        }).toList();
+        _listings = [..._listings, ...uniqueRows];
+        // Advance by the number returned, not the number appended: an item
+        // may appear on adjacent pages if the catalogue changes mid-scroll.
+        _nextOffset += rows.length;
         _hasMore = rows.length == 50;
       });
     } catch (error) {
