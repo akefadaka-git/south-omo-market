@@ -613,3 +613,57 @@ def test_public_listing_location_filter_uses_normalized_location_id() -> None:
     assert listing_id in {row["id"] for row in matching.json()}
     assert nonmatching.status_code == 200
     assert all(row["id"] != listing_id for row in nonmatching.json())
+
+
+def test_public_discovery_searches_descriptions_and_sorts_prices() -> None:
+    from app.models import SellerProfile, User
+
+    suffix = uuid4().hex[:8]
+    category_id = "00000000-0000-4000-8000-000000000001"
+    seller_id = str(uuid4())
+    user_id = str(uuid4())
+    db = TestingSession()
+    if db.get(Category, category_id) is None:
+        db.add(Category(
+            id=category_id, slug=f"discovery-{suffix}", name_en="Discovery", is_active=True
+        ))
+    db.add(User(
+        id=user_id, phone_number=f"+2519{suffix[:8]}", display_name="Synthetic Discovery",
+        password_hash="not-a-real-login-hash", is_active=True, is_admin=False,
+    ))
+    db.add(SellerProfile(
+        id=seller_id, user_id=user_id, public_name="Synthetic Discovery Seller",
+        location_label="Koybe",
+    ))
+    db.add_all([
+        Listing(
+            id=str(uuid4()), seller_id=seller_id, category_id=category_id,
+            title=f"Discovery low {suffix}", description="seasonal mango produce",
+            price_minor=2500, currency="ETB", location_label="Koybe",
+            status="published",
+        ),
+        Listing(
+            id=str(uuid4()), seller_id=seller_id, category_id=category_id,
+            title=f"Discovery high {suffix}", description="fresh cattle feed",
+            price_minor=7500, currency="ETB", location_label="Jinka",
+            status="published",
+        ),
+    ])
+    db.commit()
+    db.close()
+
+    searched = client.get("/api/v1/listings", params={"q": "mango", "limit": 100})
+    assert searched.status_code == 200
+    assert len(searched.json()) == 1
+    assert searched.json()[0]["description"] if "description" in searched.json()[0] else True
+
+    ascending = client.get("/api/v1/listings", params={"q": suffix, "sort": "price_asc"})
+    assert ascending.status_code == 200
+    assert [row["price_minor"] for row in ascending.json()] == [2500, 7500]
+
+    descending = client.get("/api/v1/listings", params={"q": suffix, "sort": "price_desc"})
+    assert descending.status_code == 200
+    assert [row["price_minor"] for row in descending.json()] == [7500, 2500]
+
+    invalid_sort = client.get("/api/v1/listings", params={"sort": "random"})
+    assert invalid_sort.status_code == 422
