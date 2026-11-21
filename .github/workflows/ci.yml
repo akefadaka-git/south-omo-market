@@ -91,6 +91,7 @@ jobs:
 
   android-build:
     name: Android release APK (requires configured API URL)
+    if: ${{ vars.PRODUCTION_RELEASE_ENABLED == 'true' && vars.API_BASE_URL != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
