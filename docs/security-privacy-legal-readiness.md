@@ -19,7 +19,7 @@ Official sources:
 
 - Replaced Vite 5.4.11, `@vitejs/plugin-react` 4.3.4 and Vitest 2.1.5 with Vite 8.3.8, plugin-react 6.3.0 and Vitest 5.1.1.
 - Exact-head CI run #797 passed the admin build and test suite; `npm install` and `npm audit --audit-level=high` both reported **0 vulnerabilities**.
-- Generated `admin/package-lock.json` is available as a workflow artifact for review: https://github.com/akefadaka-git/south-omo-market/actions/runs/44921104886/artifacts/14712799104. It is not yet committed to the repository, so a committed lockfile remains a reproducibility follow-up.
+- Generated `admin/package-lock.json` is available as a workflow artifact for review: https://github.com/akefadaka-git/south-omo-market/actions/runs/44921104886/artifacts/14714055802. It is not yet committed to the repository, so a committed lockfile remains a reproducibility follow-up.
 
 ## Ethiopia-hosted provider evaluation — 2026-11-21
 

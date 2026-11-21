@@ -63,7 +63,7 @@ These items must not be marked complete without implementation and evidence:
 - Verify Alembic migration chain against an isolated Neon testing branch; do not run migrations against a production database.
 - Verify live `/health`, `/ready`, and public discovery endpoints only after a real HTTPS staging URL exists.
 - Install and exercise the resulting APK on a physical Android device. CI build success alone is not device acceptance.
-- Exact verification URL and SHA are recorded above. The generated admin dependency lockfile is retained as a CI artifact for review: https://github.com/akefadaka-git/south-omo-market/actions/runs/44921104886/artifacts/14712799104. It is not yet committed as `admin/package-lock.json`.
+- Exact verification URL and SHA are recorded above. The generated admin dependency lockfile is retained as a CI artifact for review: https://github.com/akefadaka-git/south-omo-market/actions/runs/44921104886/artifacts/14714055802. It is not yet committed as `admin/package-lock.json`.
 
 ## Governance
 
