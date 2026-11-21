@@ -52,11 +52,10 @@ void main() {
   testWidgets('Maale strings fall back to English until reviewed translations exist', (tester) async {
     late String submitLabel;
     late String statusLabel;
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(Localizations(
       locale: const Locale('mdy'),
-      supportedLocales: const [Locale('mdy'), Locale('en')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: Builder(builder: (context) {
+      delegates: const [],
+      child: Builder(builder: (context) {
         submitLabel = marketString(context, en: 'Submit report', am: 'ሪፖርት ላክ', mdy: '');
         statusLabel = marketStatusLabel(context, 'in_review');
         return const SizedBox.shrink();
