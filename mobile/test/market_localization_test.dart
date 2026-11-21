@@ -54,7 +54,7 @@ void main() {
     late String statusLabel;
     await tester.pumpWidget(Localizations(
       locale: const Locale('mdy'),
-      delegates: const [],
+      delegates: const [DefaultWidgetsLocalizations.delegate],
       child: Builder(builder: (context) {
         submitLabel = marketString(context, en: 'Submit report', am: 'ሪፖርት ላክ', mdy: '');
         statusLabel = marketStatusLabel(context, 'in_review');
