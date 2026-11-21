@@ -8,6 +8,7 @@ from app.models import User
 
 bearer = HTTPBearer(auto_error=False)
 
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
@@ -25,7 +26,7 @@ def get_current_user(
         user = db.get(User, payload.get("sub"))
     except (jwt.InvalidTokenError, TypeError):
         user = None
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.is_suspended:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
     return user
 
