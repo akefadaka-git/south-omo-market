@@ -5,7 +5,7 @@
 ## Architecture
 
 - API: Render Free Web Service, Python 3.12, Singapore region.
-- Database: the Neon Free project South Omo Market, using the isolated south-omo-testing branch in aws-ap-southeast-1.
+- Database: Neon Free project South Omo Market, isolated south-omo-testing branch in aws-ap-southeast-1.
 - PostgreSQL database: neondb.
 - ORM and migrations: existing SQLAlchemy 2 + Alembic migrations in backend/migrations/versions.
 - Mobile API prefix: /api/v1.
@@ -15,22 +15,24 @@ The Render region is Singapore to keep the test API close to the Neon project re
 ## Create the Render service
 
 1. Open the Render Dashboard and choose New → Blueprint.
-2. Connect the repository akefadaka-git/south-omo-market and select branch feat/a3-platform-foundation.
+2. Connect akefadaka-git/south-omo-market and select branch feat/a3-platform-foundation.
 3. Select the repository root render.yaml.
-4. Confirm that the service plan is Free and the region is Singapore.
+4. Confirm the service plan is Free and the region is Singapore.
 5. During initial Blueprint creation, Render prompts for the two variables marked sync: false. Supply the connection strings for the Neon south-omo-testing branch as described below.
 6. Review the Blueprint and create the service only when ready. autoDeployTrigger is off, so subsequent Git pushes will not automatically deploy it.
 
 Do not create a Render PostgreSQL database. The database is already hosted on Neon.
 
-## Neon connection strings
+## Neon database roles and connection strings
 
-In the Neon Console, open project South Omo Market, select branch south-omo-testing, database neondb, and its database owner role. Use the Connect dialog:
+The Neon test branch has a dedicated application role named south_omo_app. It is scoped to the public schema with read/write data privileges and intentionally cannot create or alter database objects.
 
-- DATABASE_URL: turn connection pooling on. The hostname must contain -pooler. This is for normal API requests.
-- DATABASE_URL_UNPOOLED: turn connection pooling off. The hostname must not contain -pooler. This is for Alembic migrations.
+In the Neon Console, open project South Omo Market, select branch south-omo-testing and database neondb. Use the Connect dialog to prepare these two secrets:
 
-Keep sslmode=require (or stricter) in both URLs. Enter the values directly into Render's secret environment-variable prompts. Never commit either connection string, paste it into source code, or share it in chat.
+- DATABASE_URL: choose the south_omo_app role and turn connection pooling on. The hostname must contain -pooler. This is the normal API runtime connection.
+- DATABASE_URL_UNPOOLED: choose the database owner role and turn connection pooling off. The hostname must not contain -pooler. Alembic requires database-owner privileges to create and alter tables, indexes, constraints and triggers; use this direct URL only for migrations at service startup.
+
+Keep sslmode=require (or stricter) in both URLs. Enter the values directly into Render's secret environment-variable prompts. Never commit either connection string, paste it into source code, or share it in chat. If the application-role password is not available, reset it in the Neon Console and store the newly displayed password securely before creating the pooled URL.
 
 The application normalizes Neon's standard postgresql:// URLs to SQLAlchemy's installed psycopg 3 driver. Alembic explicitly prefers DATABASE_URL_UNPOOLED and rejects a pooled hostname.
 
@@ -40,7 +42,7 @@ Render generates JWT_SECRET automatically through the Blueprint. Do not replace 
 
 Render Free web services do not support preDeployCommand. For this test service, the start command therefore runs:
 
-1. alembic upgrade head using the direct Neon URL.
+1. alembic upgrade head using the direct owner URL.
 2. uvicorn app.main:app on Render's injected PORT.
 
 If the migration fails, the API process does not start. Alembic's version table makes repeated startup checks idempotent after the database reaches the current migration head. This service must point only to south-omo-testing, never the production branch.
