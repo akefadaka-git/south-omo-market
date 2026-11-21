@@ -12,7 +12,7 @@ from app.core.database import Base, get_db
 from app.core.rate_limit import limiter
 from app.main import app
 from app import models  # noqa: F401
-from app.models import Category, Listing, Location
+from app.models import Category, Listing, Location, SellerProfile, User
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
@@ -588,28 +588,57 @@ def test_localized_category_and_hierarchical_location_catalog() -> None:
 
 
 def test_public_listing_location_filter_uses_normalized_location_id() -> None:
+    suffix = uuid4().hex
+    user_id = str(uuid4())
+    seller_id = str(uuid4())
+    category_id = str(uuid4())
+    location_id = str(uuid4())
+    listing_id = str(uuid4())
     db = TestingSession()
-    category_id = "00000000-0000-4000-8000-000000000006"
-    location_id = "10000000-0000-4000-8000-000000000003"
-    listing_id = "20000000-0000-4000-8000-000000000001"
-    if db.get(Listing, listing_id) is None:
-        db.add(Listing(
-            id=listing_id,
-            seller_id="synthetic-seller-id",
-            category_id=category_id,
-            title="Synthetic Koybe listing",
-            description="Test-only listing",
-            price_minor=10000,
-            currency="ETB",
-            location_label="Koybe",
-            location_id=location_id,
-            status="published",
-        ))
-        db.commit()
+    db.add(User(
+        id=user_id,
+        phone_number=f"+2519{suffix[:8]}",
+        display_name="Synthetic location-filter seller",
+        password_hash="not-a-real-login-hash",
+        is_active=True,
+        is_admin=False,
+        is_suspended=False,
+    ))
+    db.add(SellerProfile(
+        id=seller_id,
+        user_id=user_id,
+        public_name="Synthetic location-filter seller",
+        location_label="Koybe",
+    ))
+    db.add(Category(
+        id=category_id,
+        slug=f"location-filter-{suffix}",
+        name_en="Location filter test",
+        is_active=True,
+    ))
+    db.add(Location(
+        id=location_id,
+        code=f"location-filter-{suffix}",
+        level="kebele",
+        name_en="Koybe",
+    ))
+    db.add(Listing(
+        id=listing_id,
+        seller_id=seller_id,
+        category_id=category_id,
+        title="Synthetic Koybe listing",
+        description="Test-only listing",
+        price_minor=10000,
+        currency="ETB",
+        location_label="Koybe",
+        location_id=location_id,
+        status="published",
+    ))
+    db.commit()
     db.close()
 
     matching = client.get(f"/api/v1/listings?location_id={location_id}")
-    nonmatching = client.get("/api/v1/listings?location_id=10000000-0000-4000-8000-000000000004")
+    nonmatching = client.get(f"/api/v1/listings?location_id={uuid4()}")
     assert matching.status_code == 200
     assert listing_id in {row["id"] for row in matching.json()}
     assert nonmatching.status_code == 200
