@@ -58,9 +58,9 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
             raise HTTPException(status_code=500, detail="Category attribute schema is invalid")
         key = item.get("key")
         kind = item.get("type")
-        if not isinstance(key, str) or not key.strip() or key in definitions:
+        if not isinstance(key, str) or not key.strip() or key != key.strip() or key in definitions:
             raise HTTPException(status_code=500, detail="Category attribute schema has an invalid or duplicate key")
-        if kind not in supported_types or not isinstance(item.get("required", False), bool):
+        if not isinstance(kind, str) or kind not in supported_types or not isinstance(item.get("required", False), bool):
             raise HTTPException(status_code=500, detail=f"Category attribute schema is invalid for {key}")
         if kind == "text":
             maximum = item.get("max_length", 500)
