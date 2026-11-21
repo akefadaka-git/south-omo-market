@@ -1,6 +1,6 @@
 # Free Render + Neon testing deployment
 
-**Status:** non-production testing only. This guide does not authorize production deployment, paid upgrades, or commercial activation.
+**Status:** non-production testing only. This guide does not authorize production deployment, paid upgrades, or commercial activation. The Render and Neon test resources are in Singapore and must contain synthetic, non-personal data only. Under Article 22(1) of Ethiopia's Personal Data Protection Proclamation No. 1321/2024, locally collected personal data must be stored in Ethiopia; do not load real user or marketplace personal data into this environment.
 
 ## Architecture
 
@@ -65,6 +65,6 @@ The default 10.0.2.2 URL is only for Android emulators. A physical phone must us
 - Render Free services sleep after inactivity and may take time to wake. The first request after sleep can be slow.
 - Render Free filesystems are ephemeral. This Blueprint deliberately uses local image storage only for disposable tests; uploaded images may be lost on restart or redeploy.
 - Rate limiting uses in-memory storage in this testing environment. It is not shared across instances.
-- Use synthetic accounts, listings, contact details, and images only. Do not load real customer or shareholder information.
+- Use synthetic accounts, listings, contact details, and images only. Do not load real customer or marketplace personal information. This is a hard data-residency restriction, not merely a testing preference.
 - Do not treat this setup as production-ready. Persistent object storage, shared rate limiting, backup/restore, security/privacy review, SMS ownership verification, and operational monitoring remain separate gates.
 - Do not upgrade any service or enable paid resources. No Render service is created until the Blueprint is explicitly applied in the Render Dashboard.
