@@ -13,6 +13,10 @@ def upgrade() -> None:
         "users",
         sa.Column("is_suspended", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
+    op.add_column(
+        "users",
+        sa.Column("auth_version", sa.Integer(), nullable=False, server_default="0"),
+    )
     op.create_table(
         "reports",
         sa.Column("id", sa.String(36), primary_key=True),
@@ -47,4 +51,5 @@ def downgrade() -> None:
     with op.batch_alter_table("reports") as batch:
         batch.drop_constraint("ck_reports_exactly_one_target", type_="check")
     op.drop_table("reports")
+    op.drop_column("users", "auth_version")
     op.drop_column("users", "is_suspended")
