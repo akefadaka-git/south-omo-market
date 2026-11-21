@@ -32,3 +32,28 @@ String marketStatusLabel(BuildContext context, String status) {
   final language = Localizations.localeOf(context).languageCode;
   return (language == 'am' ? amharic : english)[status] ?? status;
 }
+
+String marketReportReasonLabel(BuildContext context, String reason) {
+  const english = <String, String>{
+    'fraud': 'Fraud or scam',
+    'misleading_information': 'Misleading information',
+    'prohibited_item': 'Prohibited item',
+    'harassment': 'Harassment',
+    'unsafe_activity': 'Unsafe activity',
+    'impersonation': 'Impersonation',
+    'spam': 'Spam',
+    'other': 'Other',
+  };
+  const amharic = <String, String>{
+    'fraud': 'ማጭበርበር',
+    'misleading_information': 'አሳሳች መረጃ',
+    'prohibited_item': 'የተከለከለ ዕቃ',
+    'harassment': 'ማዋከብ',
+    'unsafe_activity': 'አደገኛ ተግባር',
+    'impersonation': 'ሌላን መምሰል',
+    'spam': 'አላስፈላጊ መልዕክት',
+    'other': 'ሌላ',
+  };
+  final language = Localizations.localeOf(context).languageCode;
+  return (language == 'am' ? amharic : english)[reason] ?? reason;
+}
