@@ -58,14 +58,16 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
                     'services-household-personal', 'services-business-digital',
                     'services-transport-local', 'services-education-community',
                     'rentals-event-equipment', 'rentals-workspace-shops',
-                    'jobs-hospitality-services', 'jobs-apprenticeships-short-term'
+                    'jobs-hospitality-services', 'jobs-apprenticeships-short-term',
+                    'services-farm-labour-crop-care', 'services-livestock-handling-market',
+                    'rentals-accommodation-stays', 'jobs-market-retail-work'
                 )
             """)).scalar_one()
-            assert expanded_categories == 20
+            assert expanded_categories == 24
             assert connection.execute(text("""
                 SELECT COUNT(*) FROM categories
                 WHERE json_array_length(attributes_schema) > 0
-            """)).scalar_one() >= 39
+            """)).scalar_one() >= 43
             trigger = connection.execute(text("""
                 SELECT COUNT(*) FROM pg_trigger
                 WHERE tgname = 'audit_events_append_only' AND NOT tgisinternal
