@@ -20,7 +20,7 @@ class ModerationDecision(BaseModel):
 
 class ReportDecision(BaseModel):
     decision: Literal[
-        "investigate", "resolve", "dismiss", "block_listing", "block_seller", "unblock_seller"
+        "investigate", "resolve", "dismiss", "block_listing", "restore_listing", "block_seller", "unblock_seller"
     ]
     note: str | None = Field(default=None, max_length=2000)
 
@@ -123,7 +123,7 @@ def report_queue(
             "id": report.id, "reporter_user_id": report.reporter_user_id,
             "reason": report.reason, "description": report.description,
             "evidence": report.evidence, "status": report.status,
-            "review_note": report.review_note, "target": target,
+            "review_note": report.review_note, "previous_target_status": report.previous_target_status, "target": target,
             "created_at": report.created_at, "reviewed_at": report.reviewed_at,
         })
     return result
@@ -160,16 +160,39 @@ def decide_report(
         listing = db.scalar(select(Listing).where(Listing.id == report.listing_id).with_for_update())
         if listing is None:
             raise HTTPException(status_code=404, detail="Reported listing no longer exists")
+        if listing.status not in {"published", "pending_review"}:
+            raise HTTPException(status_code=409, detail="Only visible or pending listings can be blocked from a report")
         previous = listing.status
+        report.previous_target_status = previous
         listing.status = "rejected"
         listing.moderation_note = payload.note or "Removed following an abuse report"
         listing.reviewed_by = admin.id
         listing.reviewed_at = now
-        report.status = "resolved"
+        report.status = "in_review"
         metadata.update({"target_type": "listing", "target_id": listing.id, "previous_status": previous, "new_status": "rejected"})
         db.add(AuditEvent(
             actor_id=admin.id, action="listing.blocked_from_report", resource_type="listing",
-            resource_id=listing.id, event_metadata={"report_id": report.id, "note": payload.note},
+            resource_id=listing.id, event_metadata={"report_id": report.id, "previous_status": previous, "note": payload.note},
+        ))
+    elif action == "restore_listing":
+        if not report.listing_id or not report.previous_target_status:
+            raise HTTPException(status_code=422, detail="This report has no reversible listing block")
+        listing = db.scalar(select(Listing).where(Listing.id == report.listing_id).with_for_update())
+        if listing is None:
+            raise HTTPException(status_code=404, detail="Reported listing no longer exists")
+        if listing.status != "rejected":
+            raise HTTPException(status_code=409, detail="Reported listing is not currently blocked")
+        previous = report.previous_target_status
+        listing.status = previous
+        listing.moderation_note = payload.note or "Restored after report review"
+        listing.reviewed_by = admin.id
+        listing.reviewed_at = now
+        report.previous_target_status = None
+        report.status = "in_review"
+        metadata.update({"target_type": "listing", "target_id": listing.id, "previous_status": "rejected", "new_status": previous})
+        db.add(AuditEvent(
+            actor_id=admin.id, action="listing.restored_from_report", resource_type="listing",
+            resource_id=listing.id, event_metadata={"report_id": report.id, "restored_status": previous, "note": payload.note},
         ))
     elif action in {"block_seller", "unblock_seller"}:
         seller_id = report.seller_id
