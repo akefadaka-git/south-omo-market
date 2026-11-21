@@ -29,4 +29,4 @@ def login(request: Request, response: Response, payload: LoginRequest, db: Sessi
     user = db.scalar(select(User).where(User.phone_number == payload.phone_number))
     if user is None or not user.is_active or user.is_suspended or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    return TokenResponse(access_token=issue_access_token(user.id))
+    return TokenResponse(access_token=issue_access_token(user.id, user.auth_version))
