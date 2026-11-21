@@ -22,12 +22,14 @@
 | Backend health/readiness | Liveness and database readiness endpoints | IMPLEMENTED |
 | Manual CI entry point | `workflow_dispatch` added alongside push and pull-request triggers | IMPLEMENTED; execution still requires GitHub Actions to run |
 | Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | ADDED; execution pending |
+| Category hierarchy data model | Self-referencing category parent, root/child query, leaf-category enforcement | IMPLEMENTED; migration/test execution pending |
+| Category-specific listing attributes | JSON attribute schema, typed required/optional validation, bounds/choice validation, create/update/offline-sync persistence | IMPLEMENTED; test execution pending |
 
 ## Explicitly unresolved A3 scope
 
 These items must not be marked complete without implementation and evidence:
 
-1. **Catalogue depth:** governed subcategory hierarchy, grouped browsing and category-specific seller forms/attributes.
+1. **Catalogue depth:** backend hierarchy and attribute-validation primitives are now implemented. Still open: seed the complete approved catalogue from `docs/catalogue-taxonomy.md`, build the grouped mobile category browser and category-driven seller forms, and verify category migration/API/widget behavior.
 2. **Pagination boundary tests:** load-more UI, API limit/offset integration and a widget test for fetching the second page are implemented; execute the test and add boundary coverage for duplicate prevention, empty final page, retry behavior and filter changes.
 3. **Maale localization:** human-reviewed translations, terminology register, script/font validation and Maale-speaking approval. Empty strings are not translations and must not be presented as such.
 4. **Seller phone ownership:** OTP verification is not implemented because no SMS provider has been selected or integrated. Do not simulate verification or imply a phone number is verified.
@@ -39,7 +41,7 @@ These items must not be marked complete without implementation and evidence:
 
 ## Verification gates
 
-- Run backend lint and tests, PostgreSQL migration integration, S3 adapter tests, admin build/tests, Flutter analysis/tests and Android build on the exact current head.
+- Run backend lint and tests, including the new category hierarchy/attribute regression, PostgreSQL migration integration, S3 adapter tests, admin build/tests, Flutter analysis/tests and Android build on the exact current head.
 - Verify Alembic migration chain against an isolated Neon testing branch; do not run migrations against a production database.
 - Verify live `/health`, `/ready`, and public discovery endpoints only after a real HTTPS staging URL exists.
 - Install and exercise the resulting APK on a physical Android device. CI build success alone is not device acceptance.
