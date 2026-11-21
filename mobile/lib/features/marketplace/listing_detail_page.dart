@@ -252,7 +252,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
         DropdownButtonFormField<String>(
           value: _reason,
           decoration: InputDecoration(labelText: marketString(context, en: 'Reason', am: 'ምክንያት', mdy: '')),
-          items: const [
+          items: [
             DropdownMenuItem(value: 'fraud', child: Text(marketString(context, en: 'Fraud or scam', am: 'ማጭበርበር', mdy: ''))),
             DropdownMenuItem(value: 'misleading_information', child: Text(marketString(context, en: 'Misleading information', am: 'አሳሳች መረጃ', mdy: ''))),
             DropdownMenuItem(value: 'prohibited_item', child: Text(marketString(context, en: 'Prohibited item', am: 'የተከለከለ ዕቃ', mdy: ''))),
@@ -270,7 +270,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
           minLines: 3,
           maxLines: 5,
           maxLength: 4000,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: marketString(context, en: 'Describe the concern', am: 'ችግሩን ይግለጹ', mdy: ''),
             helperText: marketString(context, en: 'Include relevant facts. Do not include passwords or sensitive personal data.', am: 'ተዛማጅ እውነታዎችን ያካትቱ። የይለፍ ቃል ወይም ሚስጥራዊ የግል መረጃ አያስገቡ።', mdy: ''),
             border: OutlineInputBorder(),
