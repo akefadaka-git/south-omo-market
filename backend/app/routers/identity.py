@@ -9,6 +9,7 @@ from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/auth")
 
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/hour")
 def register(request: Request, response: Response, payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
@@ -21,10 +22,11 @@ def register(request: Request, response: Response, payload: RegisterRequest, db:
     db.refresh(user)
     return user
 
+
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("20/minute")
 def login(request: Request, response: Response, payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     user = db.scalar(select(User).where(User.phone_number == payload.phone_number))
-    if user is None or not user.is_active or not verify_password(payload.password, user.password_hash):
+    if user is None or not user.is_active or user.is_suspended or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return TokenResponse(access_token=issue_access_token(user.id))
