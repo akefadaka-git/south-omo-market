@@ -294,8 +294,6 @@ void main() {
     client.close();
   });
 
-}
-
 
   testWidgets('seller form renders schema fields, validates them and saves attributes', (tester) async {
     var patchBody = <String, dynamic>{};
