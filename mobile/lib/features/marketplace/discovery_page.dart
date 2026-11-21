@@ -122,7 +122,6 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
     if (_loading || _loadingMore || !_hasMore || widget.apiBaseUrl.trim().isEmpty) return;
     setState(() => _loadingMore = true);
     try {
-      final language = Localizations.localeOf(context).languageCode;
       final uri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
         queryParameters: {
           'limit': '50',
