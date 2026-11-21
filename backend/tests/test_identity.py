@@ -673,7 +673,7 @@ def test_category_hierarchy_and_category_specific_listing_attributes() -> None:
     from app.models import SellerProfile, User
 
     root_id = "00000000-0000-4000-8000-000000000001"
-    child_id = "30000000-0000-4000-8000-000000000001"
+    child_id = "40000000-0000-4000-8000-000000000001"
     db = TestingSession()
     root = db.get(Category, root_id)
     if root is None:
