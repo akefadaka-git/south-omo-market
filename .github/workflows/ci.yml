@@ -62,6 +62,15 @@ jobs:
         with:
           node-version: "22.14.0"
       - run: npm install
+      - name: Audit admin dependencies
+        run: npm audit --audit-level=high
+      - name: Upload generated npm lockfile for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-package-lock
+          path: admin/package-lock.json
+          if-no-files-found: warn
       - run: npm run build
       - run: npm test
 
