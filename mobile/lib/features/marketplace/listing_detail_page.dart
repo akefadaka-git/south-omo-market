@@ -292,7 +292,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
         TextFormField(
           controller: _evidenceReference,
           maxLength: 500,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: marketString(context, en: 'Evidence reference (optional)', am: 'የማስረጃ መለያ (አማራጭ)', mdy: ''),
             helperText: marketString(context, en: 'Do not enter a private URL or sensitive personal information.', am: 'የግል ዩአርኤል ወይም ሚስጥራዊ የግል መረጃ አያስገቡ።', mdy: ''),
           ),
