@@ -7,6 +7,22 @@ import 'package:http/testing.dart';
 import 'package:south_omo_market/main.dart';
 
 void main() {
+  testWidgets('unconfigured API shows an actionable connection state without networking', (tester) async {
+    var requests = 0;
+    final client = MockClient((request) async {
+      requests++;
+      return http.Response('unexpected request', 500);
+    });
+
+    await tester.pumpWidget(SouthOmoMarketApp(client: client));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('retry-marketplace-load')), findsOneWidget);
+    expect(requests, 0);
+    client.close();
+  });
+
   testWidgets('seller can sign in and manage an inquiry', (tester) async {
     var inquiryStatus = 'open';
     final client = MockClient((request) async {
