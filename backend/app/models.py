@@ -51,6 +51,8 @@ class Category(Base):
     name_en: Mapped[str] = mapped_column(String(120))
     name_am: Mapped[str | None] = mapped_column(String(120), nullable=True)
     name_mdy: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
+    attributes_schema: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
