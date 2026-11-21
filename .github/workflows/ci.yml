@@ -103,7 +103,8 @@ jobs:
         run: flutter build apk --release --split-per-abi --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }}
       - name: Skip installable APK until an API URL is configured
         if: ${{ vars.API_BASE_URL == '' }}
-        run: echo "APK artifact skipped: configure the non-secret repository variable API_BASE_URL after a live backend is available."
+        run: |
+          echo "APK artifact skipped: configure the non-secret repository variable API_BASE_URL after a live backend is available."
       - name: Sign test APK with an ephemeral CI key
         if: ${{ vars.API_BASE_URL != '' }}
         working-directory: mobile
