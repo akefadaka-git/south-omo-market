@@ -35,6 +35,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
   String _searchQuery = '';
   String? _categoryId;
   String? _locationId;
+  String _sort = 'newest';
   String? _error;
   bool _loading = true;
 
@@ -78,6 +79,8 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
       final listingUri = Uri.parse('${widget.apiBaseUrl}/listings').replace(
         queryParameters: {
           'limit': '50',
+          'sort': _sort,
+          if (_searchQuery.trim().isNotEmpty) 'q': _searchQuery.trim(),
           if (_categoryId != null) 'category_id': _categoryId!,
           if (_locationId != null) 'location_id': _locationId!,
         },
@@ -189,6 +192,7 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
           key: const Key('marketplace-search'),
           controller: _searchController,
           onChanged: (value) => setState(() => _searchQuery = value),
+          onSubmitted: (_) => _load(),
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             labelText: marketString(context, en: 'Search products and services', am: 'ምርቶችን እና አገልግሎቶችን ፈልግ', mdy: ''),
@@ -240,6 +244,25 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
             )),
           ],
           onChanged: (value) { setState(() => _locationId = value); _load(); },
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        child: DropdownButtonFormField<String>(
+          value: _sort,
+          decoration: InputDecoration(
+            labelText: marketString(context, en: 'Sort listings', am: 'ዝርዝሮችን ደርድር', mdy: ''),
+          ),
+          items: [
+            DropdownMenuItem(value: 'newest', child: Text(marketString(context, en: 'Newest first', am: 'አዳዲሶች ቀድመው', mdy: ''))),
+            DropdownMenuItem(value: 'price_asc', child: Text(marketString(context, en: 'Price: low to high', am: 'ዋጋ፦ ከዝቅተኛ ወደ ከፍተኛ', mdy: ''))),
+            DropdownMenuItem(value: 'price_desc', child: Text(marketString(context, en: 'Price: high to low', am: 'ዋጋ፦ ከከፍተኛ ወደ ዝቅተኛ', mdy: ''))),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _sort = value);
+            _load();
+          },
         ),
       ),
       Expanded(child: _loading
