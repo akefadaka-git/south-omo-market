@@ -21,7 +21,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "listing_images" in inspector.get_table_names()
         assert "locations" in inspector.get_table_names()
         assert "reports" in inspector.get_table_names()
-        assert "is_suspended" in {column["name"] for column in inspector.get_columns("users")}
+        assert {"is_suspended", "auth_version"} <= {column["name"] for column in inspector.get_columns("users")}
         assert {"listing_id", "seller_id", "reason", "description", "evidence", "status", "reviewed_by"} <= {
             column["name"] for column in inspector.get_columns("reports")
         }
@@ -45,7 +45,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "locations" not in inspector.get_table_names()
         assert "location_id" not in {column["name"] for column in inspector.get_columns("listings")}
         assert "reports" not in inspector.get_table_names()
-        assert "is_suspended" not in {column["name"] for column in inspector.get_columns("users")}
+        assert {"is_suspended", "auth_version"}.isdisjoint({column["name"] for column in inspector.get_columns("users")})
 
         command.downgrade(config, "0003_audit_inquiries")
         inspector = inspect(engine)
