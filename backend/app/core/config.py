@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     app_name: str = "South Omo Market API"
     api_v1_prefix: str = "/api/v1"
     database_url: str = "postgresql+psycopg://localhost/south_omo_market"
+    database_url_unpooled: SecretStr | None = None
     jwt_secret: SecretStr = SecretStr("development-only-change-this-secret")
     jwt_issuer: str = "south-omo-market"
     access_token_minutes: int = 30
@@ -28,6 +30,21 @@ class Settings(BaseSettings):
     max_listing_image_bytes: int = 5 * 1024 * 1024
     max_listing_images: int = 5
     max_listing_image_pixels: int = 20_000_000
+
+    def sqlalchemy_database_url(self, *, for_migrations: bool = False) -> str:
+        """Return a SQLAlchemy URL using psycopg 3 and a direct URL for migrations."""
+        raw_url = self.database_url
+        if for_migrations and self.database_url_unpooled is not None:
+            raw_url = self.database_url_unpooled.get_secret_value()
+
+        url = make_url(raw_url)
+        if for_migrations and url.host and "-pooler." in url.host:
+            raise ValueError(
+                "Alembic migrations require a direct DATABASE_URL_UNPOOLED URL without -pooler"
+            )
+        if url.drivername in {"postgres", "postgresql"}:
+            url = url.set(drivername="postgresql+psycopg")
+        return url.render_as_string(hide_password=False)
 
     @model_validator(mode="after")
     def validate_runtime_settings(self):
