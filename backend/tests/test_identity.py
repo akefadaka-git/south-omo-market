@@ -655,7 +655,7 @@ def test_public_discovery_searches_descriptions_and_sorts_prices() -> None:
     searched = client.get("/api/v1/listings", params={"q": "mango", "limit": 100})
     assert searched.status_code == 200
     assert len(searched.json()) == 1
-    assert searched.json()[0]["description"] if "description" in searched.json()[0] else True
+    assert "mango" in searched.json()[0]["description"]
 
     ascending = client.get("/api/v1/listings", params={"q": suffix, "sort": "price_asc"})
     assert ascending.status_code == 200
