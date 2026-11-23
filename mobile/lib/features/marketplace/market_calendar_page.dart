@@ -33,6 +33,8 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
   bool _offline = false;
   String? _updatedAt;
   String? _error;
+  String _search = '';
+  int? _weekdayFilter;
 
   @override
   void initState() {
@@ -133,14 +135,40 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
                         mdy: '')),
                       actions: const [SizedBox.shrink()],
                     ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: Column(children: [
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: marketString(context, en: 'Search markets', am: 'ገበያ ይፈልጉ', mdy: ''),
+                          prefixIcon: const Icon(Icons.search),
+                        ),
+                        onChanged: (value) => setState(() => _search = value.trim().toLowerCase()),
+                      ),
+                      DropdownButtonFormField<int?>(
+                        value: _weekdayFilter,
+                        decoration: InputDecoration(
+                          labelText: marketString(context, en: 'Filter by weekday', am: 'በሳምንቱ ቀን ያጣሩ', mdy: ''),
+                        ),
+                        items: [
+                          DropdownMenuItem<int?>(value: null, child: Text(marketString(context, en: 'All days', am: 'ሁሉም ቀናት', mdy: ''))),
+                          ...List.generate(7, (index) => DropdownMenuItem<int?>(value: index, child: Text(marketWeekdayLabel(context, index)))),
+                        ],
+                        onChanged: (value) => setState(() => _weekdayFilter = value),
+                      ),
+                    ]),
+                  ),
                   Expanded(child: ListView.builder(
                     padding: const EdgeInsets.all(12),
-                    itemCount: days.length,
+                    itemCount: days.where((day) => _weekdayFilter == null || day['weekday'] == _weekdayFilter).length,
                     itemBuilder: (context, index) {
-                      final day = days[index];
+                      final filteredDays = days.where((day) => _weekdayFilter == null || day['weekday'] == _weekdayFilter).toList();
+                      final day = filteredDays[index];
                       final weekday = day['weekday'] as int;
                       final markets = (day['markets'] as List<dynamic>? ?? const [])
-                          .cast<Map<String, dynamic>>();
+                          .cast<Map<String, dynamic>>()
+                          .where((market) => (market['name'] as String? ?? '').toLowerCase().contains(_search))
+                          .toList();
                       return Card(
                         child: Padding(
                           padding: const EdgeInsets.all(14),
