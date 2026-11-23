@@ -231,7 +231,7 @@ def update_market(
             resource_id=market.id, event_metadata={"before": before, "after": changes},
         ))
     db.commit()
-    return _serialize_market(_get_market(db, market.id), db)
+    return _serialize_market(_get_market(db, market.id), db, admin_view=True)
 
 
 @admin_router.put("/{market_id}/schedule")
@@ -257,7 +257,7 @@ def update_market_schedule(
         resource_id=market.id, event_metadata={"before": before, "after": sorted(selected), "effective_from": payload.effective_from.isoformat() if payload.effective_from else None, "effective_until": payload.effective_until.isoformat() if payload.effective_until else None},
     ))
     db.commit()
-    return _serialize_market(_get_market(db, market.id), db)
+    return _serialize_market(_get_market(db, market.id), db, admin_view=True)
 
 
 @admin_router.patch("/{market_id}/status")
@@ -275,7 +275,7 @@ def update_market_status(
         resource_id=market.id, event_metadata={"before": previous, "after": market.is_active},
     ))
     db.commit()
-    return _serialize_market(_get_market(db, market.id), db)
+    return _serialize_market(_get_market(db, market.id), db, admin_view=True)
 
  
 @admin_router.get("/audit")
