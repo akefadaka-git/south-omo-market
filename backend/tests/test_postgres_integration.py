@@ -23,6 +23,8 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         tables = set(inspector.get_table_names())
         assert {"users", "seller_profiles", "categories", "listings", "inquiries",
                 "audit_events", "listing_images", "locations", "reports", "markets", "market_schedule_days", "alembic_version"} <= tables
+        assert "description" in {column["name"] for column in inspector.get_columns("markets")}
+        assert {"effective_from", "effective_until"} <= {column["name"] for column in inspector.get_columns("market_schedule_days")}
         assert "client_sync_id" in {
             column["name"] for column in inspector.get_columns("listings")
         }
@@ -45,9 +47,19 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0009_market_directory_schedule"
+            assert revision == "0010_market_schedule_effectivity"
             assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
             assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
+            expected_markets = {
+                "Beneta": 3, "Asheker": 1, "Boshkoro": 5, "Bala": 1,
+                "Koybe": 0, "Bobo": 2, "Ajo": 5, "Gento": 5,
+            }
+            actual_markets = dict(connection.execute(text("""
+                SELECT m.name, d.weekday FROM markets m
+                JOIN market_schedule_days d ON d.market_id = m.id
+                WHERE m.is_active = TRUE AND d.is_active = TRUE
+            """)).all())
+            assert actual_markets == expected_markets
             assert {"is_suspended", "auth_version"} <= {column["name"] for column in inspector.get_columns("users")}
             report_columns = {column["name"] for column in inspector.get_columns("reports")}
             assert {"reporter_user_id", "listing_id", "seller_id", "reason", "description", "evidence", "status", "review_note", "previous_target_status"} <= report_columns
