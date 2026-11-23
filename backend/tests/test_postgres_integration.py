@@ -22,7 +22,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())
         assert {"users", "seller_profiles", "categories", "listings", "inquiries",
-                "audit_events", "listing_images", "locations", "reports", "alembic_version"} <= tables
+                "audit_events", "listing_images", "locations", "reports", "markets", "market_schedule_days", "alembic_version"} <= tables
         assert "client_sync_id" in {
             column["name"] for column in inspector.get_columns("listings")
         }
@@ -45,7 +45,9 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0008_reports_and_seller_blocks"
+            assert revision == "0009_market_directory_schedule"
+            assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
+            assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
             assert {"is_suspended", "auth_version"} <= {column["name"] for column in inspector.get_columns("users")}
             report_columns = {column["name"] for column in inspector.get_columns("reports")}
             assert {"reporter_user_id", "listing_id", "seller_id", "reason", "description", "evidence", "status", "review_note", "previous_target_status"} <= report_columns
@@ -106,7 +108,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
 
         command.downgrade(config, "base")
         remaining = set(inspect(engine).get_table_names())
-        assert not {"users", "listings", "inquiries", "audit_events", "listing_images", "locations"} & remaining
+        assert not {"users", "listings", "inquiries", "audit_events", "listing_images", "locations", "markets", "market_schedule_days"} & remaining
         with engine.connect() as connection:
             functions = connection.execute(text("""
                 SELECT COUNT(*) FROM pg_proc WHERE proname = 'reject_audit_event_mutation'

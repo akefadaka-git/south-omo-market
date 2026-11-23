@@ -214,7 +214,7 @@ def update_market_schedule(
     for weekday, schedule_day in existing.items():
         schedule_day.is_active = weekday in selected
     for weekday in selected - set(existing):
-        db.add(MarketScheduleDay(market_id=market.id, weekday=weekday, is_active=True))
+        market.schedule_days.append(MarketScheduleDay(weekday=weekday, is_active=True))
     db.add(AuditEvent(
         actor_id=admin.id, action="market.schedule.updated", resource_type="market",
         resource_id=market.id, event_metadata={"before": before, "after": sorted(selected)},
