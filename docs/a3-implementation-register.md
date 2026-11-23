@@ -2,16 +2,12 @@
 
 ## Latest exact-head automated verification
 
-- Exact feature head: `53607b25c695b7e4bc27f9a4a028ee012e53fbed`
-- GitHub Actions run #797: PASS — https://github.com/akefadaka-git/south-omo-market/actions/runs/44921104886
-- Backend: Ruff passed; 36 tests passed.
-- PostgreSQL migration/audit-trigger integration: 1 passed.
-- S3-compatible storage integration: 3 passed.
-- Admin: Vite 8.3.8 build passed; Vitest 1 test passed; `npm audit --audit-level=high` reported 0 vulnerabilities.
-- Mobile: Flutter analysis passed; 31 tests passed.
-- Android release job was SKIPPED because production release is not enabled and no production API URL is configured. Physical-device acceptance remains NOT RUN.
-- Overall A4 remains NOT VERIFIED because legal, data-residency, recovery, phone verification, localization sign-off and physical-device acceptance are still open.
-
+- Current corrective feature head: `03382c8ab61510f71bf50fc9aa3b0d726e7795f4`.
+- Exact-head CI for this corrective head: NOT YET RECORDED; workflow run/status lookup returned no run/status at report update time.
+- Last verified predecessor: `7e4494c207d7e3cab452ba60dfb060d8baa6d64a`, GitHub Actions run #805 — PASS: https://github.com/akefadaka-git/south-omo-market/actions/runs/45154338290.
+- Predecessor run #805: backend Ruff passed; 37 backend tests passed; PostgreSQL migration/audit integration 1 passed; S3 integration 3 passed; admin build passed with 3 Vitest tests and zero reported dependency vulnerabilities; Flutter analysis passed with 34 tests. Android release APK remained SKIPPED because no production API URL was configured.
+- The corrective commits after that predecessor are not covered by run #805. Do not treat predecessor evidence as verification of the current head.
+- Overall A4 remains PARTIAL / NOT VERIFIED pending exact-head CI and the operational acceptance gates listed below.
 
 **Branch:** `feat/a3-platform-foundation`  
 **Baseline:** frozen A2 `main` at `1e0dc04d66b0b80b29ce81b28084c1d8211ce708`  
@@ -74,12 +70,12 @@ These items must not be marked complete without implementation and evidence:
 - No paid plan, card, top-up or billing activation is part of this work.
 
 
-## Maale Market Directory and Weekly Schedule — A3 in progress
+## Maale Market Directory and Weekly Schedule — A3 corrective pass implemented; exact-head verification pending
 
 - Target branch: `feat/a3-platform-foundation`; do not create a new branch or modify `main`.
-- Adds a dedicated `markets` and `market_schedule_days` schema, with nullable verified geographic association and an eight-record owner-provided initial seed.
-- Public weekly schedule and weekday APIs; administrator-only market CRUD, schedule editing and activation/deactivation; existing `require_admin` and append-only audit events are reused.
-- React administration includes directory management, optional existing-location selection, day editor and weekly overview.
-- Flutter includes a seven-day market calendar and a separate read-only SQLite schedule cache with offline fallback and last-updated display.
-- Synthetic backend, migration, admin helper and Flutter widget/cache tests added. Automated execution is pending the feature-branch CI run.
+- Adds a dedicated `markets` and `market_schedule_days` schema, with nullable verified geographic association, optional market descriptions, optional effective date ranges, and an eight-record owner-provided initial seed.
+- Public weekly schedule, weekday, bounded name/code/description search and weekday-filter APIs; administrator-only market CRUD, schedule editing, effective-date editing, activation/deactivation and bounded audit-history retrieval; existing `require_admin` and append-only audit events are reused.
+- React administration includes directory management, search and weekday filters, descriptions, optional existing-location selection, effective-date-aware day editor, audit-history view and weekly overview.
+- Flutter includes a searchable seven-day market calendar with weekday filtering and a separate read-only SQLite schedule cache with offline fallback and last-updated display.
+- Synthetic backend tests cover market search, date-window behavior, invalid date ranges and administrator audit retrieval. Migration tests assert all eight exact market/day mappings, new schema columns and a downgrade/re-upgrade seed cycle. Admin build/tests and Flutter analysis/tests still require exact-current-head CI.
 - No production migration, merge, deployment, commercial activation or paid service is authorized.
