@@ -17,8 +17,8 @@ Weekday integers use ISO-style Monday=0 through Sunday=6. Empty days mean no mar
 
 ## Data model
 
-- `markets`: stable ID, unique code, official supplied name, optional FK to `locations`, active status and timestamps.
-- `market_schedule_days`: one row per market/weekday, active flag and creation timestamp.
+- `markets`: stable ID, unique code, official supplied name, optional description, optional FK to `locations`, active status and timestamps.
+- `market_schedule_days`: one row per market/weekday, active flag, optional inclusive `effective_from` / `effective_until` dates and creation timestamp. Public schedule views apply the effective range using the `Africa/Addis_Ababa` calendar date.
 - Unique `(market_id, weekday)` and a weekday range check enforce the recurring schedule.
 - Existing geographic `locations` remain authoritative. Initial market location associations are NULL; no association is inferred from a market name.
 - Administrative changes are written to the existing `audit_events` table. Schedule changes record before/after weekday sets.
@@ -26,7 +26,7 @@ Weekday integers use ISO-style Monday=0 through Sunday=6. Empty days mean no mar
 ## API
 
 Public:
-- `GET /api/v1/markets`
+- `GET /api/v1/markets` supports bounded `q` search across market name, code and description, plus an optional `weekday` filter.
 - `GET /api/v1/markets/schedule`
 - `GET /api/v1/markets/by-day/{weekday}`
 - `GET /api/v1/markets/{market_id}`
@@ -37,13 +37,14 @@ Administrator-only:
 - `PATCH /api/v1/admin/markets/{market_id}`
 - `PUT /api/v1/admin/markets/{market_id}/schedule`
 - `PATCH /api/v1/admin/markets/{market_id}/status`
+- `GET /api/v1/admin/markets/audit?limit=100` (bounded, administrator-only market audit history)
 
 The schedule response includes all seven days and timezone `Africa/Addis_Ababa`. Market names are preserved as supplied. No Amharic or Maale translations are asserted for market names.
 
 ## Clients
 
-- React administration supports market creation and editing, optional selection of an existing geographic location, recurring day editing, active/inactive status and weekly preview.
-- Flutter exposes a weekly calendar from marketplace discovery.
+- React administration supports market creation and editing (including description), name/code/description search, weekday filtering, optional selection of an existing geographic location, recurring day editing with optional effective dates, active/inactive status, weekly preview and recent audit history.
+- Flutter exposes a weekly calendar from marketplace discovery with market-name search and weekday filtering.
 - Mobile schedule cache is read-only and stored separately from listing drafts. Cached data is shown offline with its last-updated timestamp.
 - Weekday labels have English and Amharic UI strings. Maale market-name translations remain unset until human review.
 
