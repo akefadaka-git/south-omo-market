@@ -1184,6 +1184,18 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
     )
     assert reenabled.status_code == 200
 
+    edited = client.patch(
+        f"/api/v1/admin/markets/{created['Beneta']}",
+        headers=admin_headers, json={"name": "Beneta Market", "location_id": None},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["name"] == "Beneta Market"
+    blank_name = client.patch(
+        f"/api/v1/admin/markets/{created['Beneta']}",
+        headers=admin_headers, json={"name": "   "},
+    )
+    assert blank_name.status_code == 422
+
     db = TestingSession()
     assert db.query(Market).count() == 8
     assert db.query(MarketScheduleDay).count() == 8
@@ -1192,5 +1204,5 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
             AuditEvent.resource_type == "market"
         ).all()
     }
-    assert {"market.created", "market.schedule.updated", "market.status.updated"} <= actions
+    assert {"market.created", "market.updated", "market.schedule.updated", "market.status.updated"} <= actions
     db.close()

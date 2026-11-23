@@ -11,6 +11,13 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:south_omo_market/data/local_draft_store.dart';
 import 'package:south_omo_market/features/marketplace/market_calendar_page.dart';
 
+Future<void> pumpAfterIo(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+  });
+  await tester.pump();
+}
+
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -45,11 +52,15 @@ void main() {
         store: store,
       ),
     ));
-    await tester.pumpAndSettle();
+    await pumpAfterIo(tester);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
     for (final name in ['Beneta', 'Asheker', 'Boshkoro', 'Bala', 'Koybe', 'Bobo', 'Ajo', 'Gento']) {
+      await tester.scrollUntilVisible(find.text(name), 250, scrollable: find.byType(Scrollable).last);
       expect(find.text(name), findsOneWidget);
     }
+    await tester.scrollUntilVisible(find.text('Saturday'), 250, scrollable: find.byType(Scrollable).last);
     expect(find.text('Saturday'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Friday'), -250, scrollable: find.byType(Scrollable).last);
     expect(find.text('Friday'), findsOneWidget);
     await store.close();
     await directory.delete(recursive: true);
@@ -73,9 +84,11 @@ void main() {
         store: store,
       ),
     ));
-    await tester.pumpAndSettle();
+    await pumpAfterIo(tester);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.textContaining('Offline'), findsOneWidget);
     expect(find.text('Koybe'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Gento'), 250, scrollable: find.byType(Scrollable).last);
     expect(find.text('Gento'), findsOneWidget);
     await store.close();
     await directory.delete(recursive: true);

@@ -22,6 +22,8 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [name, setName] = useState('');
   const [locationId, setLocationId] = useState('');
   const [draftDays, setDraftDays] = useState<Record<string, number[]>>({});
+  const [draftNames, setDraftNames] = useState<Record<string, string>>({});
+  const [draftLocations, setDraftLocations] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -36,6 +38,8 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
     const rows = await marketResponse.json() as Market[];
     setMarkets(rows);
     setDraftDays(Object.fromEntries(rows.map((market) => [market.id, market.schedule_days])));
+    setDraftNames(Object.fromEntries(rows.map((market) => [market.id, market.name])));
+    setDraftLocations(Object.fromEntries(rows.map((market) => [market.id, market.location_id ?? ''])));
     setLocations(await locationResponse.json() as Location[]);
   }, [accessToken]);
 
@@ -61,6 +65,28 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
       setMessage('Market created. Configure its weekly days below.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Market creation failed.');
+    } finally { setBusy(false); }
+  }
+
+  async function saveDetails(market: Market) {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/admin/markets/${market.id}`, {
+        method: 'PATCH',
+        headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: draftNames[market.id] ?? market.name,
+          location_id: draftLocations[market.id] || null,
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(body.detail ?? 'Could not update market details.');
+      }
+      await load();
+      setMessage(`Saved market details for ${market.name}.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Market details update failed.');
     } finally { setBusy(false); }
   }
 
@@ -125,6 +151,25 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
             <div><h3>{market.name}</h3><small>{market.code} · {market.is_active ? 'Active' : 'Inactive'}</small></div>
             <button type="button" disabled={busy} onClick={() => toggleStatus(market)}>{market.is_active ? 'Deactivate' : 'Activate'}</button>
+          </div>
+          <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', margin: '14px 0' }}>
+            <label>Market name
+              <input
+                maxLength={120}
+                value={draftNames[market.id] ?? market.name}
+                onChange={(event) => setDraftNames((current) => ({ ...current, [market.id]: event.target.value }))}
+              />
+            </label>
+            <label>Verified location
+              <select
+                value={draftLocations[market.id] ?? market.location_id ?? ''}
+                onChange={(event) => setDraftLocations((current) => ({ ...current, [market.id]: event.target.value }))}
+              >
+                <option value="">Not assigned</option>
+                {locations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.level}</option>)}
+              </select>
+            </label>
+            <button type="button" disabled={busy} onClick={() => saveDetails(market)}>Save market details</button>
           </div>
           <fieldset>
             <legend>Weekly market days</legend>

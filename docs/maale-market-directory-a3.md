@@ -42,7 +42,7 @@ The schedule response includes all seven days and timezone `Africa/Addis_Ababa`.
 
 ## Clients
 
-- React administration supports market creation, optional selection of an existing geographic location, recurring day editing, active/inactive status and weekly preview.
+- React administration supports market creation and editing, optional selection of an existing geographic location, recurring day editing, active/inactive status and weekly preview.
 - Flutter exposes a weekly calendar from marketplace discovery.
 - Mobile schedule cache is read-only and stored separately from listing drafts. Cached data is shown offline with its last-updated timestamp.
 - Weekday labels have English and Amharic UI strings. Maale market-name translations remain unset until human review.
