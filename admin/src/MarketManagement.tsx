@@ -28,6 +28,9 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [locationId, setLocationId] = useState('');
   const [draftDays, setDraftDays] = useState<Record<string, number[]>>({});
   const [draftNames, setDraftNames] = useState<Record<string, string>>({});
+  const [draftDescriptions, setDraftDescriptions] = useState<Record<string, string>>({});
+  const [effectiveFrom, setEffectiveFrom] = useState<Record<string, string>>({});
+  const [effectiveUntil, setEffectiveUntil] = useState<Record<string, string>>({});
   const [draftLocations, setDraftLocations] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -46,6 +49,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
     setMarkets(rows);
     setDraftDays(Object.fromEntries(rows.map((market) => [market.id, market.schedule_days])));
     setDraftNames(Object.fromEntries(rows.map((market) => [market.id, market.name])));
+    setDraftDescriptions(Object.fromEntries(rows.map((market) => [market.id, market.description ?? ''])));
     setDraftLocations(Object.fromEntries(rows.map((market) => [market.id, market.location_id ?? ''])));
     setLocations(await locationResponse.json() as Location[]);
     setAuditEvents(await auditResponse.json() as typeof auditEvents);
@@ -84,7 +88,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
         headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: draftNames[market.id] ?? market.name,
-          description: market.description ?? null,
+          description: (draftDescriptions[market.id] ?? market.description ?? '').trim() || null,
           location_id: draftLocations[market.id] || null,
         }),
       });
@@ -105,7 +109,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
       const response = await fetch(`${API_BASE}/admin/markets/${market.id}/schedule`, {
         method: 'PUT',
         headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ days: draftDays[market.id] ?? [] }),
+        body: JSON.stringify({ days: draftDays[market.id] ?? [], effective_from: effectiveFrom[market.id] || null, effective_until: effectiveUntil[market.id] || null }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { detail?: string };
@@ -173,7 +177,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
               />
             </label>
             <label>Description
-              <textarea maxLength={2000} value={market.description ?? ''} readOnly aria-label={`Description for ${market.name}`} />
+              <textarea maxLength={2000} value={draftDescriptions[market.id] ?? market.description ?? ''} onChange={(event) => setDraftDescriptions((current) => ({ ...current, [market.id]: event.target.value }))} />
             </label>
             <label>Verified location
               <select
@@ -206,6 +210,10 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
               ))}
             </div>
           </fieldset>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
+            <label>Effective from<input type="date" value={effectiveFrom[market.id] ?? ''} onChange={(event) => setEffectiveFrom((current) => ({ ...current, [market.id]: event.target.value }))} /></label>
+            <label>Effective until<input type="date" value={effectiveUntil[market.id] ?? ''} onChange={(event) => setEffectiveUntil((current) => ({ ...current, [market.id]: event.target.value }))} /></label>
+          </div>
           <button type="button" disabled={busy} onClick={() => saveDays(market)}>Save schedule</button>
         </article>
       ))}
