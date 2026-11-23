@@ -38,6 +38,10 @@ void main() {
   };
 
   testWidgets('weekly calendar loads the eight owner-provided market entries', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final directory = await Directory.systemTemp.createTemp('market-calendar');
     final store = LocalDraftStore(databasePath: '${directory.path}/schedule.db');
     final client = MockClient((request) async {
@@ -55,12 +59,9 @@ void main() {
     await pumpAfterIo(tester);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     for (final name in ['Beneta', 'Asheker', 'Boshkoro', 'Bala', 'Koybe', 'Bobo', 'Ajo', 'Gento']) {
-      await tester.scrollUntilVisible(find.text(name), 250, scrollable: find.byType(Scrollable).last);
       expect(find.text(name), findsOneWidget);
     }
-    await tester.scrollUntilVisible(find.text('Saturday'), 250, scrollable: find.byType(Scrollable).last);
     expect(find.text('Saturday'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Friday'), -250, scrollable: find.byType(Scrollable).last);
     expect(find.text('Friday'), findsOneWidget);
     await store.close();
     await directory.delete(recursive: true);
@@ -68,6 +69,10 @@ void main() {
   });
 
   testWidgets('weekly calendar falls back to cached read-only schedule offline', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final directory = await Directory.systemTemp.createTemp('market-calendar-offline');
     final path = '${directory.path}/schedule.db';
     final seeded = LocalDraftStore(databasePath: path);
@@ -88,7 +93,6 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.textContaining('Offline'), findsOneWidget);
     expect(find.text('Koybe'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Gento'), 250, scrollable: find.byType(Scrollable).last);
     expect(find.text('Gento'), findsOneWidget);
     await store.close();
     await directory.delete(recursive: true);
