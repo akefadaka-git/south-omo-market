@@ -23,6 +23,24 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "reports" in inspector.get_table_names()
         assert "markets" in inspector.get_table_names()
         assert "market_schedule_days" in inspector.get_table_names()
+        assert "description" in {column["name"] for column in inspector.get_columns("markets")}
+        assert {"effective_from", "effective_until"} <= {column["name"] for column in inspector.get_columns("market_schedule_days")}
+        with engine.connect() as connection:
+            assert connection.exec_driver_sql("SELECT COUNT(*) FROM markets").scalar_one() == 8
+            assert connection.exec_driver_sql("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = 1").scalar_one() == 8
+            actual = connection.exec_driver_sql("""
+                SELECT m.name, d.weekday FROM markets m
+                JOIN market_schedule_days d ON d.market_id = m.id
+                WHERE m.is_active = 1 AND d.is_active = 1 ORDER BY m.name
+            """).all()
+            assert actual == [
+                ("Ajo", 5), ("Asheker", 1), ("Bala", 1), ("Beneta", 3),
+                ("Bobo", 2), ("Boshkoro", 5), ("Gento", 5), ("Koybe", 0),
+            ]
+            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0010_market_schedule_effectivity"
+
+        command.downgrade(config, "0008_reports_and_seller_blocks")
+        command.upgrade(config, "head")
         with engine.connect() as connection:
             assert connection.exec_driver_sql("SELECT COUNT(*) FROM markets").scalar_one() == 8
             assert connection.exec_driver_sql("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = 1").scalar_one() == 8
