@@ -86,7 +86,7 @@ def _schedule_day_is_effective(day: MarketScheduleDay, on_date: date | None = No
     )
 
 
-def _serialize_market(market: Market, db: Session, lang: str = "en") -> dict[str, object]:
+def _serialize_market(market: Market, db: Session, lang: str = "en", admin_view: bool = False) -> dict[str, object]:
     location = db.get(Location, market.location_id) if market.location_id else None
     location_payload = None
     if location is not None:
@@ -101,7 +101,7 @@ def _serialize_market(market: Market, db: Session, lang: str = "en") -> dict[str
         "description": market.description,
         "location_id": market.location_id, "location": location_payload,
         "is_active": market.is_active,
-        "schedule_days": sorted(day.weekday for day in market.schedule_days if _schedule_day_is_effective(day)),
+        "schedule_days": sorted(day.weekday for day in market.schedule_days if (day.is_active if admin_view else _schedule_day_is_effective(day))),
         "schedule_entries": [{"weekday": day.weekday, "is_active": day.is_active, "effective_from": day.effective_from.isoformat() if day.effective_from else None, "effective_until": day.effective_until.isoformat() if day.effective_until else None} for day in market.schedule_days],
     }
 
@@ -186,7 +186,7 @@ def admin_list_markets(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[dict[str, object]]:
-    return [_serialize_market(row, db) for row in db.scalars(_market_query(False)).all()]
+    return [_serialize_market(row, db, admin_view=True) for row in db.scalars(_market_query(False)).all()]
 
 
 @admin_router.post("", status_code=201)
@@ -206,7 +206,7 @@ def create_market(
         resource_id=market.id, event_metadata={"code": market.code, "name": market.name},
     ))
     db.commit()
-    return _serialize_market(_get_market(db, market.id), db)
+    return _serialize_market(_get_market(db, market.id), db, admin_view=True)
 
 
 @admin_router.patch("/{market_id}")
