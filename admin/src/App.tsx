@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import MarketManagement from './MarketManagement';
 
 type QueueItem = {
   id: string;
@@ -232,6 +233,8 @@ export default function App() {
               </article>
             ))}
           </div>
+
+          <MarketManagement accessToken={token} />
 
           <h2>Recent audit history</h2>
           {auditEvents.length === 0 && <p>No moderation events recorded yet.</p>}

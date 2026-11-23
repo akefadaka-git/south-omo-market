@@ -57,3 +57,17 @@ String marketReportReasonLabel(BuildContext context, String reason) {
   final language = Localizations.localeOf(context).languageCode;
   return (language == 'am' ? amharic : english)[reason] ?? reason;
 }
+
+
+String marketWeekdayLabel(BuildContext context, int weekday) {
+  const english = <String>[
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+  ];
+  const amharic = <String>[
+    'ሰኞ', 'ማክሰኞ', 'ረቡዕ', 'ሐሙስ', 'ዓርብ', 'ቅዳሜ', 'እሁድ',
+  ];
+  if (weekday < 0 || weekday > 6) return '';
+  return Localizations.localeOf(context).languageCode == 'am'
+      ? amharic[weekday]
+      : english[weekday];
+}

@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 
 class LocalDraftStore {
   static const _databaseName = 'south_omo_market.db';
-  static const _databaseVersion = 4;
+  static const _databaseVersion = 5;
   LocalDraftStore({String? databasePath}) : _databasePath = databasePath;
 
   final String? _databasePath;
@@ -58,8 +58,24 @@ class LocalDraftStore {
             updated_at TEXT NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE market_schedule_cache (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            payload TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE market_schedule_cache (
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              payload TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+          ''');
+        }
         if (oldVersion < 2) {
           await db.execute("ALTER TABLE listing_drafts ADD COLUMN client_sync_id TEXT");
           await db.execute("ALTER TABLE listing_drafts ADD COLUMN category_id TEXT");
@@ -126,6 +142,24 @@ class LocalDraftStore {
     if (rows.isEmpty) return [];
     final decoded = jsonDecode(rows.single['payload'] as String) as List<dynamic>;
     return decoded.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> saveMarketSchedule(Map<String, dynamic> schedule) async {
+    final db = await database;
+    await db.insert('market_schedule_cache', {
+      'id': 1,
+      'payload': jsonEncode(schedule),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<Map<String, dynamic>?> cachedMarketSchedule() async {
+    final db = await database;
+    final rows = await db.query('market_schedule_cache', where: 'id = 1', limit: 1);
+    if (rows.isEmpty) return null;
+    final payload = jsonDecode(rows.single['payload'] as String) as Map<String, dynamic>;
+    payload['cached_at'] = rows.single['updated_at'];
+    return payload;
   }
 
   Future<void> close() async {

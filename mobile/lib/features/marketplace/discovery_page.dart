@@ -8,6 +8,7 @@ import '../../design/market_design_system.dart';
 import '../../design/market_brand_pages.dart';
 import '../../design/market_category_browser.dart';
 import 'listing_detail_page.dart';
+import 'market_calendar_page.dart';
 
 class MarketplaceDiscoveryPage extends StatefulWidget {
   const MarketplaceDiscoveryPage({
@@ -216,6 +217,13 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
           onPressed: () => widget.onSellerSignIn!(context),
           icon: const Icon(MarketIcons.seller),
         ),
+      IconButton(
+        tooltip: marketString(context, en: 'Market days', am: 'የገበያ ቀናት', mdy: ''),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => MarketCalendarPage(apiBaseUrl: widget.apiBaseUrl, client: widget.client),
+        )),
+        icon: const Icon(Icons.calendar_month_rounded),
+      ),
       IconButton(tooltip: marketString(context, en: 'Refresh listings', am: 'ዝርዝሮችን አድስ', mdy: ''), onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh)),
       IconButton(

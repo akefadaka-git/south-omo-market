@@ -72,3 +72,14 @@ These items must not be marked complete without implementation and evidence:
 - A4 verification remains separate from A3 implementation.
 - A5 deployment, PR merge, production data activation and commercial launch require separate authorization.
 - No paid plan, card, top-up or billing activation is part of this work.
+
+
+## Maale Market Directory and Weekly Schedule — A3 in progress
+
+- Target branch: `feat/a3-platform-foundation`; do not create a new branch or modify `main`.
+- Adds a dedicated `markets` and `market_schedule_days` schema, with nullable verified geographic association and an eight-record owner-provided initial seed.
+- Public weekly schedule and weekday APIs; administrator-only market CRUD, schedule editing and activation/deactivation; existing `require_admin` and append-only audit events are reused.
+- React administration includes directory management, optional existing-location selection, day editor and weekly overview.
+- Flutter includes a seven-day market calendar and a separate read-only SQLite schedule cache with offline fallback and last-updated display.
+- Synthetic backend, migration, admin helper and Flutter widget/cache tests added. Automated execution is pending the feature-branch CI run.
+- No production migration, merge, deployment, commercial activation or paid service is authorized.

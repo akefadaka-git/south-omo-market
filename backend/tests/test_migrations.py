@@ -21,6 +21,11 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "listing_images" in inspector.get_table_names()
         assert "locations" in inspector.get_table_names()
         assert "reports" in inspector.get_table_names()
+        assert "markets" in inspector.get_table_names()
+        assert "market_schedule_days" in inspector.get_table_names()
+        with engine.connect() as connection:
+            assert connection.exec_driver_sql("SELECT COUNT(*) FROM markets").scalar_one() == 8
+            assert connection.exec_driver_sql("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = 1").scalar_one() == 8
         assert {"is_suspended", "auth_version"} <= {column["name"] for column in inspector.get_columns("users")}
         assert {"listing_id", "seller_id", "reason", "description", "evidence", "status", "previous_target_status", "reviewed_by"} <= {
             column["name"] for column in inspector.get_columns("reports")
@@ -43,6 +48,8 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         command.downgrade(config, "0004_listing_images_sync")
         inspector = inspect(engine)
         assert "locations" not in inspector.get_table_names()
+        assert "markets" not in inspector.get_table_names()
+        assert "market_schedule_days" not in inspector.get_table_names()
         assert "location_id" not in {column["name"] for column in inspector.get_columns("listings")}
         assert "reports" not in inspector.get_table_names()
         assert {"is_suspended", "auth_version"}.isdisjoint({column["name"] for column in inspector.get_columns("users")})

@@ -1078,3 +1078,119 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     assert "report.unblock_seller" in actions
     db.close()
     assert client.get("/api/v1/admin/reports", headers=reporter_headers).status_code == 403
+
+
+def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
+    from app.admin_cli import set_admin_role
+    from app.models import AuditEvent, Market, MarketScheduleDay
+
+    admin_phone = "+251900000811"
+    registered = client.post("/api/v1/auth/register", json={
+        "phone_number": admin_phone,
+        "display_name": "Synthetic Market Admin",
+        "password": "synthetic-market-admin-811",
+    })
+    assert registered.status_code == 201
+    db = TestingSession()
+    set_admin_role(db, admin_phone, grant=True, operator="synthetic-market-test")
+    db.close()
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": admin_phone, "password": "synthetic-market-admin-811",
+    }).json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {token}"}
+
+    buyer_phone = "+251900000812"
+    assert client.post("/api/v1/auth/register", json={
+        "phone_number": buyer_phone, "display_name": "Synthetic Buyer",
+        "password": "synthetic-market-buyer-812",
+    }).status_code == 201
+    buyer_token = client.post("/api/v1/auth/login", json={
+        "phone_number": buyer_phone, "password": "synthetic-market-buyer-812",
+    }).json()["access_token"]
+    buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
+    assert client.get("/api/v1/admin/markets", headers=buyer_headers).status_code == 403
+
+    owner_schedule = [
+        ("MAALE-BENETA", "Beneta", [3]),
+        ("MAALE-ASHEKER", "Asheker", [1]),
+        ("MAALE-BOSHKORO", "Boshkoro", [5]),
+        ("MAALE-BALA", "Bala", [1]),
+        ("MAALE-KOYBE", "Koybe", [0]),
+        ("MAALE-BOBO", "Bobo", [2]),
+        ("MAALE-AJO", "Ajo", [5]),
+        ("MAALE-GENTO", "Gento", [5]),
+    ]
+    created = {}
+    for code, name, days in owner_schedule:
+        response = client.post("/api/v1/admin/markets", headers=admin_headers, json={
+            "code": code, "name": name, "location_id": None,
+        })
+        assert response.status_code == 201, response.text
+        created[name] = response.json()["id"]
+        scheduled = client.put(
+            f"/api/v1/admin/markets/{created[name]}/schedule",
+            headers=admin_headers, json={"days": days},
+        )
+        assert scheduled.status_code == 200
+        assert scheduled.json()["schedule_days"] == days
+
+    assert client.post("/api/v1/admin/markets", headers=buyer_headers, json={
+        "code": "UNAUTHORIZED", "name": "Unauthorized market",
+    }).status_code == 403
+    duplicate_day = client.put(
+        f"/api/v1/admin/markets/{created['Koybe']}/schedule",
+        headers=admin_headers, json={"days": [0, 0]},
+    )
+    assert duplicate_day.status_code == 422
+    invalid_day = client.put(
+        f"/api/v1/admin/markets/{created['Koybe']}/schedule",
+        headers=admin_headers, json={"days": [7]},
+    )
+    assert invalid_day.status_code == 422
+    invalid_location = client.post("/api/v1/admin/markets", headers=admin_headers, json={
+        "code": "INVALID-LOCATION", "name": "Synthetic market",
+        "location_id": "missing-location",
+    })
+    assert invalid_location.status_code == 422
+
+    weekly = client.get("/api/v1/markets/schedule")
+    assert weekly.status_code == 200
+    by_day = {
+        day["weekday"]: [market["name"] for market in day["markets"]]
+        for day in weekly.json()["days"]
+    }
+    assert by_day == {
+        0: ["Koybe"], 1: ["Asheker", "Bala"], 2: ["Bobo"],
+        3: ["Beneta"], 4: [], 5: ["Ajo", "Boshkoro", "Gento"], 6: [],
+    }
+    assert client.get("/api/v1/markets/by-day/5").status_code == 200
+    assert {row["name"] for row in client.get("/api/v1/markets").json()} == {
+        name for _code, name, _days in owner_schedule
+    }
+    assert client.get("/api/v1/markets/by-day/7").status_code == 422
+    assert client.get("/api/v1/markets").json()[0]["location_id"] is None
+
+    disabled = client.patch(
+        f"/api/v1/admin/markets/{created['Ajo']}/status",
+        headers=admin_headers, json={"is_active": False},
+    )
+    assert disabled.status_code == 200
+    assert "Ajo" not in {
+        row["name"] for row in client.get("/api/v1/markets/by-day/5").json()
+    }
+    reenabled = client.patch(
+        f"/api/v1/admin/markets/{created['Ajo']}/status",
+        headers=admin_headers, json={"is_active": True},
+    )
+    assert reenabled.status_code == 200
+
+    db = TestingSession()
+    assert db.query(Market).count() == 8
+    assert db.query(MarketScheduleDay).count() == 8
+    actions = {
+        event.action for event in db.query(AuditEvent).filter(
+            AuditEvent.resource_type == "market"
+        ).all()
+    }
+    assert {"market.created", "market.schedule.updated", "market.status.updated"} <= actions
+    db.close()
