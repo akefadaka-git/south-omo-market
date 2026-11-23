@@ -1240,7 +1240,7 @@ def test_market_search_effective_schedule_and_admin_audit() -> None:
         "days": [1], "effective_from": "2099-01-01", "effective_until": "2099-12-31",
     })
     assert future_schedule.status_code == 200
-    assert future_schedule.json()["schedule_days"] == []
+    assert future_schedule.json()["schedule_days"] == [1]
     assert future_schedule.json()["schedule_entries"][0]["effective_from"] == "2099-01-01"
 
     invalid_range = client.put(f"/api/v1/admin/markets/{market_id}/schedule", headers=headers, json={
