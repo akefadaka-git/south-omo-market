@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field, field_validator
@@ -77,7 +78,7 @@ def _market_query(active_only: bool):
 
 
 def _schedule_day_is_effective(day: MarketScheduleDay, on_date: date | None = None) -> bool:
-    today = on_date or date.today()
+    today = on_date or datetime.now(ZoneInfo("Africa/Addis_Ababa")).date()
     return (
         day.is_active
         and (day.effective_from is None or day.effective_from <= today)
@@ -136,7 +137,7 @@ def list_markets(
         _serialize_market(row, db, lang) for row in markets
         if (not needle or needle in row.name.casefold() or needle in row.code.casefold()
             or needle in (row.description or "").casefold())
-        and (weekday is None or any(day.weekday == weekday and day.is_active for day in row.schedule_days))
+        and (weekday is None or any(day.weekday == weekday and _schedule_day_is_effective(day) for day in row.schedule_days))
     ]
 
 
@@ -167,7 +168,7 @@ def markets_by_day(
     return [
         _serialize_market(market, db, lang)
         for market in markets
-        if any(day.weekday == weekday and day.is_active for day in market.schedule_days)
+        if any(day.weekday == weekday and _schedule_day_is_effective(day) for day in market.schedule_days)
     ]
 
 
