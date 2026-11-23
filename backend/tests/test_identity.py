@@ -1206,3 +1206,61 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
     }
     assert {"market.created", "market.updated", "market.schedule.updated", "market.status.updated"} <= actions
     db.close()
+
+
+def test_market_search_effective_schedule_and_admin_audit() -> None:
+    phone = "+251900000888"
+    registered = client.post("/api/v1/auth/register", json={
+        "phone_number": phone,
+        "display_name": "Synthetic Market Admin",
+        "password": "synthetic-market-password-123",
+    })
+    assert registered.status_code == 201
+    db = TestingSession()
+    from app.admin_cli import set_admin_role
+    admin = set_admin_role(db, phone, grant=True, operator="synthetic-market-test")
+    assert admin.is_admin is True
+    db.close()
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": phone,
+        "password": "synthetic-market-password-123",
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    created = client.post("/api/v1/admin/markets", headers=headers, json={
+        "code": "SYNTHETIC-MARKET",
+        "name": "Synthetic Test Market",
+        "description": "Synthetic searchable description",
+    })
+    assert created.status_code == 201
+    market_id = created.json()["id"]
+    assert created.json()["description"] == "Synthetic searchable description"
+
+    future_schedule = client.put(f"/api/v1/admin/markets/{market_id}/schedule", headers=headers, json={
+        "days": [1], "effective_from": "2099-01-01", "effective_until": "2099-12-31",
+    })
+    assert future_schedule.status_code == 200
+    assert future_schedule.json()["schedule_days"] == []
+    assert future_schedule.json()["schedule_entries"][0]["effective_from"] == "2099-01-01"
+
+    invalid_range = client.put(f"/api/v1/admin/markets/{market_id}/schedule", headers=headers, json={
+        "days": [1], "effective_from": "2099-12-31", "effective_until": "2099-01-01",
+    })
+    assert invalid_range.status_code == 422
+
+    visible = client.get("/api/v1/markets", params={"q": "searchable", "weekday": 1})
+    assert visible.status_code == 200
+    assert visible.json() == []
+
+    active_schedule = client.put(f"/api/v1/admin/markets/{market_id}/schedule", headers=headers, json={
+        "days": [1],
+    })
+    assert active_schedule.status_code == 200
+    visible = client.get("/api/v1/markets", params={"q": "searchable", "weekday": 1})
+    assert visible.status_code == 200
+    assert [row["id"] for row in visible.json()] == [market_id]
+
+    history = client.get("/api/v1/admin/markets/audit", headers=headers)
+    assert history.status_code == 200
+    assert any(event["action"] == "market.created" and event["resource_id"] == market_id for event in history.json())
+    assert any(event["action"] == "market.schedule.updated" and event["resource_id"] == market_id for event in history.json())
