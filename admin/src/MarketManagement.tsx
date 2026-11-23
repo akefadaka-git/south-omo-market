@@ -6,6 +6,7 @@ type Market = {
   id: string;
   code: string;
   name: string;
+  description: string | null;
   location_id: string | null;
   is_active: boolean;
   schedule_days: number[];
@@ -20,6 +21,10 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [locations, setLocations] = useState<Location[]>([]);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [search, setSearch] = useState('');
+  const [weekdayFilter, setWeekdayFilter] = useState('all');
+  const [auditEvents, setAuditEvents] = useState<Array<{id: string; action: string; resource_id: string; created_at: string; metadata: Record<string, unknown>}>>([]);
   const [locationId, setLocationId] = useState('');
   const [draftDays, setDraftDays] = useState<Record<string, number[]>>({});
   const [draftNames, setDraftNames] = useState<Record<string, string>>({});
@@ -29,18 +34,21 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [marketResponse, locationResponse] = await Promise.all([
+    const [marketResponse, locationResponse, auditResponse] = await Promise.all([
       fetch(`${API_BASE}/admin/markets`, { headers: headers(accessToken) }),
       fetch(`${API_BASE}/locations?lang=en`, { headers: headers(accessToken) }),
+      fetch(`${API_BASE}/admin/markets/audit?limit=100`, { headers: headers(accessToken) }),
     ]);
     if (!marketResponse.ok) throw new Error('Could not load market directory.');
     if (!locationResponse.ok) throw new Error('Could not load geographic locations.');
+    if (!auditResponse.ok) throw new Error('Could not load market audit history.');
     const rows = await marketResponse.json() as Market[];
     setMarkets(rows);
     setDraftDays(Object.fromEntries(rows.map((market) => [market.id, market.schedule_days])));
     setDraftNames(Object.fromEntries(rows.map((market) => [market.id, market.name])));
     setDraftLocations(Object.fromEntries(rows.map((market) => [market.id, market.location_id ?? ''])));
     setLocations(await locationResponse.json() as Location[]);
+    setAuditEvents(await auditResponse.json() as typeof auditEvents);
   }, [accessToken]);
 
   useEffect(() => {
@@ -54,13 +62,13 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
       const response = await fetch(`${API_BASE}/admin/markets`, {
         method: 'POST',
         headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim(), location_id: locationId || null }),
+        body: JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim(), description: description.trim() || null, location_id: locationId || null }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { detail?: string };
         throw new Error(body.detail ?? 'Could not create market.');
       }
-      setCode(''); setName(''); setLocationId('');
+      setCode(''); setName(''); setDescription(''); setLocationId('');
       await load();
       setMessage('Market created. Configure its weekly days below.');
     } catch (reason) {
@@ -76,6 +84,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
         headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: draftNames[market.id] ?? market.name,
+          description: market.description ?? null,
           location_id: draftLocations[market.id] || null,
         }),
       });
@@ -129,6 +138,8 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
     <section aria-labelledby="market-management-title" style={{ marginTop: 32 }}>
       <h2 id="market-management-title">Market directory and weekly schedules</h2>
       <p>Manage markets and recurring days. Location associations are optional and must use an existing verified location.</p>
+      <label>Search markets<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or code" /></label>
+      <label>Filter by weekday<select value={weekdayFilter} onChange={(event) => setWeekdayFilter(event.target.value)}><option value="all">All days</option>{WEEKDAYS.map((day, index) => <option key={day} value={String(index)}>{day}</option>)}</select></label>
       <section aria-label="Weekly schedule overview" style={{ marginBottom: 20 }}>
         <h3>Weekly overview</h3>
         {WEEKDAYS.map((day, weekday) => (
@@ -138,6 +149,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
       <form onSubmit={createMarket} style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 20 }}>
         <label>Market code<input required minLength={2} maxLength={40} pattern="[A-Za-z0-9-]+" value={code} onChange={(event) => setCode(event.target.value)} /></label>
         <label>Market name<input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
+        <label>Description (optional)<textarea maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         <label>Verified location (optional)
           <select value={locationId} onChange={(event) => setLocationId(event.target.value)}>
             <option value="">Not assigned</option>
@@ -146,7 +158,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
         </label>
         <button type="submit" disabled={busy}>Add market</button>
       </form>
-      {markets.map((market) => (
+      {markets.filter((market) => (!search.trim() || `${market.name} ${market.code} ${market.description ?? ''}`.toLowerCase().includes(search.trim().toLowerCase())) && (weekdayFilter === 'all' || (draftDays[market.id] ?? market.schedule_days).includes(Number(weekdayFilter)))).map((market) => (
         <article key={market.id} style={{ border: '1px solid #ddd', borderRadius: 12, padding: 16, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
             <div><h3>{market.name}</h3><small>{market.code} · {market.is_active ? 'Active' : 'Inactive'}</small></div>
@@ -159,6 +171,9 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
                 value={draftNames[market.id] ?? market.name}
                 onChange={(event) => setDraftNames((current) => ({ ...current, [market.id]: event.target.value }))}
               />
+            </label>
+            <label>Description
+              <textarea maxLength={2000} value={market.description ?? ''} readOnly aria-label={`Description for ${market.name}`} />
             </label>
             <label>Verified location
               <select
@@ -194,6 +209,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
           <button type="button" disabled={busy} onClick={() => saveDays(market)}>Save schedule</button>
         </article>
       ))}
+      <section aria-label="Market audit history"><h3>Recent administrator changes</h3>{auditEvents.length === 0 ? <p>No market changes recorded.</p> : <ol>{auditEvents.map((event) => <li key={event.id}><strong>{event.action}</strong> · {event.resource_id} · {new Date(event.created_at).toLocaleString()}</li>)}</ol>}</section>
       {markets.length === 0 && <p>No markets configured.</p>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
