@@ -2,12 +2,14 @@
 
 ## Latest exact-head automated verification
 
-- Current corrective feature head: `03382c8ab61510f71bf50fc9aa3b0d726e7795f4`.
-- Exact-head CI for this corrective head: NOT YET RECORDED; workflow run/status lookup returned no run/status at report update time.
-- Last verified predecessor: `7e4494c207d7e3cab452ba60dfb060d8baa6d64a`, GitHub Actions run #805 — PASS: https://github.com/akefadaka-git/south-omo-market/actions/runs/45154338290.
-- Predecessor run #805: backend Ruff passed; 37 backend tests passed; PostgreSQL migration/audit integration 1 passed; S3 integration 3 passed; admin build passed with 3 Vitest tests and zero reported dependency vulnerabilities; Flutter analysis passed with 34 tests. Android release APK remained SKIPPED because no production API URL was configured.
-- The corrective commits after that predecessor are not covered by run #805. Do not treat predecessor evidence as verification of the current head.
-- Overall A4 remains PARTIAL / NOT VERIFIED pending exact-head CI and the operational acceptance gates listed below.
+- Corrective feature head verified: `0f7c1a2d04ceaa535b9a4e7b1d42f749c7efc7b3`.
+- GitHub Actions run #825: PASS — https://github.com/akefadaka-git/south-omo-market/actions/runs/45157231626.
+- Backend Ruff: PASS; backend pytest: 38 passed; PostgreSQL migration/audit integration: 1 passed; S3-compatible storage integration: 3 passed.
+- Admin: dependency audit reported 0 vulnerabilities; production build PASS; Vitest: 2 test files passed.
+- Mobile: Flutter analysis PASS; Flutter tests: 34 passed.
+- Android release APK: SKIPPED because no production API URL is configured; physical-device acceptance remains NOT RUN.
+- Run #825 is exact-head evidence for the bounded corrective implementation on the SHA above. Any subsequent commit requires its own exact-head workflow verification.
+- Overall A4 remains PARTIAL / NOT VERIFIED because staging, physical-device/accessibility, field validation and independent security/legal/operational acceptance remain open.
 
 **Branch:** `feat/a3-platform-foundation`  
 **Baseline:** frozen A2 `main` at `1e0dc04d66b0b80b29ce81b28084c1d8211ce708`  
@@ -70,7 +72,7 @@ These items must not be marked complete without implementation and evidence:
 - No paid plan, card, top-up or billing activation is part of this work.
 
 
-## Maale Market Directory and Weekly Schedule — A3 corrective pass implemented; exact-head verification pending
+## Maale Market Directory and Weekly Schedule — A3 corrective pass implemented; exact-head CI PASS
 
 - Target branch: `feat/a3-platform-foundation`; do not create a new branch or modify `main`.
 - Adds a dedicated `markets` and `market_schedule_days` schema, with nullable verified geographic association, optional market descriptions, optional effective date ranges, and an eight-record owner-provided initial seed.
