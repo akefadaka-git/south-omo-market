@@ -76,6 +76,15 @@ def _market_query(active_only: bool):
     return statement.order_by(Market.name, Market.code)
 
 
+def _schedule_day_is_effective(day: MarketScheduleDay, on_date: date | None = None) -> bool:
+    today = on_date or date.today()
+    return (
+        day.is_active
+        and (day.effective_from is None or day.effective_from <= today)
+        and (day.effective_until is None or day.effective_until >= today)
+    )
+
+
 def _serialize_market(market: Market, db: Session, lang: str = "en") -> dict[str, object]:
     location = db.get(Location, market.location_id) if market.location_id else None
     location_payload = None
@@ -91,7 +100,7 @@ def _serialize_market(market: Market, db: Session, lang: str = "en") -> dict[str
         "description": market.description,
         "location_id": market.location_id, "location": location_payload,
         "is_active": market.is_active,
-        "schedule_days": sorted(day.weekday for day in market.schedule_days if day.is_active),
+        "schedule_days": sorted(day.weekday for day in market.schedule_days if _schedule_day_is_effective(day)),
         "schedule_entries": [{"weekday": day.weekday, "is_active": day.is_active, "effective_from": day.effective_from.isoformat() if day.effective_from else None, "effective_until": day.effective_until.isoformat() if day.effective_until else None} for day in market.schedule_days],
     }
 
@@ -142,7 +151,7 @@ def weekly_schedule(
         scheduled = [
             _serialize_market(market, db, lang)
             for market in markets
-            if any(day.weekday == weekday and day.is_active for day in market.schedule_days)
+            if any(day.weekday == weekday and _schedule_day_is_effective(day) for day in market.schedule_days)
         ]
         days.append({"weekday": weekday, "weekday_name": weekday_name, "markets": scheduled})
     return {"timezone": "Africa/Addis_Ababa", "days": days}
