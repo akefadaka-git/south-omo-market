@@ -56,6 +56,14 @@ class ScheduleUpdate(BaseModel):
             raise ValueError("Weekdays must be between 0 (Monday) and 6 (Sunday)")
         return sorted(value)
 
+    @field_validator("effective_until")
+    @classmethod
+    def valid_effective_range(cls, value: date | None, info):
+        start = info.data.get("effective_from")
+        if value is not None and start is not None and value < start:
+            raise ValueError("effective_until must be on or after effective_from")
+        return value
+
 
 class MarketStatusUpdate(BaseModel):
     is_active: bool
