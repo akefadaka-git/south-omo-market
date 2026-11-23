@@ -1,8 +1,9 @@
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
@@ -17,6 +18,7 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 class MarketCreate(BaseModel):
     code: str = Field(min_length=2, max_length=40, pattern=r"^[A-Z0-9-]+$")
     name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
     location_id: str | None = None
 
     @field_validator("name")
@@ -29,6 +31,7 @@ class MarketCreate(BaseModel):
 
 class MarketUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
     location_id: str | None = None
 
     @field_validator("name")
@@ -41,6 +44,8 @@ class MarketUpdate(BaseModel):
 
 class ScheduleUpdate(BaseModel):
     days: list[int] = Field(max_length=7)
+    effective_from: date | None = None
+    effective_until: date | None = None
 
     @field_validator("days")
     @classmethod
@@ -75,9 +80,11 @@ def _serialize_market(market: Market, db: Session, lang: str = "en") -> dict[str
         }
     return {
         "id": market.id, "code": market.code, "name": market.name,
+        "description": market.description,
         "location_id": market.location_id, "location": location_payload,
         "is_active": market.is_active,
         "schedule_days": sorted(day.weekday for day in market.schedule_days if day.is_active),
+        "schedule_entries": [{"weekday": day.weekday, "is_active": day.is_active, "effective_from": day.effective_from.isoformat() if day.effective_from else None, "effective_until": day.effective_until.isoformat() if day.effective_until else None} for day in market.schedule_days],
     }
 
 
@@ -102,9 +109,18 @@ def _validate_location(db: Session, location_id: str | None) -> None:
 @router.get("")
 def list_markets(
     lang: Literal["en", "am", "mdy"] = Query(default="en"),
+    q: str | None = Query(default=None, max_length=120),
+    weekday: int | None = Query(default=None, ge=0, le=6),
     db: Session = Depends(get_db),
 ) -> list[dict[str, object]]:
-    return [_serialize_market(row, db, lang) for row in db.scalars(_market_query(True)).all()]
+    markets = db.scalars(_market_query(True)).all()
+    needle = q.strip().casefold() if q else ""
+    return [
+        _serialize_market(row, db, lang) for row in markets
+        if (not needle or needle in row.name.casefold() or needle in row.code.casefold()
+            or needle in (row.description or "").casefold())
+        and (weekday is None or any(day.weekday == weekday and day.is_active for day in row.schedule_days))
+    ]
 
 
 @router.get("/schedule")
@@ -164,7 +180,7 @@ def create_market(
     _validate_location(db, payload.location_id)
     if db.scalar(select(Market.id).where(Market.code == payload.code)) is not None:
         raise HTTPException(status_code=409, detail="Market code already exists")
-    market = Market(code=payload.code, name=payload.name.strip(), location_id=payload.location_id)
+    market = Market(code=payload.code, name=payload.name.strip(), description=payload.description, location_id=payload.location_id)
     db.add(market)
     db.flush()
     db.add(AuditEvent(
@@ -186,7 +202,7 @@ def update_market(
     changes = payload.model_dump(exclude_unset=True)
     if "location_id" in changes:
         _validate_location(db, changes["location_id"])
-    before = {"name": market.name, "location_id": market.location_id}
+    before = {"name": market.name, "description": market.description, "location_id": market.location_id}
     for key, value in changes.items():
         if key == "name" and value is not None:
             value = value.strip()
@@ -213,11 +229,14 @@ def update_market_schedule(
     existing = {day.weekday: day for day in market.schedule_days}
     for weekday, schedule_day in existing.items():
         schedule_day.is_active = weekday in selected
+        if weekday in selected:
+            schedule_day.effective_from = payload.effective_from
+            schedule_day.effective_until = payload.effective_until
     for weekday in selected - set(existing):
-        market.schedule_days.append(MarketScheduleDay(weekday=weekday, is_active=True))
+        market.schedule_days.append(MarketScheduleDay(weekday=weekday, is_active=True, effective_from=payload.effective_from, effective_until=payload.effective_until))
     db.add(AuditEvent(
         actor_id=admin.id, action="market.schedule.updated", resource_type="market",
-        resource_id=market.id, event_metadata={"before": before, "after": sorted(selected)},
+        resource_id=market.id, event_metadata={"before": before, "after": sorted(selected), "effective_from": payload.effective_from.isoformat() if payload.effective_from else None, "effective_until": payload.effective_until.isoformat() if payload.effective_until else None},
     ))
     db.commit()
     return _serialize_market(_get_market(db, market.id), db)
@@ -239,3 +258,22 @@ def update_market_status(
     ))
     db.commit()
     return _serialize_market(_get_market(db, market.id), db)
+
+ 
+@admin_router.get("/audit")
+def market_audit_history(
+    limit: int = Query(default=100, ge=1, le=500),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[dict[str, object]]:
+    events = db.scalars(
+        select(AuditEvent)
+        .where(AuditEvent.resource_type == "market")
+        .order_by(desc(AuditEvent.created_at), desc(AuditEvent.id))
+        .limit(limit)
+    ).all()
+    return [{
+        "id": event.id, "actor_id": event.actor_id, "action": event.action,
+        "resource_type": event.resource_type, "resource_id": event.resource_id,
+        "metadata": event.event_metadata, "created_at": event.created_at.isoformat(),
+    } for event in events]
