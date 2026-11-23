@@ -10,6 +10,7 @@ type Market = {
   location_id: string | null;
   is_active: boolean;
   schedule_days: number[];
+  schedule_entries?: Array<{ weekday: number; is_active: boolean; effective_from: string | null; effective_until: string | null }>;
 };
 type Location = { id: string; name: string; level: string };
 
@@ -50,6 +51,8 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
     setDraftDays(Object.fromEntries(rows.map((market) => [market.id, market.schedule_days])));
     setDraftNames(Object.fromEntries(rows.map((market) => [market.id, market.name])));
     setDraftDescriptions(Object.fromEntries(rows.map((market) => [market.id, market.description ?? ''])));
+    setEffectiveFrom(Object.fromEntries(rows.map((market) => [market.id, market.schedule_entries?.find((entry) => entry.is_active)?.effective_from ?? ''])));
+    setEffectiveUntil(Object.fromEntries(rows.map((market) => [market.id, market.schedule_entries?.find((entry) => entry.is_active)?.effective_until ?? ''])));
     setDraftLocations(Object.fromEntries(rows.map((market) => [market.id, market.location_id ?? ''])));
     setLocations(await locationResponse.json() as Location[]);
     setAuditEvents(await auditResponse.json() as typeof auditEvents);
