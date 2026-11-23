@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../data/local_draft_store.dart';
+import '../../data/market_schedule_cache.dart';
 import '../../l10n/market_strings.dart';
 
 class MarketCalendarPage extends StatefulWidget {
@@ -12,12 +13,12 @@ class MarketCalendarPage extends StatefulWidget {
     super.key,
     required this.apiBaseUrl,
     required this.client,
-    this.store,
+    this.cache,
   });
 
   final String apiBaseUrl;
   final http.Client client;
-  final LocalDraftStore? store;
+  final MarketScheduleCache? cache;
 
   @override
   State<MarketCalendarPage> createState() => _MarketCalendarPageState();
@@ -25,7 +26,7 @@ class MarketCalendarPage extends StatefulWidget {
 
 class _MarketCalendarPageState extends State<MarketCalendarPage> {
   LocalDraftStore? _ownedStore;
-  LocalDraftStore get _cache => widget.store ?? (_ownedStore ??= LocalDraftStore());
+  MarketScheduleCache get _cache => widget.cache ?? (_ownedStore ??= LocalDraftStore());
 
   Map<String, dynamic>? _schedule;
   bool _loading = true;
@@ -41,7 +42,7 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
 
   @override
   void dispose() {
-    if (widget.store == null) {
+    if (widget.cache == null) {
       unawaited(_ownedStore?.close() ?? Future<void>.value());
     }
     super.dispose();

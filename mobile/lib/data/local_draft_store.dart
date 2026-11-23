@@ -4,7 +4,9 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
-class LocalDraftStore {
+import 'market_schedule_cache.dart';
+
+class LocalDraftStore implements MarketScheduleCache {
   static const _databaseName = 'south_omo_market.db';
   static const _databaseVersion = 5;
   LocalDraftStore({String? databasePath}) : _databasePath = databasePath;

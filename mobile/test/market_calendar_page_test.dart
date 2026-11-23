@@ -1,29 +1,27 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:sqflite/sqflite.dart' as sqflite;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:south_omo_market/data/local_draft_store.dart';
+import 'package:south_omo_market/data/market_schedule_cache.dart';
 import 'package:south_omo_market/features/marketplace/market_calendar_page.dart';
 
-Future<void> pumpAfterIo(WidgetTester tester) async {
-  await tester.runAsync(() async {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-  });
-  await tester.pump();
+class MemoryMarketScheduleCache implements MarketScheduleCache {
+  Map<String, dynamic>? value;
+
+  @override
+  Future<void> saveMarketSchedule(Map<String, dynamic> schedule) async {
+    value = Map<String, dynamic>.from(schedule);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> cachedMarketSchedule() async =>
+      value == null ? null : Map<String, dynamic>.from(value!);
 }
 
 void main() {
-  setUpAll(() {
-    sqfliteFfiInit();
-    sqflite.databaseFactory = databaseFactoryFfi;
-  });
-
   final schedule = {
     'timezone': 'Africa/Addis_Ababa',
     'days': [
@@ -37,13 +35,12 @@ void main() {
     ],
   };
 
-  testWidgets('weekly calendar loads the eight owner-provided market entries', (tester) async {
+  testWidgets('weekly calendar renders the eight owner-provided market entries', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = await Directory.systemTemp.createTemp('market-calendar');
-    final store = LocalDraftStore(databasePath: '${directory.path}/schedule.db');
+    final cache = MemoryMarketScheduleCache();
     final client = MockClient((request) async {
       expect(request.url.path, endsWith('/markets/schedule'));
       return http.Response(jsonEncode(schedule), 200);
@@ -53,49 +50,40 @@ void main() {
       home: MarketCalendarPage(
         apiBaseUrl: 'https://market.example.test/api/v1',
         client: client,
-        store: store,
+        cache: cache,
       ),
     ));
-    await pumpAfterIo(tester);
+    await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
     for (final name in ['Beneta', 'Asheker', 'Boshkoro', 'Bala', 'Koybe', 'Bobo', 'Ajo', 'Gento']) {
       expect(find.text(name), findsOneWidget);
     }
     expect(find.text('Saturday'), findsOneWidget);
     expect(find.text('Friday'), findsOneWidget);
-    await store.close();
-    await directory.delete(recursive: true);
+    expect(cache.value?['timezone'], 'Africa/Addis_Ababa');
     client.close();
   });
 
-  testWidgets('weekly calendar falls back to cached read-only schedule offline', (tester) async {
+  testWidgets('weekly calendar uses cached read-only schedule when offline', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = await Directory.systemTemp.createTemp('market-calendar-offline');
-    final path = '${directory.path}/schedule.db';
-    final seeded = LocalDraftStore(databasePath: path);
-    await seeded.saveMarketSchedule(schedule);
-    await seeded.close();
-
-    final store = LocalDraftStore(databasePath: path);
+    final cache = MemoryMarketScheduleCache()..value = Map<String, dynamic>.from(schedule);
     final client = MockClient((request) async => http.Response('offline', 503));
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('en'),
       home: MarketCalendarPage(
         apiBaseUrl: 'https://market.example.test/api/v1',
         client: client,
-        store: store,
+        cache: cache,
       ),
     ));
-    await pumpAfterIo(tester);
+    await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.textContaining('Offline'), findsOneWidget);
     expect(find.text('Koybe'), findsOneWidget);
     expect(find.text('Gento'), findsOneWidget);
-    await store.close();
-    await directory.delete(recursive: true);
     client.close();
   });
 }

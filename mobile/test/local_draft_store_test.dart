@@ -110,4 +110,27 @@ void main() {
     await store.close();
     await directory.delete(recursive: true);
   });
+  
+  test('market schedule cache persists a read-only weekly payload', () async {
+    final directory = await Directory.systemTemp.createTemp('market-schedule-cache');
+    final path = '${directory.path}/schedule.db';
+    final schedule = {
+      'timezone': 'Africa/Addis_Ababa',
+      'days': [
+        {'weekday': 0, 'markets': [{'name': 'Koybe'}]},
+      ],
+    };
+    final first = LocalDraftStore(databasePath: path);
+    await first.saveMarketSchedule(schedule);
+    await first.close();
+
+    final reopened = LocalDraftStore(databasePath: path);
+    final cached = await reopened.cachedMarketSchedule();
+    expect(cached?['timezone'], 'Africa/Addis_Ababa');
+    expect(cached?['days'], schedule['days']);
+    expect(cached?['cached_at'], isA<String>());
+    await reopened.close();
+    await directory.delete(recursive: true);
+  });
+
 }
