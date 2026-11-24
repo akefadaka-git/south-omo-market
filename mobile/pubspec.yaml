@@ -1,0 +1,30 @@
+name: south_omo_market
+description: South Omo Market Android application
+publish_to: "none"
+version: 0.1.0+1
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: 0.20.2
+  sqflite: 2.4.2
+  path: 1.9.1
+  http: 1.2.2
+  uuid: 4.5.1
+  image_picker: 1.1.2
+  path_provider: 2.1.5
+  connectivity_plus: 6.1.4
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 4.0.0
+  sqflite_common_ffi: 2.3.4+4
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: NotoSansEthiopic
+      fonts:
+        - asset: assets/fonts/NotoSansEthiopic-Regular.ttf

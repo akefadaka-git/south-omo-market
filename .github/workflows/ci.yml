@@ -1,0 +1,207 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: south-omo-market-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: south_omo
+          POSTGRES_PASSWORD: local_only_password
+          POSTGRES_DB: south_omo_market
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U south_omo -d south_omo_market"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_POSTGRES_URL: postgresql+psycopg://south_omo:local_only_password@localhost:5432/south_omo_market
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check app tests --select E9,F63,F7,F82
+      - name: Validate backup and restore script syntax
+        run: bash -n scripts/backup_restore.sh
+      - run: pytest
+      - name: Run PostgreSQL migration and audit-trigger integration tests
+        run: pytest -q tests/test_postgres_integration.py
+      - name: Run S3-compatible object-storage integration tests
+        run: pytest -q tests/test_s3_storage.py
+
+  admin:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+      - run: npm install
+      - name: Audit admin dependencies
+        run: npm audit --audit-level=high
+      - name: Upload generated npm lockfile for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-package-lock
+          path: admin/package-lock.json
+          if-no-files-found: warn
+      - run: npm run build
+      - run: npm test
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+      - working-directory: mobile
+        run: flutter pub get
+      - working-directory: mobile
+        run: flutter analyze --no-fatal-infos
+      - working-directory: mobile
+        run: flutter test
+
+  android-build:
+    name: Android release APK (requires configured API URL)
+    if: ${{ vars.PRODUCTION_RELEASE_ENABLED == 'true' && vars.API_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+      - name: Generate Android platform scaffold
+        working-directory: mobile
+        run: flutter create --platforms=android --org=et.southomomarket .
+      - name: Resolve Flutter dependencies
+        working-directory: mobile
+        run: flutter pub get
+      - name: Build release APK
+        if: ${{ vars.PRODUCTION_RELEASE_ENABLED == 'true' && vars.API_BASE_URL != '' }}
+        working-directory: mobile
+        run: flutter build apk --release --split-per-abi --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }}
+      - name: Skip installable APK until an API URL is configured
+        if: ${{ vars.API_BASE_URL == '' }}
+        run: |
+          echo "APK artifact skipped: configure the non-secret repository variable API_BASE_URL after a live backend is available."
+      - name: Sign test APK with an ephemeral CI key
+        if: ${{ vars.API_BASE_URL != '' }}
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -x "$build_tools/apksigner"
+          key_path="$RUNNER_TEMP/south-omo-market-ci-test.keystore"
+          keytool -genkeypair -noprompt -v \
+            -keystore "$key_path" \
+            -storepass changeit -keypass changeit \
+            -alias south-omo-ci-test \
+            -keyalg RSA -keysize 2048 -validity 30 \
+            -dname "CN=South Omo Market CI Test, OU=Non-production, O=South Omo Market, L=Jinka, ST=South Omo, C=ET"
+          shopt -s nullglob
+          apks=(build/app/outputs/flutter-apk/app-*-release.apk)
+          test "${#apks[@]}" -gt 0
+          for apk in "${apks[@]}"; do
+            signed="${apk%.apk}-signed.apk"
+            "$build_tools/apksigner" sign \
+              --ks "$key_path" \
+              --ks-key-alias south-omo-ci-test \
+              --ks-pass pass:changeit \
+              --key-pass pass:changeit \
+              --out "$signed" \
+              "$apk"
+            "$build_tools/apksigner" verify --verbose --print-certs "$signed"
+            mv "$signed" "$apk"
+          done
+      - name: Upload installable APK
+        if: ${{ vars.API_BASE_URL != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: south-omo-market-android-release-split-abi
+          path: mobile/build/app/outputs/flutter-apk/app-*-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  android-staging-build:
+    name: Android staging test APK (automatic, non-production)
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feat/a3-platform-foundation' && vars.STAGING_API_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+      - name: Validate staging endpoint configuration
+        env:
+          STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          case "$STAGING_API_BASE_URL" in
+            https://*) ;;
+            *) echo "STAGING_API_BASE_URL must use HTTPS"; exit 1 ;;
+          esac
+      - name: Verify staging API and database readiness
+        env:
+          STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 10 \
+            --connect-timeout 10 --max-time 30 \
+            "$STAGING_API_BASE_URL/ready")"
+          echo "$response" | jq -e '.status == "ready" and .database == "ok"'
+      - name: Generate Android platform scaffold
+        working-directory: mobile
+        run: flutter create --platforms=android --org=et.southomomarket .
+      - name: Resolve Flutter dependencies
+        working-directory: mobile
+        run: flutter pub get
+      - name: Build staging debug APK
+        working-directory: mobile
+        env:
+          STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
+        run: flutter build apk --debug --split-per-abi --dart-define=API_BASE_URL="$STAGING_API_BASE_URL"
+      - name: Upload staging test APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: south-omo-market-android-staging-test-apk
+          path: mobile/build/app/outputs/flutter-apk/app-*-debug.apk
+          if-no-files-found: error
+          retention-days: 14
