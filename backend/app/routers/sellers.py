@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.models import SellerProfile, User
+from app.governance import ensure_marketplace_seller_role
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/sellers")
@@ -34,6 +35,8 @@ def create_my_seller_profile(
         raise HTTPException(status_code=409, detail="Seller profile already exists")
     profile = SellerProfile(user_id=user.id, **payload.model_dump())
     db.add(profile)
+    db.flush()
+    ensure_marketplace_seller_role(db, user.id)
     db.commit()
     db.refresh(profile)
     return {"id": profile.id, "public_name": profile.public_name, "location": profile.location_label}
