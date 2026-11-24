@@ -123,3 +123,26 @@ def test_only_platform_owner_can_verify_business_and_decision_is_audited():
             assert db.execute(text("SELECT event_type FROM business_membership_events WHERE membership_id='om'")).scalar_one() == "business.membership.activated_by_verification"
     finally:
         engine.dispose()
+
+
+def test_owner_rejection_and_suspension_transitions_are_audited():
+    engine=db_fixture()
+    try:
+        with engine.begin() as c:
+            c.exec_driver_sql("INSERT INTO users VALUES ('owner','Owner',1,0)")
+            c.exec_driver_sql("INSERT INTO business_profiles (id,business_code,legal_name,display_name,business_type,verification_status,is_active) VALUES ('reject-b','RB','Reject PLC','Reject','retail','pending',1),('suspend-b','SB','Suspend PLC','Suspend','retail','verified',1)")
+        with Session(engine) as db:
+            owner=SimpleNamespace(id="owner")
+            rejected=verify_business("reject-b",VerificationDecision(status="rejected",notes="Registration evidence insufficient",evidence_refs=["synthetic://evidence/reject"]),owner=owner,db=db)
+            assert rejected["verification_status"] == "rejected"
+            reject_state=db.execute(text("SELECT verification_status,is_active FROM business_profiles WHERE id='reject-b'")).one()
+            assert reject_state == ("rejected",0)
+            suspended=verify_business("suspend-b",VerificationDecision(status="suspended",notes="Verification temporarily suspended",evidence_refs=["synthetic://evidence/suspend"]),owner=owner,db=db)
+            assert suspended["verification_status"] == "suspended"
+            suspend_state=db.execute(text("SELECT verification_status,is_active,suspended_at IS NOT NULL FROM business_profiles WHERE id='suspend-b'")).one()
+            assert suspend_state == ("suspended",0,1)
+            audit=db.execute(text("SELECT business_id,actor_id,previous_status,new_status,notes FROM business_verification_events ORDER BY business_id")).all()
+            assert tuple(audit[0]) == ("reject-b","owner","pending","rejected","Registration evidence insufficient")
+            assert tuple(audit[1]) == ("suspend-b","owner","verified","suspended","Verification temporarily suspended")
+    finally:
+        engine.dispose()
