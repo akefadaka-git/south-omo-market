@@ -23,6 +23,26 @@ class User(Base):
     auth_version: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     seller_profile: Mapped["SellerProfile | None"] = relationship(back_populates="user")
+    customer_profile: Mapped["CustomerProfile | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+
+
+class CustomerProfile(Base):
+    __tablename__ = "customer_profiles"
+    __table_args__ = (
+        CheckConstraint("preferred_language IN ('am', 'en')", name="ck_customer_profile_language"),
+        CheckConstraint("contact_preference IS NULL OR contact_preference IN ('phone', 'sms', 'email')", name="ck_customer_profile_contact_preference"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
+    preferred_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id", ondelete="SET NULL"), nullable=True, index=True)
+    preferred_market_id: Mapped[str | None] = mapped_column(ForeignKey("markets.id", ondelete="SET NULL"), nullable=True, index=True)
+    preferred_language: Mapped[str] = mapped_column(String(2), default="am", nullable=False)
+    email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    profile_photo_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    contact_preference: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    user: Mapped[User] = relationship(back_populates="customer_profile")
 
 
 class SellerProfile(Base):
