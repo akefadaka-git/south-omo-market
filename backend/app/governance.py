@@ -53,7 +53,7 @@ def require_permission(permission_code: str):
 
 
 def require_business_permission(permission_code: str):
-    """Require active membership plus a permission granted to that business role."""
+    """Require a verified, active business, active membership and role-scoped permission."""
     def dependency(
         business_id: str,
         user: User = Depends(get_current_user),
@@ -61,17 +61,24 @@ def require_business_permission(permission_code: str):
     ) -> User:
         allowed = db.execute(text("""
             SELECT EXISTS (
-                SELECT 1 FROM business_memberships bm
+                SELECT 1
+                FROM business_memberships bm
                 JOIN business_profiles bp ON bp.id=bm.business_id
                 JOIN business_role_permissions brp ON brp.membership_role=bm.membership_role
+                JOIN users u ON u.id=bm.user_id
                 WHERE bm.business_id=:business_id AND bm.user_id=:user_id
                   AND bm.status='active'
                   AND (bm.expires_at IS NULL OR bm.expires_at>CURRENT_TIMESTAMP)
-                  AND bp.is_active=TRUE AND brp.permission_code=:permission_code
+                  AND bp.is_active=TRUE AND bp.verification_status='verified'
+                  AND u.is_active=TRUE AND u.is_suspended=FALSE
+                  AND brp.permission_code=:permission_code
             )
         """), {"business_id": business_id, "user_id": user.id,
                 "permission_code": permission_code}).scalar_one()
         if not allowed:
-            raise HTTPException(status_code=403, detail="Active business membership and permission required")
+            raise HTTPException(
+                status_code=403,
+                detail="Verified business, active membership and permission required",
+            )
         return user
     return dependency
