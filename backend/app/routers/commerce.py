@@ -135,6 +135,8 @@ def adjust_inventory(
 ):
     if payload.movement_type not in {"receipt", "adjustment"} or payload.quantity_delta == 0:
         raise HTTPException(422, "Only non-zero receipt or adjustment movements are supported")
+    if payload.movement_type == "receipt" and payload.quantity_delta < 0:
+        raise HTTPException(422, "Receipt movements must increase on-hand stock")
     balance_exists = db.execute(text("""
         SELECT EXISTS(SELECT 1 FROM inventory_balances
         WHERE business_id=:business AND catalog_item_id=:item)
@@ -431,6 +433,13 @@ def checkout_cart(cart_id: str, idempotency_key: str = Query(min_length=8, max_l
         db.commit()
     except IntegrityError as exc:
         db.rollback()
+        existing = db.execute(text("""
+            SELECT id,order_number,status FROM commerce_orders
+            WHERE buyer_user_id=:buyer AND idempotency_key=:key
+        """), {"buyer": user.id, "key": idempotency_key}).mappings().first()
+        if existing:
+            return {"order_id": existing["id"], "order_number": existing["order_number"],
+                    "status": existing["status"], "replayed": True}
         raise HTTPException(409, "Order conflicts with stock or idempotency constraints") from exc
     return {"order_id": order_id, "order_number": order_number, "status": "placed",
             "currency": "ETB", "total_minor": subtotal, "settlement_method": "direct_cash",
