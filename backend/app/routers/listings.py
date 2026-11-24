@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -133,18 +133,27 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
 
 
 def _require_leaf_category(db: Session, category: Category) -> None:
-    # Employment is an Owner-managed agency, never an ordinary seller listing.
-    # Walk category ancestry so every descendant of the reserved root is covered.
+    # Persisted governance roots protect the category and all descendants even
+    # if a display slug is later renamed. The slug check is a fail-safe for
+    # pre-migration or incomplete reference-data states.
+    protected_roots = set(db.execute(text("""
+        SELECT category_id FROM protected_category_roots
+        WHERE seller_listing_allowed=FALSE AND applies_to_descendants=TRUE
+    """)).scalars().all())
     ancestor: Category | None = category
     seen: set[str] = set()
+    protected = False
     while ancestor is not None and ancestor.id not in seen:
         seen.add(ancestor.id)
-        if ancestor.slug == "work-opportunities":
-            raise HTTPException(
-                status_code=403,
-                detail="Employment opportunities must use the Owner-controlled employment agency",
-            )
+        if ancestor.id in protected_roots or ancestor.slug == "work-opportunities":
+            protected = True
+            break
         ancestor = db.get(Category, ancestor.parent_id) if ancestor.parent_id else None
+    if protected:
+        raise HTTPException(
+            status_code=403,
+            detail="Employment opportunities must use the Owner-controlled employment agency",
+        )
 
     if db.scalar(select(Category.id).where(
         Category.parent_id == category.id, Category.is_active.is_(True)
