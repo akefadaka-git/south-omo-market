@@ -6,7 +6,7 @@ Revises: 0010_market_schedule_effectivity
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0011_owner_governance_employment_ai"
+revision = "0011_gov_employment_ai"
 down_revision = "0010_market_schedule_effectivity"
 branch_labels = None
 depends_on = None
