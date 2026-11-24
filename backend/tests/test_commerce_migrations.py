@@ -26,13 +26,14 @@ def test_commerce_migrations_upgrade_downgrade_and_reupgrade(tmp_path, monkeypat
             "commerce_orders",
             "commerce_order_items",
             "commerce_order_events",
+            "customer_profiles",
         }
         with engine.connect() as connection:
             inspector = inspect(connection)
             assert expected.issubset(set(inspector.get_table_names()))
             assert connection.execute(text(
                 "SELECT version_num FROM alembic_version"
-            )).scalar_one() == "0016_commerce_cart_orders"
+            )).scalar_one() == "0017_customer_profiles"
             indexes = inspector.get_indexes("commerce_carts")
             active_cart_index = next(
                 index for index in indexes
