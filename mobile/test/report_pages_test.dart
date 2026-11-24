@@ -54,12 +54,17 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic reporter');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000801');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-report-password-801');
+    await tester.ensureVisible(find.byKey(const Key('buyer-preferred-location')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('buyer-preferred-location')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Koybe').last);
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Register and continue'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Register and continue'));
     await tester.pumpAndSettle();
+
 
     await tester.enterText(find.byType(TextFormField).first,
       'The advertised details do not match the item being offered.');
