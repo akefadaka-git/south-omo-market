@@ -35,6 +35,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   bool _saving = false;
   String? _error;
   String? _notice;
+  bool _started = false;
 
   String get _base => widget.apiBaseUrl.replaceFirst(RegExp(r'/+$'), '');
   Map<String, String> get _headers => {
@@ -43,8 +44,10 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   };
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
     _load();
   }
 
