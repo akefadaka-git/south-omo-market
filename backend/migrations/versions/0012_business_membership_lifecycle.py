@@ -28,7 +28,8 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
     ):
         op.add_column("business_profiles", column)
-    op.create_foreign_key("fk_business_profiles_verified_by_users", "business_profiles", "users", ["verified_by"], ["id"], ondelete="SET NULL")
+    with op.batch_alter_table("business_profiles") as batch:
+        batch.create_foreign_key("fk_business_profiles_verified_by_users", "users", ["verified_by"], ["id"], ondelete="SET NULL")
 
     with op.batch_alter_table("business_memberships") as batch:
         batch.drop_constraint("uq_business_membership_user", type_="unique")
@@ -106,14 +107,16 @@ def upgrade() -> None:
             })
 
     op.add_column("seller_profiles", sa.Column("business_id", sa.String(36), nullable=True))
-    op.create_foreign_key("fk_seller_profiles_business_id", "seller_profiles", "business_profiles", ["business_id"], ["id"], ondelete="SET NULL")
+    with op.batch_alter_table("seller_profiles") as batch:
+        batch.create_foreign_key("fk_seller_profiles_business_id", "business_profiles", ["business_id"], ["id"], ondelete="SET NULL")
     op.create_index("ix_seller_profiles_business_id", "seller_profiles", ["business_id"])
 
 
 def downgrade() -> None:
     op.drop_index("ix_seller_profiles_business_id", table_name="seller_profiles")
-    op.drop_constraint("fk_seller_profiles_business_id", "seller_profiles", type_="foreignkey")
-    op.drop_column("seller_profiles", "business_id")
+    with op.batch_alter_table("seller_profiles") as batch:
+        batch.drop_constraint("fk_seller_profiles_business_id", type_="foreignkey")
+        batch.drop_column("business_id")
     op.drop_table("business_role_permissions")
     op.drop_index("ix_business_verification_events_business_created", table_name="business_verification_events")
     op.drop_table("business_verification_events")
@@ -133,6 +136,7 @@ def downgrade() -> None:
         batch.drop_column("invited_at")
         batch.drop_column("invited_by")
         batch.create_unique_constraint("uq_business_membership_user", ["business_id", "user_id"])
-    op.drop_constraint("fk_business_profiles_verified_by_users", "business_profiles", type_="foreignkey")
-    for column in ("updated_at", "suspended_at", "verified_at", "verified_by", "verification_notes", "verification_evidence", "contact_phone", "contact_email", "registered_address", "registration_number"):
-        op.drop_column("business_profiles", column)
+    with op.batch_alter_table("business_profiles") as batch:
+        batch.drop_constraint("fk_business_profiles_verified_by_users", type_="foreignkey")
+        for column in ("updated_at", "suspended_at", "verified_at", "verified_by", "verification_notes", "verification_evidence", "contact_phone", "contact_email", "registered_address", "registration_number"):
+            batch.drop_column(column)
