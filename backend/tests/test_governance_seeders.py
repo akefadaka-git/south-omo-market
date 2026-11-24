@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.seeders.system_reference import seed_system_reference_data
+from app.policy_engine import evaluate_policy
 
 
 def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monkeypatch) -> None:
@@ -44,6 +45,20 @@ def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monk
                 SELECT effect FROM policy_rules
                 WHERE rule_code = 'employment-advertisement-publish-owner-only'
             """)).scalar_one() == "allow"
+            assert evaluate_policy(
+                db,
+                subject="role:owner",
+                action="employment.advertisement.publish",
+                resource="employment_advertisements",
+                facts={"provider_verified": True, "agreement_accepted": True, "payment_verified": True},
+            )
+            assert not evaluate_policy(
+                db,
+                subject="role:owner",
+                action="employment.advertisement.publish",
+                resource="employment_advertisements",
+                facts={"provider_verified": True, "agreement_accepted": True, "payment_verified": False},
+            )
             assert db.execute(text("""
                 SELECT COUNT(*) FROM ai_task_routes
                 WHERE enabled = 0 AND requires_human_approval = 1 AND quota_per_day = 0
