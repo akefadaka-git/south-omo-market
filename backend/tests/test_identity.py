@@ -1363,3 +1363,75 @@ def test_seller_role_and_policy_are_enforced_for_every_listing_write_path() -> N
     # Replaying an already-synced payload is also subject to current policy.
     denied_replay = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
     assert denied_replay.status_code == 403
+
+
+
+def test_customer_registration_persists_profile_and_supports_private_read_update() -> None:
+    location_id = "10000000-0000-4000-8000-000000000003"
+    registration = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251 900-000-801",
+        "display_name": "Synthetic Customer",
+        "password": "synthetic-password-801",
+        "preferred_location_id": location_id,
+        "preferred_language": "am",
+        "email": "  CUSTOMER@example.test ",
+    })
+    assert registration.status_code == 201
+    assert registration.json()["phone_number"] == "+251900000801"
+    assert "password_hash" not in registration.json()
+
+    db = TestingSession()
+    account = db.query(User).filter_by(phone_number="+251900000801").one()
+    profile = db.query(models.CustomerProfile).filter_by(user_id=account.id).one()
+    assert profile.preferred_location_id == location_id
+    assert profile.preferred_language == "am"
+    assert profile.email == "customer@example.test"
+    db.close()
+
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": "+251900000801",
+        "password": "synthetic-password-801",
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    read = client.get("/api/v1/customers/me", headers=headers)
+    assert read.status_code == 200
+    assert read.json()["display_name"] == "Synthetic Customer"
+    assert read.json()["preferred_location_id"] == location_id
+    assert read.json()["email"] == "customer@example.test"
+
+    updated = client.patch("/api/v1/customers/me", headers=headers, json={
+        "display_name": "Updated Customer",
+        "preferred_language": "en",
+        "contact_preference": "phone",
+    })
+    assert updated.status_code == 200
+    assert updated.json()["display_name"] == "Updated Customer"
+    assert updated.json()["preferred_language"] == "en"
+    assert updated.json()["contact_preference"] == "phone"
+    assert client.get("/api/v1/customers/me").status_code == 401
+
+
+def test_customer_registration_rejects_duplicate_normalized_phone_and_invalid_locality() -> None:
+    first = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000802",
+        "display_name": "First Customer",
+        "password": "synthetic-password-802",
+    })
+    assert first.status_code == 201
+    duplicate = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251 900 000 802",
+        "display_name": "Duplicate Customer",
+        "password": "synthetic-password-803",
+    })
+    assert duplicate.status_code == 409
+
+    invalid = client.post("/api/v1/auth/register", json={
+        "phone_number": "+251900000804",
+        "display_name": "Invalid Locality Customer",
+        "password": "synthetic-password-804",
+        "preferred_location_id": "missing-location",
+    })
+    assert invalid.status_code == 422
+    db = TestingSession()
+    assert db.query(User).filter_by(phone_number="+251900000804").count() == 0
+    db.close()
