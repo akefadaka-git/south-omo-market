@@ -121,6 +121,14 @@ void main() {
       if (request.url.path.endsWith('/listings/listing-2')) {
         return http.Response(jsonEncode({'id':'listing-2','title':'Synthetic maize','description':'Dry maize','price_minor':250000,'location':'Jinka','images':[]}), 200);
       }
+      if (request.url.path.endsWith('/locations')) {
+        return http.Response(jsonEncode([
+          {'id': 'town-jinka', 'level': 'town', 'name': 'Jinka', 'name_en': 'Jinka'},
+        ]), 200);
+      }
+      if (request.url.path.endsWith('/markets')) {
+        return http.Response('[]', 200);
+      }
       if (request.url.path.endsWith('/auth/register')) {
         registered = true;
         return http.Response('{"id":"buyer-1"}', 201);
@@ -148,6 +156,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Buyer Test');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000007');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-password-123');
+    await tester.tap(find.byKey(const Key('buyer-preferred-location')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Jinka').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Register and continue'));
     await tester.pumpAndSettle();
     expect(registered, isTrue);
@@ -249,6 +261,8 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).last,
     );
+    await tester.ensureVisible(find.text('Load more listings'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Load more listings'));
     await tester.pumpAndSettle();
 
