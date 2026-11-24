@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -55,6 +55,10 @@ def update_my_customer_profile(
         db.flush()
 
     changes = payload.model_dump(exclude_unset=True)
+    if "display_name" in changes and changes["display_name"] is None:
+        raise HTTPException(status_code=422, detail="Display name cannot be null")
+    if "preferred_language" in changes and changes["preferred_language"] is None:
+        raise HTTPException(status_code=422, detail="Preferred language cannot be null")
     location_id = changes.get("preferred_location_id", profile.preferred_location_id)
     market_id = changes.get("preferred_market_id", profile.preferred_market_id)
     validate_preferred_references(db, location_id, market_id)
