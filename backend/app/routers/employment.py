@@ -573,6 +573,96 @@ def list_published_employment_advertisements(
     return [dict(row) for row in rows]
 
 
+
+
+@router.get("/admin/advertisements")
+def list_owner_managed_advertisements(
+    status: str = "pending_owner",
+    owner: User = Depends(require_permission("employment.advertisement.manage")),
+    db: Session = Depends(get_db),
+) -> list[dict[str, object]]:
+    """Return Owner-visible advertisement and payment work queues."""
+    if status not in {"pending_owner", "published", "all"}:
+        raise HTTPException(status_code=422, detail="Unsupported advertisement status")
+    status_filter = "" if status == "all" else "AND a.status = :status"
+    statement = text(f"""
+        SELECT a.id AS advertisement_id, a.status AS advertisement_status,
+               a.published_at, a.expires_at,
+               o.id AS opportunity_id, o.title, o.description,
+               o.occupation_code, o.location_code, o.employment_type,
+               o.requirements, o.status AS opportunity_status,
+               ep.id AS provider_id, ep.verification_status AS provider_status,
+               bp.business_code, bp.display_name AS provider_name,
+               ag.id AS agreement_id, ag.terms_version, ag.agreed_price_minor,
+               ag.currency, ag.duration_days, ag.status AS agreement_status,
+               ag.provider_accepted_at, ag.provider_acceptance_evidence,
+               p.id AS payment_id, p.amount_minor, p.currency AS payment_currency,
+               p.payment_method, p.external_reference, p.evidence_ref,
+               p.status AS payment_status, p.received_at, p.verified_at
+        FROM employment_advertisements a
+        JOIN employment_opportunities o ON o.id = a.opportunity_id
+        JOIN employment_providers ep ON ep.id = o.provider_id
+        JOIN business_profiles bp ON bp.id = ep.business_id
+        JOIN advertising_agreements ag ON ag.id = a.agreement_id
+        LEFT JOIN advertising_payments p ON p.agreement_id = ag.id
+        WHERE 1 = 1 {status_filter}
+        ORDER BY a.created_at DESC, a.id, p.received_at, p.id
+        LIMIT 500
+    """)
+    parameters = {} if status == "all" else {"status": status}
+    rows = db.execute(statement, parameters).mappings().all()
+    advertisements: dict[str, dict[str, object]] = {}
+    for row in rows:
+        advertisement_id = row["advertisement_id"]
+        item = advertisements.get(advertisement_id)
+        if item is None:
+            item = {
+                "advertisement_id": advertisement_id,
+                "advertisement_status": row["advertisement_status"],
+                "published_at": row["published_at"],
+                "expires_at": row["expires_at"],
+                "opportunity_id": row["opportunity_id"],
+                "title": row["title"],
+                "description": row["description"],
+                "occupation_code": row["occupation_code"],
+                "location_code": row["location_code"],
+                "employment_type": row["employment_type"],
+                "requirements": row["requirements"],
+                "opportunity_status": row["opportunity_status"],
+                "provider_id": row["provider_id"],
+                "provider_status": row["provider_status"],
+                "business_code": row["business_code"],
+                "provider_name": row["provider_name"],
+                "agreement_id": row["agreement_id"],
+                "terms_version": row["terms_version"],
+                "agreed_price_minor": int(row["agreed_price_minor"]),
+                "currency": row["currency"],
+                "duration_days": int(row["duration_days"]),
+                "agreement_status": row["agreement_status"],
+                "provider_accepted_at": row["provider_accepted_at"],
+                "provider_acceptance_evidence": row["provider_acceptance_evidence"],
+                "verified_payment_minor": 0,
+                "payments": [],
+            }
+            advertisements[advertisement_id] = item
+        if row["payment_id"] is not None:
+            payment = {
+                "payment_id": row["payment_id"],
+                "amount_minor": int(row["amount_minor"]),
+                "currency": row["payment_currency"],
+                "payment_method": row["payment_method"],
+                "external_reference": row["external_reference"],
+                "evidence_ref": row["evidence_ref"],
+                "status": row["payment_status"],
+                "received_at": row["received_at"],
+                "verified_at": row["verified_at"],
+            }
+            item["payments"].append(payment)
+            if row["payment_status"] == "verified" and row["payment_currency"] == row["currency"]:
+                item["verified_payment_minor"] += int(row["amount_minor"])
+    return list(advertisements.values())
+
+
 @router.post("/admin/advertisements/{advertisement_id}/payments/{payment_id}/verify")
 def verify_advertising_payment(
     advertisement_id: str,

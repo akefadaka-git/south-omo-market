@@ -161,6 +161,7 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
         create_owner_managed_advertisement,
         grant_candidate_sharing_consent,
         list_employment_provider_requests,
+        list_owner_managed_advertisements,
         list_consented_candidates,
         list_published_employment_advertisements,
         publish_employment_advertisement,
@@ -236,6 +237,11 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
                 db=db,
             )
             assert request["verification_status"] == "pending"
+            pending_provider_queue = list_employment_provider_requests(status="pending", owner=owner, db=db)
+            assert len(pending_provider_queue) == 1
+            assert pending_provider_queue[0]["provider_id"] == request["provider_id"]
+            assert pending_provider_queue[0]["business_code"] == "SYNTHETIC-EMPLOYER-001"
+            assert pending_provider_queue[0]["contact_user_id"] == provider_user.id
             membership_status = db.execute(text("""
                 SELECT status FROM business_memberships
                 WHERE business_id = :business_id AND user_id = :user_id
@@ -285,6 +291,12 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
                 user=provider_user,
                 db=db,
             )
+            first_payment_queue = list_owner_managed_advertisements(status="pending_owner", owner=owner, db=db)
+            assert len(first_payment_queue) == 1
+            assert first_payment_queue[0]["provider_name"] == "Synthetic Employer"
+            assert first_payment_queue[0]["agreement_status"] == "accepted"
+            assert first_payment_queue[0]["payments"][0]["payment_id"] == first_payment["payment_id"]
+            assert first_payment_queue[0]["verified_payment_minor"] == 0
             verify_advertising_payment(
                 advertisement["advertisement_id"],
                 first_payment["payment_id"],
@@ -316,6 +328,10 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
             )
             published = publish_employment_advertisement(advertisement["advertisement_id"], owner=owner, db=db)
             assert published["status"] == "published"
+            published_owner_queue = list_owner_managed_advertisements(status="published", owner=owner, db=db)
+            assert len(published_owner_queue) == 1
+            assert published_owner_queue[0]["advertisement_status"] == "published"
+            assert published_owner_queue[0]["verified_payment_minor"] == 10000
             public_ads = list_published_employment_advertisements(db=db)
             assert len(public_ads) == 1
             assert public_ads[0]["title"] == "Synthetic agricultural worker"

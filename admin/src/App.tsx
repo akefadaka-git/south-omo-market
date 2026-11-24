@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import MarketManagement from './MarketManagement';
+import EmploymentAgencyManagement from './EmploymentAgencyManagement';
 
 type QueueItem = {
   id: string;
@@ -57,6 +58,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [adminAuthorized, setAdminAuthorized] = useState<boolean | null>(null);
 
   const loadQueue = useCallback(async (accessToken: string) => {
     const response = await fetch(`${API_BASE}/admin/moderation/queue`, {
@@ -72,7 +74,7 @@ export default function App() {
       fetch(`${API_BASE}/admin/reports?status=pending`, { headers }),
       fetch(`${API_BASE}/admin/reports?status=in_review`, { headers }),
     ]);
-    if (!pendingResponse.ok || !reviewResponse.ok) throw new Error('Could not load abuse reports.');
+    if (!pendingResponse.ok || !reviewResponse.ok) throw new Error(pendingResponse.status === 403 || reviewResponse.status === 403 ? 'Administrator access required.' : 'Could not load abuse reports.');
     const [pending, inReview] = await Promise.all([
       pendingResponse.json() as Promise<ReportItem[]>,
       reviewResponse.json() as Promise<ReportItem[]>,
@@ -84,12 +86,13 @@ export default function App() {
     const response = await fetch(`${API_BASE}/admin/audit-events?limit=30`, {
       headers: authHeaders(accessToken),
     });
-    if (!response.ok) throw new Error('Could not load moderation history.');
+    if (!response.ok) throw new Error(response.status === 403 ? 'Administrator access required.' : 'Could not load moderation history.');
     setAuditEvents(await response.json() as AuditEvent[]);
   }, []);
 
   async function refreshAdminData(accessToken: string) {
     await Promise.all([loadQueue(accessToken), loadReports(accessToken), loadAudit(accessToken)]);
+    setAdminAuthorized(true);
   }
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
@@ -104,10 +107,10 @@ export default function App() {
       });
       if (!response.ok) throw new Error('Sign-in failed.');
       const data = await response.json() as { access_token: string };
-      await refreshAdminData(data.access_token);
       setToken(data.access_token);
       setPassword('');
-      setMessage('Signed in. Moderation and report queues loaded.');
+      setAdminAuthorized(null);
+      setMessage('Signed in. Checking account permissions for available administration areas.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unexpected sign-in error.');
     } finally {
@@ -162,9 +165,15 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([loadQueue(token), loadReports(token), loadAudit(token)]).catch((reason: unknown) => {
-      setError(reason instanceof Error ? reason.message : 'Could not refresh administration data.');
-    });
+    setAdminAuthorized(null);
+    Promise.all([loadQueue(token), loadReports(token), loadAudit(token)])
+      .then(() => setAdminAuthorized(true))
+      .catch((reason: unknown) => {
+        setAdminAuthorized(false);
+        if (!(reason instanceof Error && reason.message === 'Administrator access required.')) {
+          setError(reason instanceof Error ? reason.message : 'Could not refresh administration data.');
+        }
+      });
   }, [token, loadQueue, loadReports, loadAudit]);
 
   return (
@@ -180,7 +189,8 @@ export default function App() {
         </form>
       )}
       {token && (
-        <section>
+        <>
+        {adminAuthorized === true && <section>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2>Pending listing review ({queue.length})</h2>
             <button disabled={busy} onClick={() => refreshAdminData(token).catch((reason: unknown) => setError(String(reason)))}>Refresh all</button>
@@ -248,7 +258,10 @@ export default function App() {
               </article>
             ))}
           </div>
-        </section>
+        </section>}
+        {adminAuthorized === false && <p role="status">General administrator controls are unavailable for this account. Owner employment controls are checked separately using Owner-only API permissions.</p>}
+        <EmploymentAgencyManagement accessToken={token} />
+        </>
       )}
       {error && <p role="alert" style={{ color: '#b42318' }}>{error}</p>}
       {message && <p role="status">{message}</p>}
