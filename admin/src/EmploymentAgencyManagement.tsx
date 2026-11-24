@@ -57,10 +57,10 @@ type Advertisement = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1').replace(/\/$/, '');
-const authHeaders = (token: string) => ({ Authorization: \`Bearer \${token}\` });
+const authHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
 const panelStyle = { border: '1px solid #d0d5dd', borderRadius: 12, padding: 18, marginTop: 16 };
 const fieldStyle = { display: 'grid', gap: 5, marginBottom: 10 } as const;
-const money = (minor: number, currency = 'ETB') => \`\${(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \${currency}\`;
+const money = (minor: number, currency = 'ETB') => `${(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
 
 async function responseError(response: Response, fallback: string): Promise<Error> {
   const body = await response.json().catch(() => ({})) as { detail?: string };
@@ -95,9 +95,9 @@ export default function EmploymentAgencyManagement({ accessToken }: { accessToke
   const load = useCallback(async () => {
     setError('');
     const [pendingResponse, verifiedResponse, adsResponse] = await Promise.all([
-      fetch(\`\${API_BASE}/employment/admin/providers?status=pending\`, { headers: authHeaders(accessToken) }),
-      fetch(\`\${API_BASE}/employment/admin/providers?status=verified\`, { headers: authHeaders(accessToken) }),
-      fetch(\`\${API_BASE}/employment/admin/advertisements?status=all\`, { headers: authHeaders(accessToken) }),
+      fetch(`${API_BASE}/employment/admin/providers?status=pending`, { headers: authHeaders(accessToken) }),
+      fetch(`${API_BASE}/employment/admin/providers?status=verified`, { headers: authHeaders(accessToken) }),
+      fetch(`${API_BASE}/employment/admin/advertisements?status=all`, { headers: authHeaders(accessToken) }),
     ]);
     const failed = [pendingResponse, verifiedResponse, adsResponse].find((response) => !response.ok);
     if (failed) throw await responseError(failed, 'Could not load employment agency administration.');
@@ -148,11 +148,11 @@ export default function EmploymentAgencyManagement({ accessToken }: { accessToke
 
   async function verifyProvider(provider: Provider) {
     await runOwnerAction(async () => {
-      const response = await fetch(\`\${API_BASE}/employment/admin/providers/\${provider.provider_id}/verify\`, {
+      const response = await fetch(`${API_BASE}/employment/admin/providers/${provider.provider_id}/verify`, {
         method: 'POST', headers: authHeaders(accessToken),
       });
       if (!response.ok) throw await responseError(response, 'Provider verification failed.');
-    }, \`\${provider.display_name} verified; its owner membership is now active.\`);
+    }, `${provider.display_name} verified; its owner membership is now active.`);
   }
 
   async function rejectProvider(provider: Provider) {
@@ -162,14 +162,14 @@ export default function EmploymentAgencyManagement({ accessToken }: { accessToke
       return;
     }
     await runOwnerAction(async () => {
-      const response = await fetch(\`\${API_BASE}/employment/admin/providers/\${provider.provider_id}/reject\`, {
+      const response = await fetch(`${API_BASE}/employment/admin/providers/${provider.provider_id}/reject`, {
         method: 'POST',
         headers: { ...authHeaders(accessToken), 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason }),
       });
       if (!response.ok) throw await responseError(response, 'Provider rejection failed.');
       setRejectionReasons((current) => ({ ...current, [provider.provider_id]: '' }));
-    }, \`\${provider.display_name} rejected; the reason was recorded.\`);
+    }, `${provider.display_name} rejected; the reason was recorded.`);
   }
 
   async function createAdvertisement(event: FormEvent<HTMLFormElement>) {
@@ -177,7 +177,7 @@ export default function EmploymentAgencyManagement({ accessToken }: { accessToke
     const parsedRequirements = requirementsText.split('\n').map((line) => line.trim()).filter(Boolean)
       .map((code) => ({ code }));
     await runOwnerAction(async () => {
-      const response = await fetch(\`\${API_BASE}/employment/admin/advertisements\`, {
+      const response = await fetch(`${API_BASE}/employment/admin/advertisements`, {
         method: 'POST',
         headers: { ...authHeaders(accessToken), 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -209,7 +209,7 @@ export default function EmploymentAgencyManagement({ accessToken }: { accessToke
     }
     await runOwnerAction(async () => {
       const response = await fetch(
-        \`\${API_BASE}/employment/admin/advertisements/\${ad.advertisement_id}/payments/\${payment.payment_id}/verify\`,
+        `${API_BASE}/employment/admin/advertisements/${ad.advertisement_id}/payments/${payment.payment_id}/verify`,
         {
           method: 'POST',
           headers: { ...authHeaders(accessToken), 'Content-Type': 'application/json' },
@@ -223,7 +223,7 @@ export default function EmploymentAgencyManagement({ accessToken }: { accessToke
 
   async function publishAdvertisement(ad: Advertisement) {
     await runOwnerAction(async () => {
-      const response = await fetch(\`\${API_BASE}/employment/admin/advertisements/\${ad.advertisement_id}/publish\`, {
+      const response = await fetch(`${API_BASE}/employment/admin/advertisements/${ad.advertisement_id}/publish`, {
         method: 'POST', headers: authHeaders(accessToken),
       });
       if (!response.ok) throw await responseError(response, 'Advertisement publication failed.');
