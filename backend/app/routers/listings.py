@@ -412,8 +412,7 @@ def update_my_listing(
     category = db.get(Category, changes.get("category_id", listing.category_id))
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
-    if "category_id" in changes:
-        _require_leaf_category(db, category)
+    _require_leaf_category(db, category)
     if "category_id" in changes or "attributes" in changes:
         candidate_attributes = changes.get("attributes", listing.attributes or {})
         changes["attributes"] = _validated_attributes(category, candidate_attributes)
