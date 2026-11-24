@@ -1,6 +1,6 @@
 """Harden business identity, membership lifecycle and seller integration.
 
-Revision ID: 0012_business_membership_lifecycle
+Revision ID: 0012_business_lifecycle
 Revises: 0011_gov_employment_ai
 """
 from uuid import NAMESPACE_URL, uuid5
@@ -8,7 +8,7 @@ from uuid import NAMESPACE_URL, uuid5
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0012_business_membership_lifecycle"
+revision = "0012_business_lifecycle"
 down_revision = "0011_gov_employment_ai"
 branch_labels = None
 depends_on = None
@@ -25,11 +25,13 @@ def upgrade() -> None:
         sa.Column("verified_by", sa.String(36), nullable=True),
         sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("suspended_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     ):
         op.add_column("business_profiles", column)
+    op.execute("UPDATE business_profiles SET updated_at = created_at WHERE updated_at IS NULL")
     with op.batch_alter_table("business_profiles") as batch:
         batch.create_foreign_key("fk_business_profiles_verified_by_users", "users", ["verified_by"], ["id"], ondelete="SET NULL")
+        batch.alter_column("updated_at", existing_type=sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
 
     with op.batch_alter_table("business_memberships") as batch:
         batch.drop_constraint("uq_business_membership_user", type_="unique")
