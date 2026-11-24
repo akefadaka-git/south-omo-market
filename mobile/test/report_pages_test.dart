@@ -12,6 +12,14 @@ void main() {
   testWidgets('buyer can report a listing with evidence through the real API contract', (tester) async {
     var reportBody = <String, dynamic>{};
     final client = MockClient((request) async {
+      if (request.url.path.endsWith('/locations')) {
+        return http.Response(jsonEncode([
+          {'id': 'town-koybe', 'level': 'town', 'name': 'Koybe', 'name_en': 'Koybe'},
+        ]), 200);
+      }
+      if (request.url.path.endsWith('/markets')) {
+        return http.Response('[]', 200);
+      }
       if (request.url.path.endsWith('/listings/listing-report')) {
         return http.Response(jsonEncode({
           'id': 'listing-report', 'seller_id': 'seller-profile-1',
@@ -46,6 +54,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic reporter');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000801');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-report-password-801');
+    await tester.tap(find.byKey(const Key('buyer-preferred-location')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Koybe').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Register and continue'));
     await tester.pumpAndSettle();
 
