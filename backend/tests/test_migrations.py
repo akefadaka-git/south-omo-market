@@ -23,6 +23,8 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "reports" in inspector.get_table_names()
         assert "markets" in inspector.get_table_names()
         assert "market_schedule_days" in inspector.get_table_names()
+        assert "customer_profiles" in inspector.get_table_names()
+        assert {"user_id", "preferred_location_id", "preferred_market_id", "preferred_language", "email", "contact_preference"} <= {column["name"] for column in inspector.get_columns("customer_profiles")}
         assert {"roles", "permissions", "role_permissions", "user_roles", "user_permissions"} <= set(inspector.get_table_names())
         assert {"business_membership_events", "business_verification_events", "business_role_permissions"} <= set(inspector.get_table_names())
         assert {"registration_number", "verification_evidence", "verified_by", "verified_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_profiles")}
@@ -45,7 +47,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
                 ("Ajo", 5), ("Asheker", 1), ("Bala", 1), ("Beneta", 3),
                 ("Bobo", 2), ("Boshkoro", 5), ("Gento", 5), ("Koybe", 0),
             ]
-            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0016_commerce_cart_orders"
+            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0017_customer_profiles"
 
         command.downgrade(config, "0008_reports_and_seller_blocks")
         command.upgrade(config, "head")
@@ -76,6 +78,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "locations" not in inspector.get_table_names()
         assert "markets" not in inspector.get_table_names()
         assert "market_schedule_days" not in inspector.get_table_names()
+        assert "customer_profiles" not in inspector.get_table_names()
         assert "location_id" not in {column["name"] for column in inspector.get_columns("listings")}
         assert "reports" not in inspector.get_table_names()
         assert {"is_suspended", "auth_version"}.isdisjoint({column["name"] for column in inspector.get_columns("users")})
