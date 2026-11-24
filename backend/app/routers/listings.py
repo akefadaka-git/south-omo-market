@@ -548,6 +548,12 @@ def submit_my_listing(
     listing = _owned_listing(db, user, listing_id)
     if listing.status != "draft":
         raise HTTPException(status_code=409, detail="Only draft listings can be submitted")
+    # Revalidate legacy drafts at the submission boundary; older records may
+    # predate the seller-side restriction on Owner-managed employment categories.
+    category = db.get(Category, listing.category_id)
+    if category is None or not category.is_active:
+        raise HTTPException(status_code=404, detail="Category not found")
+    _require_leaf_category(db, category)
     listing.status = "pending_review"
     db.commit()
     return {"id": listing.id, "status": listing.status}
