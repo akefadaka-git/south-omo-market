@@ -153,10 +153,13 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
         PaymentSubmission,
         PaymentVerification,
         ProviderRequest,
+        ProviderRejection,
         accept_advertising_agreement,
         create_owner_managed_advertisement,
+        list_employment_provider_requests,
         list_published_employment_advertisements,
         publish_employment_advertisement,
+        reject_employment_provider,
         request_employment_provider,
         submit_advertising_payment_evidence,
         verify_advertising_payment,
@@ -286,6 +289,44 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
             assert len(public_ads) == 1
             assert public_ads[0]["title"] == "Synthetic agricultural worker"
             assert public_ads[0]["location_code"] == "KOYBE"
+
+            rejected_provider_user = User(
+                id="synthetic-rejected-provider-user",
+                phone_number="+251900000103",
+                display_name="Synthetic Rejected Provider",
+                password_hash="synthetic-test-hash",
+                is_active=True,
+                is_admin=False,
+            )
+            db.add(rejected_provider_user)
+            db.commit()
+            rejected_request = request_employment_provider(
+                ProviderRequest(
+                    business_code="SYNTHETIC-EMPLOYER-002",
+                    legal_name="Synthetic Rejected Employer PLC",
+                    display_name="Synthetic Rejected Employer",
+                    business_type="recruitment_agency",
+                ),
+                user=rejected_provider_user,
+                db=db,
+            )
+            pending_queue = list_employment_provider_requests(status="pending", owner=owner, db=db)
+            assert [item["provider_id"] for item in pending_queue] == [rejected_request["provider_id"]]
+            rejected = reject_employment_provider(
+                rejected_request["provider_id"],
+                ProviderRejection(reason="Synthetic verification rejection for integration test"),
+                owner=owner,
+                db=db,
+            )
+            assert rejected["verification_status"] == "rejected"
+            assert db.execute(text("""
+                SELECT verification_status FROM business_profiles WHERE id = :id
+            """), {"id": rejected_request["business_id"]}).scalar_one() == "rejected"
+            assert db.execute(text("""
+                SELECT status FROM business_memberships WHERE business_id = :id
+            """), {"id": rejected_request["business_id"]}).scalar_one() == "rejected"
+            rejected_queue = list_employment_provider_requests(status="rejected", owner=owner, db=db)
+            assert [item["provider_id"] for item in rejected_queue] == [rejected_request["provider_id"]]
     finally:
         if upgraded:
             command.downgrade(config, "base")

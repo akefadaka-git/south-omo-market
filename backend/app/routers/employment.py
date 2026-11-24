@@ -26,6 +26,10 @@ class ProviderRequest(BaseModel):
     business_type: str = Field(min_length=2, max_length=60)
 
 
+class ProviderRejection(BaseModel):
+    reason: str = Field(min_length=3, max_length=1000)
+
+
 class OwnerProviderCreate(BaseModel):
     user_id: str
     business_code: str = Field(min_length=2, max_length=80)
@@ -84,6 +88,32 @@ def request_employment_provider(
     })
     db.commit()
     return {"provider_id": provider_id, "business_id": business_id, "verification_status": "pending"}
+
+
+@router.get("/admin/providers")
+def list_employment_provider_requests(
+    status: str = "pending",
+    owner: User = Depends(require_permission("employment.provider.verify")),
+    db: Session = Depends(get_db),
+) -> list[dict[str, object]]:
+    if status not in {"pending", "verified", "rejected", "suspended"}:
+        raise HTTPException(status_code=422, detail="Unsupported provider verification status")
+    rows = db.execute(text("""
+        SELECT ep.id AS provider_id, ep.verification_status,
+               bp.id AS business_id, bp.business_code, bp.legal_name,
+               bp.display_name, bp.business_type, bp.created_at AS requested_at,
+               u.id AS contact_user_id, u.display_name AS contact_display_name,
+               u.phone_number AS contact_phone
+        FROM employment_providers ep
+        JOIN business_profiles bp ON bp.id = ep.business_id
+        JOIN business_memberships bm ON bm.business_id = bp.id
+            AND bm.membership_role = 'owner'
+        JOIN users u ON u.id = bm.user_id
+        WHERE ep.verification_status = :status
+        ORDER BY bp.created_at DESC, ep.id
+        LIMIT 100
+    """), {"status": status}).mappings().all()
+    return [dict(row) for row in rows]
 
 
 @router.post("/admin/providers", status_code=201)
@@ -161,6 +191,48 @@ def verify_employment_provider(
     """), {"id": str(uuid4()), "actor": owner.id, "resource": provider_id})
     db.commit()
     return {"provider_id": provider_id, "verification_status": "verified"}
+
+
+@router.post("/admin/providers/{provider_id}/reject")
+def reject_employment_provider(
+    provider_id: str,
+    payload: ProviderRejection,
+    owner: User = Depends(require_permission("employment.provider.verify")),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    row = db.execute(text("""
+        SELECT id, business_id, verification_status
+        FROM employment_providers WHERE id = :id FOR UPDATE
+    """), {"id": provider_id}).mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Employment provider not found")
+    if row["verification_status"] == "verified":
+        raise HTTPException(status_code=409, detail="Verified providers require a separate suspension process")
+    if row["verification_status"] == "rejected":
+        return {"provider_id": provider_id, "verification_status": "rejected"}
+    db.execute(text("""
+        UPDATE employment_providers SET verification_status = 'rejected'
+        WHERE id = :id
+    """), {"id": provider_id})
+    db.execute(text("""
+        UPDATE business_profiles SET verification_status = 'rejected'
+        WHERE id = :business
+    """), {"business": row["business_id"]})
+    db.execute(text("""
+        UPDATE business_memberships SET status = 'rejected'
+        WHERE business_id = :business AND status IN ('pending', 'active')
+    """), {"business": row["business_id"]})
+    db.execute(text("""
+        INSERT INTO employment_events
+            (id, actor_id, event_type, resource_type, resource_id, event_metadata)
+        VALUES (:id, :actor, 'employment.provider.rejected',
+                'employment_provider', :resource, :metadata)
+    """).bindparams(bindparam("metadata", type_=JSON)), {
+        "id": str(uuid4()), "actor": owner.id, "resource": provider_id,
+        "metadata": {"business_id": row["business_id"], "reason": payload.reason},
+    })
+    db.commit()
+    return {"provider_id": provider_id, "verification_status": "rejected"}
 
 
 class OwnerAdvertisementCreate(BaseModel):
