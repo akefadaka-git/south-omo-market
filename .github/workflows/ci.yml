@@ -6,13 +6,6 @@ on:
   pull_request:
     branches: [main]
     types: [opened, reopened, ready_for_review]
-  workflow_dispatch:
-    inputs:
-      build_staging_apk:
-        description: Build a debug APK for the configured non-production staging API
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -162,8 +155,8 @@ jobs:
           retention-days: 14
 
   android-staging-build:
-    name: Android staging test APK (manual, non-production)
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_staging_apk == true && vars.STAGING_API_BASE_URL != '' }}
+    name: Android staging test APK (automatic, non-production)
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feat/a3-platform-foundation' && vars.STAGING_API_BASE_URL != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
