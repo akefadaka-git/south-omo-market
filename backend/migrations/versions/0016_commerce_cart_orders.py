@@ -21,10 +21,17 @@ def upgrade() -> None:
         sa.Column("status", sa.String(20), nullable=False, server_default="active"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.UniqueConstraint("buyer_user_id", "business_id", "status", name="uq_commerce_cart_buyer_business_status"),
         sa.CheckConstraint("status IN ('active','converted','abandoned')", name="ck_commerce_cart_status"),
     )
     op.create_index("ix_commerce_carts_buyer", "commerce_carts", ["buyer_user_id", "status"])
+    op.create_index(
+        "uq_commerce_cart_active_buyer_business",
+        "commerce_carts",
+        ["buyer_user_id", "business_id"],
+        unique=True,
+        sqlite_where=sa.text("status = 'active'"),
+        postgresql_where=sa.text("status = 'active'"),
+    )
 
     op.create_table(
         "commerce_cart_items",
@@ -97,5 +104,6 @@ def downgrade() -> None:
     op.drop_index("ix_commerce_orders_business_status", table_name="commerce_orders")
     op.drop_table("commerce_orders")
     op.drop_table("commerce_cart_items")
+    op.drop_index("uq_commerce_cart_active_buyer_business", table_name="commerce_carts")
     op.drop_index("ix_commerce_carts_buyer", table_name="commerce_carts")
     op.drop_table("commerce_carts")
