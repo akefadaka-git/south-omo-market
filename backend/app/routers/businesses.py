@@ -120,6 +120,8 @@ def accept_invite(business_id: str, membership_id: str,
         raise HTTPException(409,"Invitation is no longer pending")
     expiry = row["expires_at"]
     if expiry is not None:
+        if isinstance(expiry, str):
+            expiry = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
         if expiry.tzinfo is None:
             expiry = expiry.replace(tzinfo=timezone.utc)
         if expiry <= datetime.now(timezone.utc):
