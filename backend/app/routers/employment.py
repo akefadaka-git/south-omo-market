@@ -247,6 +247,141 @@ def submit_advertising_payment_evidence(
     return {"payment_id": payment_id, "status": "submitted_for_owner_verification"}
 
 
+class CandidateConsentRequest(BaseModel):
+    purpose: str = Field(min_length=3, max_length=120)
+    consent_version: str = Field(min_length=1, max_length=40)
+
+
+@router.post("/opportunities/{opportunity_id}/apply", status_code=201)
+def apply_to_published_opportunity(
+    opportunity_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    profile_id = db.execute(text("""
+        SELECT id FROM job_seeker_profiles WHERE user_id = :user_id
+    """), {"user_id": user.id}).scalar_one_or_none()
+    if profile_id is None:
+        raise HTTPException(status_code=409, detail="Create a private job-seeker profile before applying")
+    visible = db.execute(text("""
+        SELECT o.id FROM employment_opportunities o
+        JOIN employment_advertisements a ON a.opportunity_id = o.id
+        WHERE o.id = :opportunity_id AND o.status = 'open'
+          AND a.status = 'published' AND a.expires_at > CURRENT_TIMESTAMP
+    """), {"opportunity_id": opportunity_id}).scalar_one_or_none()
+    if visible is None:
+        raise HTTPException(status_code=404, detail="Published employment opportunity not found")
+    application_id = str(uuid4())
+    try:
+        db.execute(text("""
+            INSERT INTO employment_applications (id, opportunity_id, job_seeker_id, status)
+            VALUES (:id, :opportunity, :profile, 'submitted')
+            ON CONFLICT (opportunity_id, job_seeker_id) DO NOTHING
+        """), {"id": application_id, "opportunity": opportunity_id, "profile": profile_id})
+        existing = db.execute(text("""
+            SELECT id FROM employment_applications
+            WHERE opportunity_id = :opportunity AND job_seeker_id = :profile
+        """), {"opportunity": opportunity_id, "profile": profile_id}).scalar_one()
+        db.commit()
+        return {"application_id": existing, "status": "submitted"}
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.post("/applications/{application_id}/consent")
+def grant_candidate_sharing_consent(
+    application_id: str,
+    payload: CandidateConsentRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    row = db.execute(text("""
+        SELECT app.id, app.job_seeker_id, o.provider_id
+        FROM employment_applications app
+        JOIN job_seeker_profiles jsp ON jsp.id = app.job_seeker_id
+        JOIN employment_opportunities o ON o.id = app.opportunity_id
+        WHERE app.id = :application AND jsp.user_id = :user_id
+        FOR UPDATE OF app
+    """), {"application": application_id, "user_id": user.id}).mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Application not found")
+    consent_id = db.execute(text("""
+        SELECT id FROM candidate_consents
+        WHERE job_seeker_id = :profile AND provider_id = :provider
+          AND purpose = :purpose AND withdrawn_at IS NULL
+    """), {"profile": row["job_seeker_id"], "provider": row["provider_id"], "purpose": payload.purpose}).scalar_one_or_none()
+    if consent_id is None:
+        consent_id = str(uuid4())
+        db.execute(text("""
+            INSERT INTO candidate_consents
+                (id, job_seeker_id, provider_id, purpose, consent_version, granted_at)
+            VALUES (:id, :profile, :provider, :purpose, :version, CURRENT_TIMESTAMP)
+        """), {"id": consent_id, "profile": row["job_seeker_id"], "provider": row["provider_id"],
+               "purpose": payload.purpose, "version": payload.consent_version})
+    db.commit()
+    return {"consent_id": consent_id, "status": "granted"}
+
+
+@router.get("/providers/{provider_id}/consented-candidates")
+def list_consented_candidates(
+    provider_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict[str, object]]:
+    membership = db.execute(text("""
+        SELECT ep.id FROM employment_providers ep
+        JOIN business_memberships bm ON bm.business_id = ep.business_id
+        WHERE ep.id = :provider AND ep.verification_status = 'verified'
+          AND bm.user_id = :user_id AND bm.status = 'active'
+    """), {"provider": provider_id, "user_id": user.id}).scalar_one_or_none()
+    if membership is None:
+        raise HTTPException(status_code=403, detail="Verified provider membership is required")
+    rows = db.execute(text("""
+        SELECT DISTINCT jsp.id AS profile_id, jsp.skills, jsp.experience,
+               jsp.qualifications, jsp.preferred_occupations,
+               jsp.preferred_location_codes, jsp.availability, app.id AS application_id
+        FROM candidate_consents cc
+        JOIN job_seeker_profiles jsp ON jsp.id = cc.job_seeker_id
+        JOIN employment_applications app ON app.job_seeker_id = jsp.id
+        JOIN employment_opportunities o ON o.id = app.opportunity_id
+        WHERE cc.provider_id = :provider AND cc.withdrawn_at IS NULL
+          AND o.provider_id = cc.provider_id
+          AND jsp.visibility IN ('private', 'consented_employers')
+        ORDER BY app.created_at DESC
+        LIMIT 100
+    """), {"provider": provider_id}).mappings().all()
+    return [dict(row) for row in rows]
+
+
+@router.post("/admin/applications/{application_id}/refer", status_code=201)
+def create_human_review_candidate_referral(
+    application_id: str,
+    user: User = Depends(require_permission("employment.candidate.refer")),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    row = db.execute(text("""
+        SELECT app.id, o.provider_id, app.job_seeker_id
+        FROM employment_applications app
+        JOIN employment_opportunities o ON o.id = app.opportunity_id
+        JOIN candidate_consents cc ON cc.job_seeker_id = app.job_seeker_id
+            AND cc.provider_id = o.provider_id AND cc.withdrawn_at IS NULL
+        WHERE app.id = :application
+        LIMIT 1
+    """), {"application": application_id}).mappings().first()
+    if row is None:
+        raise HTTPException(status_code=409, detail="Active candidate consent is required before referral")
+    referral_id = str(uuid4())
+    db.execute(text("""
+        INSERT INTO candidate_referrals
+            (id, application_id, provider_id, referred_by, decision, matching_metadata)
+        VALUES (:id, :application, :provider, :actor, 'human_review', '{}')
+    """), {"id": referral_id, "application": application_id,
+           "provider": row["provider_id"], "actor": user.id})
+    db.commit()
+    return {"referral_id": referral_id, "decision": "human_review"}
+
+
 @router.get("/advertisements")
 def list_published_employment_advertisements(
     db: Session = Depends(get_db),
