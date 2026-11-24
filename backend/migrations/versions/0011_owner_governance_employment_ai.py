@@ -224,7 +224,6 @@ def upgrade() -> None:
         sa.Column("endpoint_configured", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("allowlisted", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.CheckConstraint("NOT (primary_provider AND enabled = false)", name="ck_ai_primary_enabled"),
     )
     op.create_table(
         "ai_models",
