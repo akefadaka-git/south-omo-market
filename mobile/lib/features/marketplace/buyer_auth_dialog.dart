@@ -27,9 +27,9 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
   }
 
   Future<void> _authenticate() async {
-    if (_phone.text.trim().length < 7 || _password.text.length < 12 ||
+    if (_phone.text.trim().length < 7 || _password.text.length < 6 ||
         (_register && _name.text.trim().isEmpty)) {
-      setState(() => _error = marketString(context, en: 'Enter a valid phone number, password (at least 12 characters), and display name when registering.', am: 'ትክክለኛ ስልክ ቁጥር፣ ቢያንስ 12 ፊደላት ያለው የይለፍ ቃል እና ሲመዘገቡ የሚታይ ስም ያስገቡ።', mdy: ''));
+      setState(() => _error = marketString(context, en: 'Enter a valid phone number, password (at least 6 characters), and display name when registering.', am: 'ትክክለኛ ስልክ ቁጥር፣ ቢያንስ 6 ፊደላት ያለው የይለፍ ቃል እና ሲመዘገቡ የሚታይ ስም ያስገቡ።', mdy: ''));
       return;
     }
     setState(() { _busy = true; _error = null; });
@@ -87,7 +87,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
       TextField(key: const Key('buyer-phone'), controller: _phone, keyboardType: TextInputType.phone,
         decoration: InputDecoration(labelText: marketString(context, en: 'Phone number', am: 'ስልክ ቁጥር', mdy: ''), prefixIcon: Icon(Icons.phone_outlined))),
       TextField(key: const Key('buyer-password'), controller: _password, obscureText: true,
-        decoration: InputDecoration(labelText: marketString(context, en: 'Password (minimum 12 characters)', am: 'የይለፍ ቃል (ቢያንስ 12 ፊደላት)', mdy: ''), prefixIcon: Icon(Icons.lock_outline))),
+        decoration: InputDecoration(labelText: marketString(context, en: 'Password (minimum 6 characters)', am: 'የይለፍ ቃል (ቢያንስ 6 ፊደላት)', mdy: ''), prefixIcon: Icon(Icons.lock_outline))),
       if (_error != null) Padding(
         padding: const EdgeInsets.only(top: 8),
         child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
