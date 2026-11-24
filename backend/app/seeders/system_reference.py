@@ -26,6 +26,7 @@ PERMISSIONS = {
     "employment.advertisement.publish": "Publish a paid employment advertisement",
     "employment.payment.verify": "Verify evidence of direct advertising payment",
     "employment.provider.verify": "Verify an employment provider",
+    "employment.advertisement.manage": "Create and manage Owner-controlled provider advertisements",
     "employment.candidate.refer": "Refer a candidate for human review",
     "policy.pack.manage": "Manage governed policy packs",
     "ai.provider.configure": "Configure allowlisted AI providers",
