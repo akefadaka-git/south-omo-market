@@ -29,6 +29,7 @@ class SellerProfile(Base):
     __tablename__ = "seller_profiles"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    business_id: Mapped[str | None] = mapped_column(ForeignKey("business_profiles.id", ondelete="SET NULL"), nullable=True, index=True)
     public_name: Mapped[str] = mapped_column(String(160))
     location_label: Mapped[str] = mapped_column(String(160))
     user: Mapped[User] = relationship(back_populates="seller_profile")

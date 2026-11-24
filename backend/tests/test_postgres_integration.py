@@ -25,7 +25,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
                 "audit_events", "listing_images", "locations", "reports", "markets", "market_schedule_days", "alembic_version"} <= tables
         assert {
             "roles", "permissions", "role_permissions", "user_roles", "user_permissions",
-            "business_profiles", "business_memberships", "employment_providers",
+            "business_profiles", "business_memberships", "business_membership_events", "business_verification_events", "business_role_permissions", "employment_providers",
             "job_seeker_profiles", "employment_opportunities", "employment_advertisements",
             "advertising_agreements", "advertising_payments", "employment_applications",
             "candidate_consents", "candidate_referrals", "employment_events",
@@ -33,6 +33,9 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         } <= tables
         assert "description" in {column["name"] for column in inspector.get_columns("markets")}
         assert {"effective_from", "effective_until"} <= {column["name"] for column in inspector.get_columns("market_schedule_days")}
+        assert "business_id" in {column["name"] for column in inspector.get_columns("seller_profiles")}
+        assert {"registration_number", "verification_evidence", "verified_by", "verified_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_profiles")}
+        assert {"invited_by", "accepted_at", "revoked_at", "expires_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_memberships")}
         assert "client_sync_id" in {
             column["name"] for column in inspector.get_columns("listings")
         }
@@ -55,7 +58,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0011_gov_employment_ai"
+            assert revision == "0012_business_membership_lifecycle"
             assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
             assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
             expected_markets = {

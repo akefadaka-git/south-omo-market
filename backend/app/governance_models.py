@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Integer,
+    BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer,
     JSON, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -60,17 +60,75 @@ class BusinessProfile(Base):
     business_type: Mapped[str] = mapped_column(String(60))
     verification_status: Mapped[str] = mapped_column(String(24), default="pending")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    registration_number: Mapped[str | None] = mapped_column(String(120))
+    registered_address: Mapped[str | None] = mapped_column(Text)
+    contact_email: Mapped[str | None] = mapped_column(String(254))
+    contact_phone: Mapped[str | None] = mapped_column(String(32))
+    verification_evidence: Mapped[list] = mapped_column(JSON, default=list)
+    verification_notes: Mapped[str | None] = mapped_column(Text)
+    verified_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class BusinessMembership(Base):
     __tablename__ = "business_memberships"
-    __table_args__ = (UniqueConstraint("business_id", "user_id", name="uq_business_membership_user"),)
+    __table_args__ = (
+        CheckConstraint("membership_role IN ('owner','administrator','manager','staff','finance','viewer')", name="ck_business_membership_role"),
+        CheckConstraint("status IN ('invited','pending','active','suspended','rejected','revoked','expired')", name="ck_business_membership_status"),
+        Index("uq_business_membership_current", "business_id", "user_id", unique=True,
+              sqlite_where=__import__("sqlalchemy").text("status IN ('invited','pending','active','suspended')"),
+              postgresql_where=__import__("sqlalchemy").text("status IN ('invited','pending','active','suspended')")),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     business_id: Mapped[str] = mapped_column(ForeignKey("business_profiles.id", ondelete="CASCADE"))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     membership_role: Mapped[str] = mapped_column(String(40))
     status: Mapped[str] = mapped_column(String(24), default="pending")
+    invited_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BusinessMembershipEvent(Base):
+    __tablename__ = "business_membership_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    business_id: Mapped[str] = mapped_column(ForeignKey("business_profiles.id", ondelete="CASCADE"))
+    membership_id: Mapped[str] = mapped_column(ForeignKey("business_memberships.id", ondelete="CASCADE"))
+    actor_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    event_type: Mapped[str] = mapped_column(String(80))
+    event_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BusinessVerificationEvent(Base):
+    __tablename__ = "business_verification_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    business_id: Mapped[str] = mapped_column(ForeignKey("business_profiles.id", ondelete="CASCADE"))
+    actor_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    previous_status: Mapped[str | None] = mapped_column(String(24))
+    new_status: Mapped[str] = mapped_column(String(24))
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BusinessRolePermission(Base):
+    __tablename__ = "business_role_permissions"
+    __table_args__ = (
+        UniqueConstraint("membership_role", "permission_code", name="uq_business_role_permission"),
+        CheckConstraint("membership_role IN ('owner','administrator','manager','staff','finance','viewer')", name="ck_business_role_permission_role"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    membership_role: Mapped[str] = mapped_column(String(40))
+    permission_code: Mapped[str] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
