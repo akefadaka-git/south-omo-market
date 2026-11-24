@@ -95,3 +95,62 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         engine.dispose()
     finally:
         get_settings.cache_clear()
+
+
+
+def test_business_membership_migration_preserves_legacy_rows_and_allows_history(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "business-lifecycle.db"
+    database_url = f"sqlite:///{database_path}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    engine = create_engine(database_url)
+    try:
+        command.upgrade(config, "0011_gov_employment_ai")
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "INSERT INTO users (id, phone_number, display_name, password_hash, is_active, is_admin, is_suspended, auth_version) "
+                "VALUES ('legacy-user', '+251900000901', 'Legacy Seller', 'synthetic-hash', 1, 0, 0, 0)"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO business_profiles (id, business_code, legal_name, display_name, business_type, verification_status, is_active) "
+                "VALUES ('legacy-business', 'LEGACY-BIZ-001', 'Legacy Business PLC', 'Legacy Shop', 'retail', 'pending', 1)"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO business_memberships (id, business_id, user_id, membership_role, status) "
+                "VALUES ('legacy-membership', 'legacy-business', 'legacy-user', 'owner', 'pending')"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO seller_profiles (id, user_id, public_name, location_label) "
+                "VALUES ('legacy-seller', 'legacy-user', 'Legacy Shop', 'Koybe')"
+            )
+        command.upgrade(config, "head")
+        with engine.begin() as connection:
+            legacy = connection.exec_driver_sql(
+                "SELECT business_code, verification_status FROM business_profiles WHERE id='legacy-business'"
+            ).one()
+            assert tuple(legacy) == ("LEGACY-BIZ-001", "pending")
+            membership = connection.exec_driver_sql(
+                "SELECT membership_role, status FROM business_memberships WHERE id='legacy-membership'"
+            ).one()
+            assert tuple(membership) == ("owner", "pending")
+            assert connection.exec_driver_sql(
+                "SELECT business_id FROM seller_profiles WHERE id='legacy-seller'"
+            ).scalar_one() is None
+            connection.exec_driver_sql(
+                "UPDATE business_memberships SET status='revoked', revoked_at=CURRENT_TIMESTAMP "
+                "WHERE id='legacy-membership'"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO business_memberships (id, business_id, user_id, membership_role, status) "
+                "VALUES ('replacement-membership', 'legacy-business', 'legacy-user', 'owner', 'pending')"
+            )
+            assert connection.exec_driver_sql(
+                "SELECT COUNT(*) FROM business_memberships WHERE business_id='legacy-business' AND user_id='legacy-user'"
+            ).scalar_one() == 2
+            assert connection.exec_driver_sql(
+                "SELECT COUNT(*) FROM business_role_permissions WHERE membership_role='owner'"
+            ).scalar_one() >= 7
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
