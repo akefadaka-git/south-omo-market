@@ -1,6 +1,6 @@
 # A3 — Owner governance, employment agency and AI policy foundation
 
-Status: implementation in progress; exact-head GitHub Actions run #875 PASS on `fc9eac63505445a6b6d595ca6a60ad3c75831561`.
+Status: implementation in progress; exact-head GitHub Actions run #877 PASS on `13c888060debd753083a5c3da67383f038f9f2b9`.
 Target: `feat/a3-platform-foundation`; no production database or deployment changes.
 
 ## Migration and ORM
@@ -26,7 +26,7 @@ ORM mappings are registered in Alembic metadata through `app.governance_models`.
 ## Employment agency workflow
 
 1. An authenticated account submits `POST /employment/providers/request`; the business profile, provider record and owner membership begin pending. Duplicate requests for the same account are rejected.
-2. Owner verifies provider identity/business information. Verification activates the pending business-owner membership.
+2. Owner reviews pending requests through the Owner-only provider queue. Owner may reject with a recorded reason (provider and membership become rejected) or verify provider identity/business information; verification activates the pending business-owner membership.
 3. Owner prepares the opportunity, price, duration and versioned advertising agreement.
 4. An active provider business member accepts the agreement with recorded acceptance evidence.
 5. The provider submits direct-payment evidence; no gateway is enabled.
@@ -53,7 +53,7 @@ IROKA matching is not an autonomous hiring or eligibility decision. Candidate re
 ## Verification and activation gates
 
 - Automated tests cover migration head, schema presence, idempotent reference seeding, Owner permission mapping, absence of default Owner assignments, IROKA placeholder state, provider-request pending state/duplicate rejection, consent withdrawal across multiple purposes, and the full PostgreSQL Owner-controlled advertising lifecycle.
-- Exact-head CI run #875 PASS: backend Ruff; 45 backend pytest tests; 2 PostgreSQL migration/audit/employment lifecycle tests; 3 S3 storage tests; admin dependency audit (0 vulnerabilities), production build and 2 Vitest files/3 tests; Flutter analysis and 34 tests; Android staging readiness check and three-ABI debug APK artifact. Production release APK remains skipped.
+- Exact-head CI run #877 PASS: backend Ruff; 45 backend pytest tests; 2 PostgreSQL migration/audit/employment lifecycle tests (including provider queue, rejection and paid-ad publication); 3 S3 storage tests; admin dependency audit (0 vulnerabilities), production build and 2 Vitest files/3 tests; Flutter analysis and 34 tests; Android staging readiness check and three-ABI debug APK artifact. Production release APK remains skipped.
 - The Neon `south-omo-testing` branch remains the intended test database. This implementation has not run Alembic or seeders against Neon.
 - Production Neon branch, deployment, merge, public commercial launch, real provider/payment data, and live AI integration remain outside this authorization.
 - Employment agency licensing, recruitment and consumer/employment obligations require legal review before paid commercial activation.
