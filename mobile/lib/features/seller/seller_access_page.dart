@@ -193,7 +193,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      labelText: marketString(context, en: 'Password', am: 'የይለፍ ቃል', mdy: ''),
+                      labelText: marketString(context, en: 'Password (minimum 6 characters)', am: 'የይለፍ ቃል (ቢያንስ 6 ፊደላት)', mdy: ''),
                       prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
                         tooltip: _obscurePassword ? 'Show password' : 'Hide password',
@@ -202,7 +202,7 @@ class _MarketplaceHomePageState extends State<MarketplaceHomePage> {
                       ),
                     ),
                     validator: (value) =>
-                        value == null || value.length < 12 ? marketString(context, en: 'Password must be at least 12 characters', am: 'የይለፍ ቃሉ ቢያንስ 12 ፊደላት መሆን አለበት', mdy: '') : null,
+                        value == null || value.length < 6 ? marketString(context, en: 'Password must be at least 6 characters', am: 'የይለፍ ቃሉ ቢያንስ 6 ፊደላት መሆን አለበት', mdy: '') : null,
                   ),
                   const SizedBox(height: 12),
                   TextButton(
