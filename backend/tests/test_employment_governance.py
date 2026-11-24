@@ -52,3 +52,35 @@ def test_owner_only_permission_cannot_be_granted_to_admin_or_direct_user_overrid
             assert dependency(user=SimpleNamespace(id="u1"), db=db).id == "u1"
     finally:
         engine.dispose()
+
+
+
+def test_legacy_employment_category_draft_cannot_be_submitted(monkeypatch) -> None:
+    from app.routers import listings as listings_router
+
+    category = Category(
+        id="legacy-work", slug="work-opportunities", name_en="Work",
+        attributes_schema=[], is_active=True,
+    )
+    listing = SimpleNamespace(id="legacy-listing", category_id=category.id, status="draft")
+
+    class FakeDB:
+        committed = False
+
+        def get(self, model, identifier):
+            assert model is Category
+            assert identifier == category.id
+            return category
+
+        def commit(self):
+            self.committed = True
+
+    db = FakeDB()
+    monkeypatch.setattr(listings_router, "_owned_listing", lambda db, user, listing_id: listing)
+
+    with pytest.raises(HTTPException) as error:
+        listings_router.submit_my_listing("legacy-listing", user=SimpleNamespace(id="seller-1"), db=db)
+
+    assert error.value.status_code == 403
+    assert listing.status == "draft"
+    assert db.committed is False
