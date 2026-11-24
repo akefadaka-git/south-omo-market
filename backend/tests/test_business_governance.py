@@ -41,6 +41,7 @@ def test_business_permission_is_scoped_to_business_and_active_membership():
     engine = db_fixture()
     try:
         with engine.begin() as c:
+            c.exec_driver_sql("INSERT INTO users VALUES ('u1','User',1,0)")
             c.exec_driver_sql("INSERT INTO business_profiles (id,business_code,legal_name,display_name,business_type,verification_status,is_active) VALUES ('b1','B1','B1','B1','retail','verified',1),('b2','B2','B2','B2','retail','verified',1)")
             c.exec_driver_sql("INSERT INTO business_memberships (id,business_id,user_id,membership_role,status) VALUES ('m1','b1','u1','manager','active'),('m2','b2','u1','manager','revoked')")
             c.exec_driver_sql("INSERT INTO business_role_permissions VALUES ('p1','manager','business.profile.read')")
