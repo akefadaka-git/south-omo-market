@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.governance import require_permission
+from app.policy_engine import evaluate_policy
 from app.models import User
 
 router = APIRouter(prefix="/employment")
@@ -338,6 +339,18 @@ def publish_employment_advertisement(
         raise HTTPException(status_code=409, detail="Provider has not accepted the advertising agreement")
     if int(row["verified_total"]) < int(row["agreed_price_minor"]):
         raise HTTPException(status_code=409, detail="Verified payment does not cover the agreed advertising price")
+    if not evaluate_policy(
+        db,
+        subject="role:owner",
+        action="employment.advertisement.publish",
+        resource="employment_advertisements",
+        facts={
+            "provider_verified": row["provider_status"] == "verified",
+            "agreement_accepted": row["agreement_status"] == "accepted",
+            "payment_verified": int(row["verified_total"]) >= int(row["agreed_price_minor"]),
+        },
+    ):
+        raise HTTPException(status_code=403, detail="Active policy pack denied advertisement publication")
     now = datetime.now(timezone.utc)
     expires = now + timedelta(days=int(row["duration_days"]))
     db.execute(text("""
