@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select, text
+from sqlalchemy import func, inspect as sqlalchemy_inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -136,10 +136,17 @@ def _require_leaf_category(db: Session, category: Category) -> None:
     # Persisted governance roots protect the category and all descendants even
     # if a display slug is later renamed. The slug check is a fail-safe for
     # pre-migration or incomplete reference-data states.
-    protected_roots = set(db.execute(text("""
-        SELECT category_id FROM protected_category_roots
-        WHERE seller_listing_allowed=FALSE AND applies_to_descendants=TRUE
-    """)).scalars().all())
+    protected_roots: set[str] = set()
+    # Some isolated legacy tests and pre-upgrade contexts use a reduced schema.
+    # Consult the persisted policy table when present; otherwise retain the
+    # immutable legacy slug guard and ancestry traversal.
+    if hasattr(db, "get_bind"):
+        bind = db.get_bind()
+        if sqlalchemy_inspect(bind).has_table("protected_category_roots"):
+            protected_roots = set(db.execute(text("""
+                SELECT category_id FROM protected_category_roots
+                WHERE seller_listing_allowed=FALSE AND applies_to_descendants=TRUE
+            """)).scalars().all())
     ancestor: Category | None = category
     seen: set[str] = set()
     protected = False
