@@ -318,6 +318,7 @@ class MarketListingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sourceUrl = imageUrl;
     final fallback = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -347,10 +348,10 @@ class MarketListingCard extends StatelessWidget {
                 height: 112,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: imageUrl == null || imageUrl!.isEmpty
+                  child: sourceUrl == null || sourceUrl.isEmpty
                     ? fallback
                     : Image.network(
-                        imageUrl!,
+                        sourceUrl,
                         fit: BoxFit.cover,
                         filterQuality: FilterQuality.low,
                         errorBuilder: (context, error, stackTrace) => fallback,
