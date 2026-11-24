@@ -1,7 +1,7 @@
 """Deterministic, repeatable system-reference seeding. Never creates or assigns users."""
 from uuid import NAMESPACE_URL, uuid5
 
-from sqlalchemy import text
+from sqlalchemy import JSON, bindparam, text
 from sqlalchemy.orm import Session
 
 
@@ -112,10 +112,12 @@ def seed_system_reference_data(db: Session) -> None:
 
     db.execute(text("""
         INSERT INTO policy_packs (id, code, version, status, policy_json)
-        VALUES (:id, 'south-omo-default-deny', '1.0.0', 'active',
-                '{"default_effect":"deny","owner_approval_required":true}')
+        VALUES (:id, 'south-omo-default-deny', '1.0.0', 'active', :policy_json)
         ON CONFLICT (code, version) DO NOTHING
-    """), {"id": _id("policy-pack", "south-omo-default-deny:1.0.0")})
+    """).bindparams(bindparam("policy_json", type_=JSON)), {
+        "id": _id("policy-pack", "south-omo-default-deny:1.0.0"),
+        "policy_json": {"default_effect": "deny", "owner_approval_required": True},
+    })
 
     pack_id = _id("policy-pack", "south-omo-default-deny:1.0.0")
     db.execute(text("""
@@ -123,9 +125,15 @@ def seed_system_reference_data(db: Session) -> None:
             (id, policy_pack_id, rule_code, effect, subject, action, resource, conditions)
         VALUES (:id, :pack_id, 'employment-advertisement-publish-owner-only',
                 'allow', 'role:owner', 'employment.advertisement.publish',
-                'employment_advertisements',
-                '{"provider_verified":true,"agreement_accepted":true,"payment_verified":true}')
+                'employment_advertisements', :conditions)
         ON CONFLICT (policy_pack_id, rule_code) DO NOTHING
-    """), {"id": _id("policy-rule", "employment-advertisement-publish-owner-only"),
-           "pack_id": pack_id})
+    """).bindparams(bindparam("conditions", type_=JSON)), {
+        "id": _id("policy-rule", "employment-advertisement-publish-owner-only"),
+        "pack_id": pack_id,
+        "conditions": {
+            "provider_verified": True,
+            "agreement_accepted": True,
+            "payment_verified": True,
+        },
+    })
     db.commit()
