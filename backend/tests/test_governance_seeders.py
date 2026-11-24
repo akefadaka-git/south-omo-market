@@ -73,6 +73,33 @@ def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monk
                 SELECT COUNT(*) FROM ai_task_routes
                 WHERE enabled = 0 AND requires_human_approval = 1 AND quota_per_day = 0
             """)).scalar_one() == 4
+            # A repeat run must repair drift in system-owned grants and policy definitions.
+            db.execute(text("""
+                INSERT INTO role_permissions (role_id,permission_id)
+                SELECT r.id,p.id FROM roles r,permissions p
+                WHERE r.code='admin' AND p.code='business.verification.manage'
+            """))
+            db.execute(text("""
+                UPDATE policy_packs SET status='disabled'
+                WHERE code='south-omo-default-deny'
+            """))
+            db.execute(text("""
+                UPDATE policy_rules SET effect='deny',subject='*'
+                WHERE rule_code='employment-advertisement-publish-owner-only'
+            """))
+            seed_system_reference_data(db)
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM role_permissions rp
+                JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id
+                WHERE r.code='admin' AND p.code='business.verification.manage'
+            """)).scalar_one() == 0
+            assert db.execute(text("""
+                SELECT status FROM policy_packs WHERE code='south-omo-default-deny'
+            """)).scalar_one() == "active"
+            assert db.execute(text("""
+                SELECT effect,subject FROM policy_rules
+                WHERE rule_code='employment-advertisement-publish-owner-only'
+            """)).one() == ("allow","role:owner")
         engine.dispose()
     finally:
         get_settings.cache_clear()
