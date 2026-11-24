@@ -9,6 +9,8 @@ import '../../design/market_brand_pages.dart';
 import '../../design/market_category_browser.dart';
 import 'listing_detail_page.dart';
 import 'market_calendar_page.dart';
+import 'buyer_auth_dialog.dart';
+import 'customer_profile_page.dart';
 
 class MarketplaceDiscoveryPage extends StatefulWidget {
   const MarketplaceDiscoveryPage({
@@ -163,6 +165,21 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
     }
   }
 
+  Future<void> _openCustomerProfile() async {
+    final token = await showDialog<String>(
+      context: context,
+      builder: (_) => BuyerAuthDialog(apiBaseUrl: widget.apiBaseUrl, client: widget.client),
+    );
+    if (token == null || !mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CustomerProfilePage(
+        apiBaseUrl: widget.apiBaseUrl,
+        accessToken: token,
+        client: widget.client,
+      ),
+    ));
+  }
+
   Future<void> _browseCategories() async {
     final selection = await showModalBottomSheet<MarketCategorySelection>(
       context: context,
@@ -211,6 +228,12 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
           ],
           icon: const Icon(Icons.language_rounded),
         ),
+      IconButton(
+        key: const Key('customer-profile-entry'),
+        tooltip: marketString(context, en: 'Customer account', am: 'የደንበኛ መለያ', mdy: ''),
+        onPressed: widget.apiBaseUrl.trim().isEmpty ? null : _openCustomerProfile,
+        icon: const Icon(Icons.account_circle_outlined),
+      ),
       if (widget.onSellerSignIn != null)
         IconButton(
           tooltip: marketString(context, en: 'Seller sign in', am: 'የሻጭ መግቢያ', mdy: ''),
