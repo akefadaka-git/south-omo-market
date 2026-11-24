@@ -346,11 +346,14 @@ def checkout_cart(cart_id: str, idempotency_key: str = Query(min_length=8, max_l
         """), {"id": order_id, "number": order_number, "buyer": user.id,
                "business": cart["business_id"], "subtotal": subtotal, "key": idempotency_key})
         for item in items:
-            db.execute(text("""
+            reserved = db.execute(text("""
                 UPDATE inventory_balances SET quantity_reserved=quantity_reserved+:quantity,
                     updated_at=CURRENT_TIMESTAMP
                 WHERE catalog_item_id=:item AND quantity_on_hand-quantity_reserved>=:quantity
             """), {"quantity": item["quantity"], "item": item["catalog_item_id"]})
+            if reserved.rowcount != 1:
+                db.rollback()
+                raise HTTPException(409, "Stock changed during checkout; retry with a refreshed cart")
             db.execute(text("""
                 INSERT INTO commerce_order_items
                 (id,order_id,catalog_item_id,sku_snapshot,title_snapshot,unit_price_minor,quantity,line_total_minor)
