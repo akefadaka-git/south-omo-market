@@ -31,3 +31,13 @@ Maale (mdy) strings remain blank where reviewed translations are not yet availab
 ## Accessibility and QA gates
 
 The palette and component geometry are centralized for consistent contrast and touch targets. This is not a substitute for measured WCAG contrast verification, TalkBack testing, large-text testing, screen-size testing or physical Samsung Galaxy A16 visual acceptance. Those remain A4 verification tasks.
+
+## Listing cards and media
+
+- Discovery cards use the first public listing image when one is available.
+- Image URLs are resolved against the configured API origin; API-provided relative paths are not guessed or rewritten.
+- Missing, loading, or failed images fall back to a local category glyph over the brand palette. The card never depends on a remote placeholder image.
+- The card keeps category, title, location, currency and price readable in a compact horizontal layout.
+- The public listing API currently returns image metadata but does not expose seller verification or seller display-name fields in the discovery payload. The UI must not invent trust badges or seller identity; those require an explicit API contract and verified source data.
+- Image caching/offline persistence, image galleries, and seller trust metadata remain separate follow-up work and must be validated against low-bandwidth device behavior.
+
