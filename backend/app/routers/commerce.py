@@ -246,9 +246,12 @@ def decide_agreement(
     is_counterparty = row["counterparty_user_id"] == user.id
     if row["counterparty_business_id"]:
         is_counterparty = db.execute(text("""
-            SELECT EXISTS(SELECT 1 FROM business_memberships
-            WHERE business_id=:business AND user_id=:user AND status='active'
-              AND membership_role IN ('owner','administrator'))
+            SELECT EXISTS(SELECT 1 FROM business_memberships bm
+            JOIN business_profiles bp ON bp.id=bm.business_id
+            WHERE bm.business_id=:business AND bm.user_id=:user AND bm.status='active'
+              AND (bm.expires_at IS NULL OR bm.expires_at>CURRENT_TIMESTAMP)
+              AND bm.membership_role IN ('owner','administrator')
+              AND bp.is_active=TRUE AND bp.verification_status='verified')
         """), {"business": row["counterparty_business_id"], "user": user.id}).scalar_one()
     if not is_counterparty:
         raise HTTPException(403, "Only the designated counterparty may decide this agreement")
@@ -391,6 +394,13 @@ def checkout_cart(cart_id: str, idempotency_key: str = Query(min_length=8, max_l
             """), {"id": str(uuid4()), "order": order_id, "item": item["catalog_item_id"],
                    "sku": item["sku"], "title": item["title"], "price": item["unit_price_minor"],
                    "quantity": item["quantity"], "total": item["quantity"] * item["unit_price_minor"]})
+            _inventory_movement(
+                db, business_id=cart["business_id"], item_id=item["catalog_item_id"],
+                movement_type="reservation", quantity_delta=item["quantity"],
+                reference_id=order_id,
+                idempotency_key=f"order:{order_id}:reservation:{item['catalog_item_id']}",
+                reason="Order placed; stock reserved", actor_id=user.id,
+            )
         _event(db, order_id, user.id, "placed", {"settlement_method": "direct_cash"})
         db.execute(text("UPDATE commerce_carts SET status='converted',updated_at=CURRENT_TIMESTAMP WHERE id=:id"),
                    {"id": cart_id})
@@ -413,10 +423,20 @@ def get_order(order_id: str, user: User = Depends(get_current_user), db: Session
     if order is None:
         raise HTTPException(404, "Order not found")
     is_buyer = order["buyer_user_id"] == user.id
-    is_member = db.execute(text("""
-        SELECT EXISTS(SELECT 1 FROM business_memberships
-        WHERE business_id=:business AND user_id=:user AND status='active')
-    """), {"business": order["business_id"], "user": user.id}).scalar_one()
+    is_member = False
+    if not is_buyer:
+        is_member = db.execute(text("""
+            SELECT EXISTS(
+                SELECT 1 FROM business_memberships bm
+                JOIN business_profiles bp ON bp.id=bm.business_id
+                JOIN business_role_permissions rp ON rp.membership_role=bm.membership_role
+                WHERE bm.business_id=:business AND bm.user_id=:user
+                  AND bm.status='active'
+                  AND (bm.expires_at IS NULL OR bm.expires_at>CURRENT_TIMESTAMP)
+                  AND bp.is_active=TRUE AND bp.verification_status='verified'
+                  AND rp.permission_code IN ('commerce.order.read','commerce.order.manage')
+            )
+        """), {"business": order["business_id"], "user": user.id}).scalar_one()
     if not is_buyer and not is_member:
         raise HTTPException(404, "Order not found")
     items = db.execute(text("""
@@ -442,31 +462,51 @@ def update_order_status(
     """), {"id": order_id, "business": business_id}).mappings().first()
     if row is None:
         raise HTTPException(404, "Order not found")
-    if new_status not in transitions.get(row["status"], set()):
+    previous_status = row["status"]
+    if new_status not in transitions.get(previous_status, set()):
         raise HTTPException(409, "Invalid order status transition")
+    changed = db.execute(text("""
+        UPDATE commerce_orders SET status=:new_status,updated_at=CURRENT_TIMESTAMP
+        WHERE id=:id AND business_id=:business AND status=:old_status
+    """), {"new_status": new_status, "id": order_id,
+           "business": business_id, "old_status": previous_status})
+    if changed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(409, "Order status changed concurrently; reload before retrying")
     items = db.execute(text("""
         SELECT catalog_item_id,quantity FROM commerce_order_items WHERE order_id=:id
     """), {"id": order_id}).mappings().all()
-    if new_status in {"rejected", "cancelled"}:
+    if new_status in {"rejected", "cancelled", "fulfilled"}:
         for item in items:
-            db.execute(text("""
-                UPDATE inventory_balances SET quantity_reserved=quantity_reserved-:quantity,
-                    updated_at=CURRENT_TIMESTAMP
-                WHERE catalog_item_id=:item AND quantity_reserved>=:quantity
-            """), {"quantity": item["quantity"], "item": item["catalog_item_id"]})
-    if new_status == "fulfilled":
-        for item in items:
-            result = db.execute(text("""
-                UPDATE inventory_balances SET quantity_on_hand=quantity_on_hand-:quantity,
-                    quantity_reserved=quantity_reserved-:quantity,updated_at=CURRENT_TIMESTAMP
-                WHERE catalog_item_id=:item AND quantity_reserved>=:quantity
-                  AND quantity_on_hand>=:quantity
-            """), {"quantity": item["quantity"], "item": item["catalog_item_id"]})
+            quantity = item["quantity"]
+            if new_status in {"rejected", "cancelled"}:
+                result = db.execute(text("""
+                    UPDATE inventory_balances
+                    SET quantity_reserved=quantity_reserved-:quantity,updated_at=CURRENT_TIMESTAMP
+                    WHERE business_id=:business AND catalog_item_id=:item
+                      AND quantity_reserved>=:quantity
+                """), {"quantity": quantity, "business": business_id,
+                       "item": item["catalog_item_id"]})
+                movement_type, delta, reason, suffix = "release", -quantity, "Order reservation released", "release"
+            else:
+                result = db.execute(text("""
+                    UPDATE inventory_balances
+                    SET quantity_on_hand=quantity_on_hand-:quantity,
+                        quantity_reserved=quantity_reserved-:quantity,updated_at=CURRENT_TIMESTAMP
+                    WHERE business_id=:business AND catalog_item_id=:item
+                      AND quantity_reserved>=:quantity AND quantity_on_hand>=:quantity
+                """), {"quantity": quantity, "business": business_id,
+                       "item": item["catalog_item_id"]})
+                movement_type, delta, reason, suffix = "fulfillment", -quantity, "Order fulfilled; stock consumed", "fulfillment"
             if result.rowcount != 1:
                 db.rollback()
-                raise HTTPException(409, "Reserved stock is inconsistent; fulfillment blocked")
-    db.execute(text("UPDATE commerce_orders SET status=:status,updated_at=CURRENT_TIMESTAMP WHERE id=:id"),
-               {"status": new_status, "id": order_id})
+                raise HTTPException(409, "Reserved stock is inconsistent; transition blocked")
+            _inventory_movement(
+                db, business_id=business_id, item_id=item["catalog_item_id"],
+                movement_type=movement_type, quantity_delta=delta, reference_id=order_id,
+                idempotency_key=f"order:{order_id}:{suffix}:{item['catalog_item_id']}",
+                reason=reason, actor_id=user.id,
+            )
     _event(db, order_id, user.id, new_status)
     db.commit()
     return {"order_id": order_id, "status": new_status}
