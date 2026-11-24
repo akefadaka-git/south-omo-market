@@ -21,6 +21,8 @@ void main() {
       await tester.enterText(find.byKey(const Key('seller-display-name')), 'Test shop');
       await tester.enterText(find.byKey(const Key('seller-phone')), '0912345678');
       await tester.enterText(find.byKey(const Key('seller-password')), '12345');
+      await tester.ensureVisible(find.text('Register and continue'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Register and continue'));
       await tester.pumpAndSettle();
 
@@ -60,6 +62,8 @@ void main() {
       await tester.enterText(find.byKey(const Key('seller-display-name')), 'Test shop');
       await tester.enterText(find.byKey(const Key('seller-phone')), '0912345678');
       await tester.enterText(find.byKey(const Key('seller-password')), '123456');
+      await tester.ensureVisible(find.text('Register and continue'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Register and continue'));
       await tester.pumpAndSettle();
 
