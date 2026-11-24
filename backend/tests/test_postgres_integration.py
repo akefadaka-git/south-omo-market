@@ -23,6 +23,14 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         tables = set(inspector.get_table_names())
         assert {"users", "seller_profiles", "categories", "listings", "inquiries",
                 "audit_events", "listing_images", "locations", "reports", "markets", "market_schedule_days", "alembic_version"} <= tables
+        assert {
+            "roles", "permissions", "role_permissions", "user_roles", "user_permissions",
+            "business_profiles", "business_memberships", "employment_providers",
+            "job_seeker_profiles", "employment_opportunities", "employment_advertisements",
+            "advertising_agreements", "advertising_payments", "employment_applications",
+            "candidate_consents", "candidate_referrals", "employment_events",
+            "policy_packs", "policy_rules", "ai_providers", "ai_models", "ai_task_routes",
+        } <= tables
         assert "description" in {column["name"] for column in inspector.get_columns("markets")}
         assert {"effective_from", "effective_until"} <= {column["name"] for column in inspector.get_columns("market_schedule_days")}
         assert "client_sync_id" in {
@@ -47,7 +55,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0010_market_schedule_effectivity"
+            assert revision == "0011_gov_employment_ai"
             assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
             assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
             expected_markets = {
