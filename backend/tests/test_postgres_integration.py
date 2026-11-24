@@ -55,11 +55,14 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         assert {"buyer_user_id", "status", "read_at", "closed_at"} <= {
             column["name"] for column in inspector.get_columns("inquiries")
         }
+        assert {"user_id", "preferred_location_id", "preferred_market_id", "preferred_language", "email", "contact_preference"} <= {
+            column["name"] for column in inspector.get_columns("customer_profiles")
+        }
         with engine.connect() as connection:
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0016_commerce_cart_orders"
+            assert revision == "0017_customer_profiles"
             assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
             assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
             expected_markets = {
