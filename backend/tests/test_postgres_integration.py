@@ -137,3 +137,158 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
     finally:
         engine.dispose()
         get_settings.cache_clear()
+
+@pytest.mark.skipif(not os.getenv("TEST_POSTGRES_URL"), reason="TEST_POSTGRES_URL is not configured")
+def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatch):
+    database_url = os.environ["TEST_POSTGRES_URL"]
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    from app.core.config import get_settings
+    from sqlalchemy.orm import Session
+    from fastapi import HTTPException
+    from app.models import User
+    from app.seeders.system_reference import seed_system_reference_data
+    from app.routers.employment import (
+        AgreementAcceptance,
+        OwnerAdvertisementCreate,
+        PaymentSubmission,
+        PaymentVerification,
+        ProviderRequest,
+        accept_advertising_agreement,
+        create_owner_managed_advertisement,
+        list_published_employment_advertisements,
+        publish_employment_advertisement,
+        request_employment_provider,
+        submit_advertising_payment_evidence,
+        verify_advertising_payment,
+        verify_employment_provider,
+    )
+
+    get_settings.cache_clear()
+    config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    engine = create_engine(database_url, pool_pre_ping=True)
+    upgraded = False
+    try:
+        command.upgrade(config, "head")
+        upgraded = True
+        with Session(engine) as db:
+            provider_user = User(
+                id="synthetic-provider-user",
+                phone_number="+251900000101",
+                display_name="Synthetic Provider",
+                password_hash="synthetic-test-hash",
+                is_active=True,
+                is_admin=False,
+            )
+            owner = User(
+                id="synthetic-owner-user",
+                phone_number="+251900000102",
+                display_name="Synthetic Owner",
+                password_hash="synthetic-test-hash",
+                is_active=True,
+                is_admin=False,
+            )
+            db.add_all([provider_user, owner])
+            db.commit()
+            seed_system_reference_data(db)
+
+            request = request_employment_provider(
+                ProviderRequest(
+                    business_code="SYNTHETIC-EMPLOYER-001",
+                    legal_name="Synthetic Employer PLC",
+                    display_name="Synthetic Employer",
+                    business_type="recruitment_agency",
+                ),
+                user=provider_user,
+                db=db,
+            )
+            assert request["verification_status"] == "pending"
+            membership_status = db.execute(text("""
+                SELECT status FROM business_memberships
+                WHERE business_id = :business_id AND user_id = :user_id
+            """), {"business_id": request["business_id"], "user_id": provider_user.id}).scalar_one()
+            assert membership_status == "pending"
+
+            verified = verify_employment_provider(request["provider_id"], owner=owner, db=db)
+            assert verified["verification_status"] == "verified"
+            membership_status = db.execute(text("""
+                SELECT status FROM business_memberships
+                WHERE business_id = :business_id AND user_id = :user_id
+            """), {"business_id": request["business_id"], "user_id": provider_user.id}).scalar_one()
+            assert membership_status == "active"
+
+            advertisement = create_owner_managed_advertisement(
+                OwnerAdvertisementCreate(
+                    provider_id=request["provider_id"],
+                    title="Synthetic agricultural worker",
+                    description="Synthetic employment opportunity for integration testing.",
+                    occupation_code="AGRICULTURE",
+                    location_code="KOYBE",
+                    employment_type="full_time",
+                    requirements=[{"code": "experience", "minimum_years": 1}],
+                    agreed_price_minor=10000,
+                    duration_days=30,
+                    terms_version="TEST-1",
+                ),
+                owner=owner,
+                db=db,
+            )
+            accepted = accept_advertising_agreement(
+                advertisement["agreement_id"],
+                AgreementAcceptance(acceptance_evidence="Synthetic acceptance evidence"),
+                user=provider_user,
+                db=db,
+            )
+            assert accepted["status"] == "accepted"
+
+            first_payment = submit_advertising_payment_evidence(
+                advertisement["agreement_id"],
+                PaymentSubmission(
+                    amount_minor=4000,
+                    currency="ETB",
+                    payment_method="bank_transfer",
+                    evidence_ref="synthetic://receipt/first",
+                ),
+                user=provider_user,
+                db=db,
+            )
+            verify_advertising_payment(
+                advertisement["advertisement_id"],
+                first_payment["payment_id"],
+                PaymentVerification(verification_note="Synthetic evidence checked"),
+                owner=owner,
+                db=db,
+            )
+            with pytest.raises(HTTPException) as underpayment:
+                publish_employment_advertisement(advertisement["advertisement_id"], owner=owner, db=db)
+            assert underpayment.value.status_code == 409
+
+            second_payment = submit_advertising_payment_evidence(
+                advertisement["agreement_id"],
+                PaymentSubmission(
+                    amount_minor=6000,
+                    currency="ETB",
+                    payment_method="bank_transfer",
+                    evidence_ref="synthetic://receipt/second",
+                ),
+                user=provider_user,
+                db=db,
+            )
+            verify_advertising_payment(
+                advertisement["advertisement_id"],
+                second_payment["payment_id"],
+                PaymentVerification(verification_note="Synthetic second evidence checked"),
+                owner=owner,
+                db=db,
+            )
+            published = publish_employment_advertisement(advertisement["advertisement_id"], owner=owner, db=db)
+            assert published["status"] == "published"
+            public_ads = list_published_employment_advertisements(db=db)
+            assert len(public_ads) == 1
+            assert public_ads[0]["title"] == "Synthetic agricultural worker"
+            assert public_ads[0]["location_code"] == "KOYBE"
+    finally:
+        if upgraded:
+            command.downgrade(config, "base")
+        engine.dispose()
+        get_settings.cache_clear()
+
