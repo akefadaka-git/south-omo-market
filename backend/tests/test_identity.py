@@ -1408,6 +1408,8 @@ def test_customer_registration_persists_profile_and_supports_private_read_update
     assert updated.json()["display_name"] == "Updated Customer"
     assert updated.json()["preferred_language"] == "en"
     assert updated.json()["contact_preference"] == "phone"
+    assert client.patch("/api/v1/customers/me", headers=headers, json={"display_name": None}).status_code == 422
+    assert client.patch("/api/v1/customers/me", headers=headers, json={"preferred_language": None}).status_code == 422
     assert client.get("/api/v1/customers/me").status_code == 401
 
 
