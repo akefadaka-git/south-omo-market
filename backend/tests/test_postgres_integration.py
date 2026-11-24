@@ -366,6 +366,16 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
                 db=db,
             )
             assert consent["status"] == "granted"
+            second_consent = grant_candidate_sharing_consent(
+                application["application_id"],
+                CandidateConsentRequest(
+                    purpose="candidate contact",
+                    consent_version="TEST-CONSENT-2",
+                ),
+                user=job_seeker_user,
+                db=db,
+            )
+            assert second_consent["status"] == "granted"
             visible_candidates = list_consented_candidates(
                 request["provider_id"],
                 user=provider_user,
@@ -397,7 +407,7 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
                 user=job_seeker_user,
                 db=db,
             )
-            assert withdrawn["withdrawn_count"] == 1
+            assert withdrawn["withdrawn_count"] == 2
             assert list_consented_candidates(
                 request["provider_id"],
                 user=provider_user,

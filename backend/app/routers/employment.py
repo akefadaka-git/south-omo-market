@@ -505,16 +505,20 @@ def list_consented_candidates(
     if membership is None:
         raise HTTPException(status_code=403, detail="Verified provider membership is required")
     rows = db.execute(text("""
-        SELECT DISTINCT jsp.id AS profile_id, jsp.skills, jsp.experience,
+        SELECT jsp.id AS profile_id, jsp.skills, jsp.experience,
                jsp.qualifications, jsp.preferred_occupations,
                jsp.preferred_location_codes, jsp.availability, app.id AS application_id,
                app.created_at AS applied_at
-        FROM candidate_consents cc
-        JOIN job_seeker_profiles jsp ON jsp.id = cc.job_seeker_id
+        FROM job_seeker_profiles jsp
         JOIN employment_applications app ON app.job_seeker_id = jsp.id
         JOIN employment_opportunities o ON o.id = app.opportunity_id
-        WHERE cc.provider_id = :provider AND cc.withdrawn_at IS NULL
-          AND o.provider_id = cc.provider_id
+        WHERE o.provider_id = :provider
+          AND EXISTS (
+              SELECT 1 FROM candidate_consents cc
+              WHERE cc.job_seeker_id = jsp.id
+                AND cc.provider_id = :provider
+                AND cc.withdrawn_at IS NULL
+          )
           AND jsp.visibility IN ('private', 'consented_employers')
         ORDER BY app.created_at DESC
         LIMIT 100
