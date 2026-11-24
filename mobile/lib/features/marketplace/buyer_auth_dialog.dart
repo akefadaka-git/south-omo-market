@@ -181,8 +181,9 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     actions: [
       TextButton(
         onPressed: _busy ? null : () {
-          setState(() { _register = !_register; _error = null; });
-          if (!_register) _loadRegistrationOptions();
+          final enteringRegistration = !_register;
+          setState(() { _register = enteringRegistration; _error = null; });
+          if (enteringRegistration) _loadRegistrationOptions();
         },
         child: Text(_register ? marketString(context, en: 'I already have an account', am: 'መለያ አለኝ', mdy: '') : marketString(context, en: 'Create account', am: 'መለያ ፍጠር', mdy: '')),
       ),
