@@ -477,7 +477,7 @@ def withdraw_candidate_sharing_consent(
           AND cc.job_seeker_id = jsp.id
           AND cc.provider_id = o.provider_id
           AND cc.withdrawn_at IS NULL
-        RETURNING id
+        RETURNING candidate_consents.id
     """), {"application": application_id, "user_id": user.id})
     consent_ids = result.scalars().all()
     if not consent_ids:
