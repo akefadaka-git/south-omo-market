@@ -73,6 +73,13 @@ def seed_system_reference_data(db: Session) -> None:
 
     role_ids = {code: _id("role", code) for code in ROLES}
     permission_ids = {code: _id("permission", code) for code in PERMISSIONS}
+    # These seeded system-role grants are an authoritative matrix. Reconcile
+    # them on every run so stale grants cannot survive a policy correction.
+    for role_code in ROLE_PERMISSIONS:
+        db.execute(
+            text("DELETE FROM role_permissions WHERE role_id=:role_id"),
+            {"role_id": role_ids[role_code]},
+        )
     for role_code, permission_codes in ROLE_PERMISSIONS.items():
         for permission_code in permission_codes:
             db.execute(text("""
@@ -80,6 +87,20 @@ def seed_system_reference_data(db: Session) -> None:
                 VALUES (:role_id, :permission_id)
                 ON CONFLICT DO NOTHING
             """), {"role_id": role_ids[role_code], "permission_id": permission_ids[permission_code]})
+
+    protected_categories = db.execute(text("""
+        SELECT id FROM categories WHERE slug='work-opportunities'
+    """)).scalars().all()
+    for category_id in protected_categories:
+        db.execute(text("""
+            INSERT INTO protected_category_roots
+                (id,category_id,policy_code,applies_to_descendants,seller_listing_allowed)
+            VALUES (:id,:category_id,'employment-agency-owner-controlled',TRUE,FALSE)
+            ON CONFLICT (category_id,policy_code) DO NOTHING
+        """), {
+            "id": _id("protected-category", category_id + ":employment-agency"),
+            "category_id": category_id,
+        })
 
     db.execute(text("""
         INSERT INTO ai_providers
@@ -116,7 +137,9 @@ def seed_system_reference_data(db: Session) -> None:
     db.execute(text("""
         INSERT INTO policy_packs (id, code, version, status, policy_json)
         VALUES (:id, 'south-omo-default-deny', '1.0.0', 'active', :policy_json)
-        ON CONFLICT (code, version) DO NOTHING
+        ON CONFLICT (code, version) DO UPDATE SET
+            status = EXCLUDED.status,
+            policy_json = EXCLUDED.policy_json
     """).bindparams(bindparam("policy_json", type_=JSON)), {
         "id": _id("policy-pack", "south-omo-default-deny:1.0.0"),
         "policy_json": {"default_effect": "deny", "owner_approval_required": True},
@@ -129,7 +152,12 @@ def seed_system_reference_data(db: Session) -> None:
         VALUES (:id, :pack_id, 'employment-advertisement-publish-owner-only',
                 'allow', 'role:owner', 'employment.advertisement.publish',
                 'employment_advertisements', :conditions)
-        ON CONFLICT (policy_pack_id, rule_code) DO NOTHING
+        ON CONFLICT (policy_pack_id, rule_code) DO UPDATE SET
+            effect = EXCLUDED.effect,
+            subject = EXCLUDED.subject,
+            action = EXCLUDED.action,
+            resource = EXCLUDED.resource,
+            conditions = EXCLUDED.conditions
     """).bindparams(bindparam("conditions", type_=JSON)), {
         "id": _id("policy-rule", "employment-advertisement-publish-owner-only"),
         "pack_id": pack_id,
