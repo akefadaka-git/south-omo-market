@@ -257,8 +257,13 @@ def decide_agreement(
         raise HTTPException(403, "Only the designated counterparty may decide this agreement")
     if row["status"] != "offered":
         raise HTTPException(409, "Agreement is not awaiting a counterparty decision")
-    db.execute(text("UPDATE commerce_agreements SET status=:status,updated_at=CURRENT_TIMESTAMP WHERE id=:id"),
-               {"status": decision, "id": agreement_id})
+    changed = db.execute(text("""
+        UPDATE commerce_agreements SET status=:status,updated_at=CURRENT_TIMESTAMP
+        WHERE id=:id AND status='offered'
+    """), {"status": decision, "id": agreement_id})
+    if changed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(409, "Agreement was decided concurrently; reload before retrying")
     db.execute(text("""
         INSERT INTO commerce_agreement_events (id,agreement_id,actor_id,event_type,event_metadata)
         VALUES (:id,:agreement,:actor,:event,'{}')
@@ -355,6 +360,20 @@ def checkout_cart(cart_id: str, idempotency_key: str = Query(min_length=8, max_l
     """), {"id": cart_id, "buyer": user.id}).mappings().first()
     if cart is None:
         raise HTTPException(404, "Active cart not found")
+    claimed = db.execute(text("""
+        UPDATE commerce_carts SET status='converted',updated_at=CURRENT_TIMESTAMP
+        WHERE id=:id AND buyer_user_id=:buyer AND status='active'
+    """), {"id": cart_id, "buyer": user.id})
+    if claimed.rowcount != 1:
+        db.rollback()
+        existing = db.execute(text("""
+            SELECT id,order_number,status FROM commerce_orders
+            WHERE buyer_user_id=:buyer AND idempotency_key=:key
+        """), {"buyer": user.id, "key": idempotency_key}).mappings().first()
+        if existing:
+            return {"order_id": existing["id"], "order_number": existing["order_number"],
+                    "status": existing["status"], "replayed": True}
+        raise HTTPException(409, "Cart is already being checked out or has been converted")
     items = db.execute(text("""
         SELECT ci.catalog_item_id,ci.quantity,c.sku,c.title,c.unit_price_minor,
                b.quantity_on_hand,b.quantity_reserved
@@ -402,8 +421,6 @@ def checkout_cart(cart_id: str, idempotency_key: str = Query(min_length=8, max_l
                 reason="Order placed; stock reserved", actor_id=user.id,
             )
         _event(db, order_id, user.id, "placed", {"settlement_method": "direct_cash"})
-        db.execute(text("UPDATE commerce_carts SET status='converted',updated_at=CURRENT_TIMESTAMP WHERE id=:id"),
-                   {"id": cart_id})
         db.commit()
     except IntegrityError as exc:
         db.rollback()
