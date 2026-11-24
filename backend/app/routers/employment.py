@@ -83,6 +83,7 @@ def publish_employment_advertisement(
     owner: User = Depends(require_permission("employment.advertisement.publish")),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    db.execute(text("SELECT id FROM employment_advertisements WHERE id = :ad_id FOR UPDATE"), {"ad_id": advertisement_id})
     row = db.execute(text("""
         SELECT a.id, a.status AS ad_status, a.opportunity_id, ag.id AS agreement_id,
                ag.agreed_price_minor, ag.duration_days, ag.provider_accepted_at,
@@ -96,7 +97,6 @@ def publish_employment_advertisement(
         LEFT JOIN advertising_payments p ON p.agreement_id = ag.id
         WHERE a.id = :ad_id
         GROUP BY a.id, ag.id, ep.verification_status
-        FOR UPDATE OF a
     """), {"ad_id": advertisement_id}).mappings().first()
     if row is None:
         raise HTTPException(status_code=404, detail="Employment advertisement not found")
