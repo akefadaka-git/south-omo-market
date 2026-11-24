@@ -307,6 +307,13 @@ def put_cart_item(cart_id: str, payload: CartItemPut,
     """), {"id": cart_id, "buyer": user.id}).mappings().first()
     if cart is None:
         raise HTTPException(404, "Active cart not found")
+    claimed = db.execute(text("""
+        UPDATE commerce_carts SET updated_at=CURRENT_TIMESTAMP
+        WHERE id=:id AND buyer_user_id=:buyer AND status='active'
+    """), {"id": cart_id, "buyer": user.id})
+    if claimed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(404, "Active cart not found")
     item = db.execute(text("""
         SELECT c.id,c.unit_price_minor,c.status,b.quantity_on_hand,b.quantity_reserved
         FROM commerce_catalog_items c JOIN inventory_balances b ON b.catalog_item_id=c.id
