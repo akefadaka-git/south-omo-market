@@ -297,7 +297,7 @@ class MarketBrandPanel extends StatelessWidget {
 }
 
 
-/// Branded, information-dense listing tile used in discovery results.
+/// Image-led listing card with a resilient offline/error fallback.
 class MarketListingCard extends StatelessWidget {
   const MarketListingCard({
     super.key,
@@ -306,73 +306,132 @@ class MarketListingCard extends StatelessWidget {
     required this.price,
     required this.category,
     required this.onTap,
+    this.imageUrl,
   });
 
   final String title;
   final String location;
   final String price;
   final String category;
+  final String? imageUrl;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Card(
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              width: 66,
-              height: 66,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(19),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [MarketPalette.mint, Color(0xFFEAF1EC)],
-                ),
-              ),
-              child: Icon(MarketIcons.category(category),
-                size: 30, color: MarketPalette.forest),
-            ),
-            const SizedBox(width: 14),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(category.toUpperCase(), maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: MarketPalette.jade, fontSize: 10,
-                    fontWeight: FontWeight.w800, letterSpacing: 1.1)),
-                const SizedBox(height: 4),
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 6),
-                Row(children: [
-                  const Icon(MarketIcons.location, size: 14,
-                    color: MarketPalette.muted),
-                  const SizedBox(width: 4),
-                  Expanded(child: Text(location, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall)),
-                ]),
-              ],
-            )),
-            const SizedBox(width: 10),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(price, textAlign: TextAlign.end,
-                style: const TextStyle(
-                  color: MarketPalette.ink, fontSize: 14,
-                  fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              const Icon(Icons.arrow_forward_rounded,
-                size: 18, color: MarketPalette.jade),
-            ]),
-          ],
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [MarketPalette.mint, Color(0xFFEAF1EC), MarketPalette.sand],
         ),
       ),
-    ),
-  );
+      child: Center(
+        child: Icon(MarketIcons.category(category),
+          size: 34, color: MarketPalette.forest),
+      ),
+    );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 108,
+                height: 112,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: imageUrl == null || imageUrl!.isEmpty
+                    ? fallback
+                    : Image.network(
+                        imageUrl!,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.low,
+                        errorBuilder: (context, error, stackTrace) => fallback,
+                        loadingBuilder: (context, child, progress) =>
+                          progress == null ? child : fallback,
+                      ),
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: MarketPalette.mint.withValues(alpha: .55),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: MarketPalette.forest,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(MarketIcons.location,
+                          size: 14, color: MarketPalette.muted),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            location,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            price,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: MarketPalette.ink,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -.25,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_rounded,
+                          size: 18, color: MarketPalette.jade),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
