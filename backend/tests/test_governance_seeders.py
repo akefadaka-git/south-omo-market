@@ -44,6 +44,10 @@ def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monk
                 SELECT effect FROM policy_rules
                 WHERE rule_code = 'employment-advertisement-publish-owner-only'
             """)).scalar_one() == "allow"
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM ai_task_routes
+                WHERE enabled = 0 AND requires_human_approval = 1 AND quota_per_day = 0
+            """)).scalar_one() == 4
         engine.dispose()
     finally:
         get_settings.cache_clear()
