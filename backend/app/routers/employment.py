@@ -19,12 +19,71 @@ class PaymentVerification(BaseModel):
     verification_note: str = Field(min_length=3, max_length=1000)
 
 
+class ProviderRequest(BaseModel):
+    business_code: str = Field(min_length=2, max_length=80)
+    legal_name: str = Field(min_length=2, max_length=200)
+    display_name: str = Field(min_length=2, max_length=200)
+    business_type: str = Field(min_length=2, max_length=60)
+
+
 class OwnerProviderCreate(BaseModel):
     user_id: str
     business_code: str = Field(min_length=2, max_length=80)
     legal_name: str = Field(min_length=2, max_length=200)
     display_name: str = Field(min_length=2, max_length=200)
     business_type: str = Field(min_length=2, max_length=60)
+
+
+@router.post("/providers/request", status_code=201)
+def request_employment_provider(
+    payload: ProviderRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    existing = db.execute(text("""
+        SELECT ep.id, ep.verification_status
+        FROM employment_providers ep
+        JOIN business_memberships bm ON bm.business_id = ep.business_id
+        WHERE bm.user_id = :user_id
+        LIMIT 1
+    """), {"user_id": user.id}).mappings().first()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="An employment provider request already exists for this account")
+    code_exists = db.execute(text("""
+        SELECT id FROM business_profiles WHERE business_code = :code
+    """), {"code": payload.business_code}).scalar_one_or_none()
+    if code_exists is not None:
+        raise HTTPException(status_code=409, detail="Business code already exists")
+    business_id, provider_id = str(uuid4()), str(uuid4())
+    db.execute(text("""
+        INSERT INTO business_profiles
+            (id, business_code, legal_name, display_name, business_type, verification_status, is_active)
+        VALUES (:id, :code, :legal, :display, :kind, 'pending', TRUE)
+    """), {
+        "id": business_id, "code": payload.business_code,
+        "legal": payload.legal_name, "display": payload.display_name,
+        "kind": payload.business_type,
+    })
+    db.execute(text("""
+        INSERT INTO business_memberships
+            (id, business_id, user_id, membership_role, status)
+        VALUES (:id, :business, :user, 'owner', 'pending')
+    """), {"id": str(uuid4()), "business": business_id, "user": user.id})
+    db.execute(text("""
+        INSERT INTO employment_providers (id, business_id, verification_status)
+        VALUES (:id, :business, 'pending')
+    """), {"id": provider_id, "business": business_id})
+    db.execute(text("""
+        INSERT INTO employment_events
+            (id, actor_id, event_type, resource_type, resource_id, event_metadata)
+        VALUES (:id, :actor, 'employment.provider.requested',
+                'employment_provider', :resource, :metadata)
+    """).bindparams(bindparam("metadata", type_=JSON)), {
+        "id": str(uuid4()), "actor": user.id, "resource": provider_id,
+        "metadata": {"business_id": business_id, "business_code": payload.business_code},
+    })
+    db.commit()
+    return {"provider_id": provider_id, "business_id": business_id, "verification_status": "pending"}
 
 
 @router.post("/admin/providers", status_code=201)
@@ -47,7 +106,7 @@ def create_employment_provider_record(
     db.execute(text("""
         INSERT INTO business_memberships
             (id, business_id, user_id, membership_role, status)
-        VALUES (:id, :business, :user, 'owner', 'active')
+        VALUES (:id, :business, :user, 'owner', 'pending')
     """), {"id": str(uuid4()), "business": business_id, "user": payload.user_id})
     db.execute(text("""
         INSERT INTO employment_providers (id, business_id, verification_status)
@@ -88,6 +147,11 @@ def verify_employment_provider(
     db.execute(text("""
         UPDATE business_profiles SET verification_status = 'verified'
         WHERE id = :business
+    """), {"business": row["business_id"]})
+    db.execute(text("""
+        UPDATE business_memberships SET status = 'active'
+        WHERE business_id = :business AND membership_role = 'owner'
+          AND status = 'pending'
     """), {"business": row["business_id"]})
     db.execute(text("""
         INSERT INTO employment_events

@@ -147,3 +147,65 @@ def test_withdraw_consent_revokes_all_active_consents_for_that_provider() -> Non
     finally:
         engine.dispose()
 
+def test_authenticated_provider_request_stays_pending_until_owner_verification() -> None:
+    from app.routers.employment import ProviderRequest, request_employment_provider
+
+    engine = create_engine("sqlite://")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE business_profiles "
+                "(id TEXT PRIMARY KEY, business_code TEXT UNIQUE, legal_name TEXT, "
+                "display_name TEXT, business_type TEXT, verification_status TEXT, is_active BOOLEAN)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE business_memberships "
+                "(id TEXT PRIMARY KEY, business_id TEXT, user_id TEXT, membership_role TEXT, status TEXT)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE employment_providers "
+                "(id TEXT PRIMARY KEY, business_id TEXT UNIQUE, verification_status TEXT)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE employment_events "
+                "(id TEXT PRIMARY KEY, actor_id TEXT, event_type TEXT, resource_type TEXT, "
+                "resource_id TEXT, event_metadata JSON)"
+            )
+
+        with Session(engine) as db:
+            payload = ProviderRequest(
+                business_code="SOM-PROVIDER-001",
+                legal_name="Synthetic Provider PLC",
+                display_name="Synthetic Provider",
+                business_type="recruitment_agency",
+            )
+            result = request_employment_provider(
+                payload,
+                user=SimpleNamespace(id="provider-user-1"),
+                db=db,
+            )
+            assert result["verification_status"] == "pending"
+            assert db.execute(text(
+                "SELECT verification_status FROM employment_providers WHERE id = :id"
+            ), {"id": result["provider_id"]}).scalar_one() == "pending"
+            assert db.execute(text(
+                "SELECT status FROM business_memberships WHERE business_id = :id"
+            ), {"id": result["business_id"]}).scalar_one() == "pending"
+            assert db.execute(text(
+                "SELECT verification_status FROM business_profiles WHERE id = :id"
+            ), {"id": result["business_id"]}).scalar_one() == "pending"
+            assert db.execute(text(
+                "SELECT event_type FROM employment_events WHERE resource_id = :id"
+            ), {"id": result["provider_id"]}).scalar_one() == "employment.provider.requested"
+
+            with pytest.raises(HTTPException) as error:
+                request_employment_provider(
+                    payload,
+                    user=SimpleNamespace(id="provider-user-1"),
+                    db=db,
+                )
+            assert error.value.status_code == 409
+            assert db.execute(text("SELECT COUNT(*) FROM employment_providers")).scalar_one() == 1
+    finally:
+        engine.dispose()
+
