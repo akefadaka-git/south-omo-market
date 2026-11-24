@@ -6,7 +6,7 @@ intent only. No gateway, escrow, wallet or automatic money movement is implement
 from hashlib import sha256
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -307,7 +307,7 @@ def get_cart(cart_id: str, user: User = Depends(get_current_user), db: Session =
 
 
 @router.post("/carts/{cart_id}/checkout", status_code=201)
-def checkout_cart(cart_id: str, idempotency_key: str = Field(min_length=8, max_length=120),
+def checkout_cart(cart_id: str, idempotency_key: str = Query(min_length=8, max_length=120),
                   user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     existing = db.execute(text("""
         SELECT id,order_number,status FROM commerce_orders
