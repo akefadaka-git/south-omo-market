@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import JSON, bindparam, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -194,8 +194,9 @@ def create_agreement(
     db.execute(text("""
         INSERT INTO commerce_agreement_events (id,agreement_id,actor_id,event_type,event_metadata)
         VALUES (:id,:agreement,:actor,'offered',:metadata)
-    """), {"id": str(uuid4()), "agreement": agreement_id, "actor": user.id,
-           "metadata": '{"terms_sha256":"' + digest + '"}'})
+    """).bindparams(bindparam("metadata", type_=JSON)),
+        {"id": str(uuid4()), "agreement": agreement_id, "actor": user.id,
+         "metadata": {"terms_sha256": digest}})
     db.commit()
     return {"id": agreement_id, "status": "offered", "terms_sha256": digest}
 
