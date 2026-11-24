@@ -340,7 +340,8 @@ def list_consented_candidates(
     rows = db.execute(text("""
         SELECT DISTINCT jsp.id AS profile_id, jsp.skills, jsp.experience,
                jsp.qualifications, jsp.preferred_occupations,
-               jsp.preferred_location_codes, jsp.availability, app.id AS application_id
+               jsp.preferred_location_codes, jsp.availability, app.id AS application_id,
+               app.created_at AS applied_at
         FROM candidate_consents cc
         JOIN job_seeker_profiles jsp ON jsp.id = cc.job_seeker_id
         JOIN employment_applications app ON app.job_seeker_id = jsp.id
