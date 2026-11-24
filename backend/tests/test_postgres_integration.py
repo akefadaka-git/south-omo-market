@@ -30,6 +30,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             "advertising_agreements", "advertising_payments", "employment_applications",
             "candidate_consents", "candidate_referrals", "employment_events",
             "policy_packs", "policy_rules", "ai_providers", "ai_models", "ai_task_routes",
+            "protected_category_roots",
         } <= tables
         assert "description" in {column["name"] for column in inspector.get_columns("markets")}
         assert {"effective_from", "effective_until"} <= {column["name"] for column in inspector.get_columns("market_schedule_days")}
@@ -58,7 +59,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0012_business_lifecycle"
+            assert revision == "0013_governance_hardening"
             assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
             assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
             expected_markets = {
