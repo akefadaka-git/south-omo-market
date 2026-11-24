@@ -52,13 +52,30 @@ class CartItemPut(BaseModel):
 
 
 def _event(db: Session, order_id: str, actor_id: str | None, event_type: str, metadata: dict | None = None):
-    import json
     db.execute(text("""
         INSERT INTO commerce_order_events (id,order_id,actor_id,event_type,event_metadata)
         VALUES (:id,:order_id,:actor,:event,:metadata)
-    """), {"id": str(uuid4()), "order_id": order_id, "actor": actor_id,
-           "event": event_type, "metadata": json.dumps(metadata or {})})
+    """).bindparams(bindparam("metadata", type_=JSON)),
+        {"id": str(uuid4()), "order_id": order_id, "actor": actor_id,
+         "event": event_type, "metadata": metadata or {}})
 
+
+def _inventory_movement(
+    db: Session, *, business_id: str, item_id: str, movement_type: str,
+    quantity_delta: int, reference_id: str, idempotency_key: str,
+    reason: str, actor_id: str | None,
+) -> None:
+    db.execute(text("""
+        INSERT INTO inventory_movements
+            (id,business_id,catalog_item_id,movement_type,quantity_delta,
+             reference_type,reference_id,idempotency_key,reason,actor_id)
+        VALUES (:id,:business,:item,:kind,:delta,'commerce_order',:reference,
+                :key,:reason,:actor)
+    """), {
+        "id": str(uuid4()), "business": business_id, "item": item_id,
+        "kind": movement_type, "delta": quantity_delta, "reference": reference_id,
+        "key": idempotency_key, "reason": reason, "actor": actor_id,
+    })
 
 @router.post("/businesses/{business_id}/catalog", status_code=201)
 def create_catalog_item(
@@ -118,11 +135,11 @@ def adjust_inventory(
 ):
     if payload.movement_type not in {"receipt", "adjustment"} or payload.quantity_delta == 0:
         raise HTTPException(422, "Only non-zero receipt or adjustment movements are supported")
-    balance = db.execute(text("""
-        SELECT quantity_on_hand,quantity_reserved FROM inventory_balances
-        WHERE business_id=:business AND catalog_item_id=:item
-    """), {"business": business_id, "item": item_id}).mappings().first()
-    if balance is None:
+    balance_exists = db.execute(text("""
+        SELECT EXISTS(SELECT 1 FROM inventory_balances
+        WHERE business_id=:business AND catalog_item_id=:item)
+    """), {"business": business_id, "item": item_id}).scalar_one()
+    if not balance_exists:
         raise HTTPException(404, "Business inventory item not found")
     if db.execute(text("""
         SELECT EXISTS(SELECT 1 FROM inventory_movements
@@ -135,15 +152,17 @@ def adjust_inventory(
         if existing["catalog_item_id"] != item_id or existing["quantity_delta"] != payload.quantity_delta or existing["movement_type"] != payload.movement_type:
             raise HTTPException(409, "Idempotency key was already used for a different movement")
         return {"movement_id": existing["id"], "replayed": True}
-    new_on_hand = balance["quantity_on_hand"] + payload.quantity_delta
-    if new_on_hand < balance["quantity_reserved"]:
-        raise HTTPException(409, "Adjustment cannot reduce stock below reserved quantity")
     movement_id = str(uuid4())
     try:
-        db.execute(text("""
-            UPDATE inventory_balances SET quantity_on_hand=:quantity,updated_at=CURRENT_TIMESTAMP
+        changed = db.execute(text("""
+            UPDATE inventory_balances
+            SET quantity_on_hand=quantity_on_hand+:delta,updated_at=CURRENT_TIMESTAMP
             WHERE business_id=:business AND catalog_item_id=:item
-        """), {"quantity": new_on_hand, "business": business_id, "item": item_id})
+              AND quantity_on_hand+:delta>=quantity_reserved
+        """), {"delta": payload.quantity_delta, "business": business_id, "item": item_id})
+        if changed.rowcount != 1:
+            db.rollback()
+            raise HTTPException(409, "Adjustment would consume reserved stock or inventory changed")
         db.execute(text("""
             INSERT INTO inventory_movements
             (id,business_id,catalog_item_id,movement_type,quantity_delta,idempotency_key,reason,actor_id)
@@ -151,9 +170,19 @@ def adjust_inventory(
         """), {"id": movement_id, "business": business_id, "item": item_id,
                "kind": payload.movement_type, "delta": payload.quantity_delta,
                "key": payload.idempotency_key, "reason": payload.reason, "actor": user.id})
+        new_on_hand = db.execute(text("""
+            SELECT quantity_on_hand FROM inventory_balances
+            WHERE business_id=:business AND catalog_item_id=:item
+        """), {"business": business_id, "item": item_id}).scalar_one()
         db.commit()
     except IntegrityError as exc:
         db.rollback()
+        existing = db.execute(text("""
+            SELECT id,catalog_item_id,quantity_delta,movement_type FROM inventory_movements
+            WHERE business_id=:business AND idempotency_key=:key
+        """), {"business": business_id, "key": payload.idempotency_key}).mappings().first()
+        if existing and existing["catalog_item_id"] == item_id and existing["quantity_delta"] == payload.quantity_delta and existing["movement_type"] == payload.movement_type:
+            return {"movement_id": existing["id"], "replayed": True}
         raise HTTPException(409, "Inventory movement conflicts with a concurrent update") from exc
     return {"movement_id": movement_id, "quantity_on_hand": new_on_hand, "replayed": False}
 
