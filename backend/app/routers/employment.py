@@ -18,6 +18,86 @@ class PaymentVerification(BaseModel):
     verification_note: str = Field(min_length=3, max_length=1000)
 
 
+class OwnerProviderCreate(BaseModel):
+    user_id: str
+    business_code: str = Field(min_length=2, max_length=80)
+    legal_name: str = Field(min_length=2, max_length=200)
+    display_name: str = Field(min_length=2, max_length=200)
+    business_type: str = Field(min_length=2, max_length=60)
+
+
+@router.post("/admin/providers", status_code=201)
+def create_employment_provider_record(
+    payload: OwnerProviderCreate,
+    owner: User = Depends(require_permission("employment.provider.verify")),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    if db.execute(text("SELECT id FROM users WHERE id = :id"), {"id": payload.user_id}).scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Provider contact account not found")
+    if db.execute(text("SELECT id FROM business_profiles WHERE business_code = :code"), {"code": payload.business_code}).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Business code already exists")
+    business_id, provider_id = str(uuid4()), str(uuid4())
+    db.execute(text("""
+        INSERT INTO business_profiles
+            (id, business_code, legal_name, display_name, business_type, verification_status, is_active)
+        VALUES (:id, :code, :legal, :display, :kind, 'pending', TRUE)
+    """), {"id": business_id, "code": payload.business_code, "legal": payload.legal_name,
+           "display": payload.display_name, "kind": payload.business_type})
+    db.execute(text("""
+        INSERT INTO business_memberships
+            (id, business_id, user_id, membership_role, status)
+        VALUES (:id, :business, :user, 'owner', 'active')
+    """), {"id": str(uuid4()), "business": business_id, "user": payload.user_id})
+    db.execute(text("""
+        INSERT INTO employment_providers (id, business_id, verification_status)
+        VALUES (:id, :business, 'pending')
+    """), {"id": provider_id, "business": business_id})
+    db.execute(text("""
+        INSERT INTO employment_events
+            (id, actor_id, event_type, resource_type, resource_id, event_metadata)
+        VALUES (:id, :actor, 'employment.provider.created',
+                'employment_provider', :resource, :metadata)
+    """).bindparams(bindparam("metadata", type_=JSON)), {
+        "id": str(uuid4()), "actor": owner.id, "resource": provider_id,
+        "metadata": {"business_id": business_id, "contact_user_id": payload.user_id},
+    })
+    db.commit()
+    return {"provider_id": provider_id, "business_id": business_id, "verification_status": "pending"}
+
+
+@router.post("/admin/providers/{provider_id}/verify")
+def verify_employment_provider(
+    provider_id: str,
+    owner: User = Depends(require_permission("employment.provider.verify")),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    row = db.execute(text("""
+        SELECT ep.id, ep.business_id, ep.verification_status
+        FROM employment_providers ep WHERE ep.id = :id FOR UPDATE
+    """), {"id": provider_id}).mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Employment provider not found")
+    if row["verification_status"] == "verified":
+        return {"provider_id": provider_id, "verification_status": "verified"}
+    db.execute(text("""
+        UPDATE employment_providers
+        SET verification_status = 'verified', verified_at = CURRENT_TIMESTAMP, verified_by = :owner
+        WHERE id = :id
+    """), {"owner": owner.id, "id": provider_id})
+    db.execute(text("""
+        UPDATE business_profiles SET verification_status = 'verified'
+        WHERE id = :business
+    """), {"business": row["business_id"]})
+    db.execute(text("""
+        INSERT INTO employment_events
+            (id, actor_id, event_type, resource_type, resource_id, event_metadata)
+        VALUES (:id, :actor, 'employment.provider.verified',
+                'employment_provider', :resource, '{}')
+    """), {"id": str(uuid4()), "actor": owner.id, "resource": provider_id})
+    db.commit()
+    return {"provider_id": provider_id, "verification_status": "verified"}
+
+
 class OwnerAdvertisementCreate(BaseModel):
     provider_id: str
     title: str = Field(min_length=3, max_length=180)
