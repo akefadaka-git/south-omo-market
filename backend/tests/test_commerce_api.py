@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -222,12 +223,20 @@ def test_checkout_reservation_fulfillment_and_order_read_authorization(commerce_
         """), {"order": order_id}).scalar_one()
     assert tuple(reserved) == (5, 2)
     assert tuple(reservation) == ("reservation", 2, order_id)
-    assert isinstance(placed_event, dict)
+    if isinstance(placed_event, str):
+        placed_event = json.loads(placed_event)
     assert placed_event["settlement_method"] == "direct_cash"
 
     api.as_user("commerce-viewer")
     visible = api.client.get(f"/api/v1/commerce/orders/{order_id}")
     assert visible.status_code == 200, visible.text
+    with api.engine.begin() as connection:
+        connection.execute(text("""
+            UPDATE business_memberships SET expires_at='2000-01-01 00:00:00'
+            WHERE id='commerce-membership-viewer'
+        """))
+    expired = api.client.get(f"/api/v1/commerce/orders/{order_id}")
+    assert expired.status_code == 404
     api.as_user("commerce-outsider")
     hidden = api.client.get(f"/api/v1/commerce/orders/{order_id}")
     assert hidden.status_code == 404
@@ -257,6 +266,40 @@ def test_checkout_reservation_fulfillment_and_order_read_authorization(commerce_
     assert ("fulfillment", -2) in [tuple(row) for row in movements]
     assert set(event_types) == {"placed", "accepted", "ready", "fulfilled"}
     assert len(event_types) == 4
+
+    # A second order is cancelled to prove the release operation is ledgered.
+    api.as_user("commerce-buyer")
+    cart2 = api.client.post("/api/v1/commerce/businesses/commerce-business/carts")
+    assert cart2.status_code == 201, cart2.text
+    cart2_id = cart2.json()["id"]
+    put2 = api.client.put(
+        f"/api/v1/commerce/carts/{cart2_id}/items",
+        json={"catalog_item_id": item_id, "quantity": 1},
+    )
+    assert put2.status_code == 200, put2.text
+    checkout2 = api.client.post(
+        f"/api/v1/commerce/carts/{cart2_id}/checkout",
+        params={"idempotency_key": "checkout-" + uuid4().hex[:16]},
+    )
+    assert checkout2.status_code == 201, checkout2.text
+    order2_id = checkout2.json()["order_id"]
+    api.as_user("commerce-owner")
+    cancelled = api.client.post(
+        f"/api/v1/commerce/businesses/commerce-business/orders/{order2_id}/status",
+        params={"new_status": "cancelled"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    with api.engine.connect() as connection:
+        released = connection.execute(text("""
+            SELECT movement_type,quantity_delta,reference_id FROM inventory_movements
+            WHERE catalog_item_id=:item AND movement_type='release'
+        """), {"item": item_id}).one()
+        final_after_cancel = connection.execute(text("""
+            SELECT quantity_on_hand,quantity_reserved FROM inventory_balances
+            WHERE catalog_item_id=:item
+        """), {"item": item_id}).one()
+    assert tuple(released) == ("release", -1, order2_id)
+    assert tuple(final_after_cancel) == (3, 0)
 
 
 def test_agreement_decision_is_counterparty_only_and_audited(commerce_api):
