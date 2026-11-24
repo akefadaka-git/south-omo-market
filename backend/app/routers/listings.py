@@ -13,6 +13,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
+from app.governance import require_marketplace_listing_policy
 from app.models import Category, Listing, ListingImage, Location, SellerProfile, User
 
 router = APIRouter(prefix="/listings")
@@ -299,6 +300,13 @@ def sync_my_offline_draft(
     seller = db.scalar(select(SellerProfile).where(SellerProfile.user_id == user.id))
     if seller is None:
         raise HTTPException(status_code=409, detail="Create a seller profile before syncing drafts")
+    category = db.get(Category, payload.category_id)
+    if category is None or not category.is_active:
+        raise HTTPException(status_code=404, detail="Category not found")
+    _require_leaf_category(db, category)
+    require_marketplace_listing_policy(
+        db, user, action="marketplace.listing.sync", category_id=category.id
+    )
     resolved_location_id = _resolve_location_id(db, payload.location_id, payload.location_label)
     sync_id = str(payload.client_sync_id)
     existing = db.scalar(select(Listing).where(Listing.client_sync_id == sync_id))
@@ -320,10 +328,6 @@ def sync_my_offline_draft(
             raise HTTPException(status_code=409, detail="Sync identifier was reused with different draft data")
         return {"id": existing.id, "status": existing.status, "idempotent": True}
 
-    category = db.get(Category, payload.category_id)
-    if category is None or not category.is_active:
-        raise HTTPException(status_code=404, detail="Category not found")
-    _require_leaf_category(db, category)
     attributes = _validated_attributes(category, payload.attributes)
     listing = Listing(
         seller_id=seller.id,
@@ -394,6 +398,9 @@ def create_my_listing(
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
+    require_marketplace_listing_policy(
+        db, user, action="marketplace.listing.create", category_id=category.id
+    )
     attributes = _validated_attributes(category, payload.attributes)
     resolved_location_id = _resolve_location_id(db, payload.location_id, payload.location_label)
     listing = Listing(
@@ -429,6 +436,9 @@ def update_my_listing(
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
+    require_marketplace_listing_policy(
+        db, user, action="marketplace.listing.update", category_id=category.id
+    )
     if "category_id" in changes or "attributes" in changes:
         candidate_attributes = changes.get("attributes", listing.attributes or {})
         changes["attributes"] = _validated_attributes(category, candidate_attributes)
@@ -570,6 +580,9 @@ def submit_my_listing(
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
+    require_marketplace_listing_policy(
+        db, user, action="marketplace.listing.submit", category_id=category.id
+    )
     listing.status = "pending_review"
     db.commit()
     return {"id": listing.id, "status": listing.status}
