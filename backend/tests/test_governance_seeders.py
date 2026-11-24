@@ -21,7 +21,7 @@ def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monk
             seed_system_reference_data(db)
             seed_system_reference_data(db)
             assert db.execute(text("SELECT COUNT(*) FROM roles")).scalar_one() == 6
-            assert db.execute(text("SELECT COUNT(*) FROM permissions")).scalar_one() == 13
+            assert db.execute(text("SELECT COUNT(*) FROM permissions")).scalar_one() == 14
             assert db.execute(text("""
                 SELECT COUNT(*) FROM role_permissions rp
                 JOIN roles r ON r.id = rp.role_id
