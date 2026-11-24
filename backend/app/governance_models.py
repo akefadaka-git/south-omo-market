@@ -322,3 +322,21 @@ class AITaskRoute(Base):
     requires_human_approval: Mapped[bool] = mapped_column(Boolean, default=True)
     max_data_classification: Mapped[str] = mapped_column(String(24), default="public")
     quota_per_day: Mapped[int] = mapped_column(Integer, default=0)
+
+
+
+class ProtectedCategoryRoot(Base):
+    """Persisted category roots whose descendants are outside seller publication."""
+    __tablename__ = "protected_category_roots"
+    __table_args__ = (
+        UniqueConstraint("category_id", "policy_code", name="uq_protected_category_policy"),
+        Index("ix_protected_category_roots_category", "category_id"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    category_id: Mapped[str] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE")
+    )
+    policy_code: Mapped[str] = mapped_column(String(100), unique=True)
+    applies_to_descendants: Mapped[bool] = mapped_column(Boolean, default=True)
+    seller_listing_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
