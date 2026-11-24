@@ -22,13 +22,23 @@ def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monk
             seed_system_reference_data(db)
             seed_system_reference_data(db)
             assert db.execute(text("SELECT COUNT(*) FROM roles")).scalar_one() == 6
-            assert db.execute(text("SELECT COUNT(*) FROM permissions")).scalar_one() == 14
+            assert db.execute(text("SELECT COUNT(*) FROM permissions")).scalar_one() == 17
             assert db.execute(text("""
                 SELECT COUNT(*) FROM role_permissions rp
                 JOIN roles r ON r.id = rp.role_id
                 JOIN permissions p ON p.id = rp.permission_id
                 WHERE r.code = 'owner' AND p.code = 'employment.advertisement.publish'
             """)).scalar_one() == 1
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM role_permissions rp
+                JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id
+                WHERE r.code='owner' AND p.code='business.verification.manage'
+            """)).scalar_one() == 1
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM role_permissions rp
+                JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id
+                WHERE r.code='admin' AND p.code='business.verification.manage'
+            """)).scalar_one() == 0
             assert db.execute(text("""
                 SELECT COUNT(*) FROM user_roles ur JOIN roles r ON r.id = ur.role_id
                 WHERE r.code = 'owner'
