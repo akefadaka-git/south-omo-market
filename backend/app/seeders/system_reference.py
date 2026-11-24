@@ -33,6 +33,9 @@ PERMISSIONS = {
     "ai.model.configure": "Configure AI model registry and routing",
     "ai.audit.read": "Read AI governance and usage audit records",
 }
+AI_TASKS = ("employment.matching", "marketplace.classification", "localization.translation", "marketplace.search")
+
+
 ROLE_PERMISSIONS = {
     "owner": tuple(PERMISSIONS),
     "admin": (
@@ -93,6 +96,19 @@ def seed_system_reference_data(db: Session) -> None:
                 'external', FALSE, FALSE, FALSE, FALSE)
         ON CONFLICT (code) DO NOTHING
     """), {"id": _id("ai-provider", "secondary-unconfigured")})
+
+    for task_code in AI_TASKS:
+        db.execute(text("""
+            INSERT INTO ai_task_routes
+                (id, task_code, provider_id, model_id, enabled,
+                 requires_human_approval, max_data_classification, quota_per_day)
+            VALUES (:id, :task, :provider, NULL, FALSE, TRUE, 'public', 0)
+            ON CONFLICT (task_code) DO NOTHING
+        """), {
+            "id": _id("ai-task-route", task_code),
+            "task": task_code,
+            "provider": _id("ai-provider", "iroka"),
+        })
 
     db.execute(text("""
         INSERT INTO policy_packs (id, code, version, status, policy_json)
