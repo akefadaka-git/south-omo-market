@@ -1,0 +1,49 @@
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session
+
+from app.core.config import get_settings
+from app.seeders.system_reference import seed_system_reference_data
+
+
+def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "governance-test.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database_path}")
+    get_settings.cache_clear()
+    config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    try:
+        command.upgrade(config, "head")
+        engine = create_engine(f"sqlite:///{database_path}")
+        with Session(engine) as db:
+            seed_system_reference_data(db)
+            seed_system_reference_data(db)
+            assert db.execute(text("SELECT COUNT(*) FROM roles")).scalar_one() == 6
+            assert db.execute(text("SELECT COUNT(*) FROM permissions")).scalar_one() == 13
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM role_permissions rp
+                JOIN roles r ON r.id = rp.role_id
+                JOIN permissions p ON p.id = rp.permission_id
+                WHERE r.code = 'owner' AND p.code = 'employment.advertisement.publish'
+            """)).scalar_one() == 1
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+                WHERE r.code = 'owner'
+            """)).scalar_one() == 0
+            iroka = db.execute(text("""
+                SELECT primary_provider, enabled, endpoint_configured
+                FROM ai_providers WHERE code = 'iroka'
+            """)).one()
+            assert iroka == (1, 0, 0) or iroka == (True, False, False)
+            assert db.execute(text("""
+                SELECT status FROM policy_packs WHERE code = 'south-omo-default-deny'
+            """)).scalar_one() == "active"
+            assert db.execute(text("""
+                SELECT effect FROM policy_rules
+                WHERE rule_code = 'employment-advertisement-publish-owner-only'
+            """)).scalar_one() == "allow"
+        engine.dispose()
+    finally:
+        get_settings.cache_clear()
