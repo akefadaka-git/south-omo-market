@@ -466,18 +466,20 @@ def withdraw_candidate_sharing_consent(
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
     result = db.execute(text("""
-        UPDATE candidate_consents AS cc
+        UPDATE candidate_consents
         SET withdrawn_at = CURRENT_TIMESTAMP
-        FROM employment_applications app, job_seeker_profiles jsp,
-             employment_opportunities o
-        WHERE app.id = :application
-          AND app.job_seeker_id = jsp.id
-          AND jsp.user_id = :user_id
-          AND o.id = app.opportunity_id
-          AND cc.job_seeker_id = jsp.id
-          AND cc.provider_id = o.provider_id
-          AND cc.withdrawn_at IS NULL
-        RETURNING candidate_consents.id
+        WHERE id IN (
+            SELECT cc.id
+            FROM candidate_consents cc
+            JOIN employment_applications app ON app.id = :application
+                AND app.job_seeker_id = cc.job_seeker_id
+            JOIN job_seeker_profiles jsp ON jsp.id = app.job_seeker_id
+                AND jsp.user_id = :user_id
+            JOIN employment_opportunities o ON o.id = app.opportunity_id
+                AND o.provider_id = cc.provider_id
+            WHERE cc.withdrawn_at IS NULL
+        )
+        RETURNING id
     """), {"application": application_id, "user_id": user.id})
     consent_ids = result.scalars().all()
     if not consent_ids:
