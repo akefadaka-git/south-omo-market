@@ -323,6 +323,33 @@ def grant_candidate_sharing_consent(
     return {"consent_id": consent_id, "status": "granted"}
 
 
+@router.delete("/applications/{application_id}/consent")
+def withdraw_candidate_sharing_consent(
+    application_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    result = db.execute(text("""
+        UPDATE candidate_consents cc
+        SET withdrawn_at = CURRENT_TIMESTAMP
+        FROM employment_applications app, job_seeker_profiles jsp,
+             employment_opportunities o
+        WHERE app.id = :application
+          AND app.job_seeker_id = jsp.id
+          AND jsp.user_id = :user_id
+          AND o.id = app.opportunity_id
+          AND cc.job_seeker_id = jsp.id
+          AND cc.provider_id = o.provider_id
+          AND cc.withdrawn_at IS NULL
+        RETURNING cc.id
+    """), {"application": application_id, "user_id": user.id})
+    consent_id = result.scalar_one_or_none()
+    if consent_id is None:
+        raise HTTPException(status_code=404, detail="Active consent not found")
+    db.commit()
+    return {"consent_id": consent_id, "status": "withdrawn"}
+
+
 @router.get("/providers/{provider_id}/consented-candidates")
 def list_consented_candidates(
     provider_id: str,
