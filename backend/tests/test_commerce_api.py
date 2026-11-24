@@ -68,6 +68,8 @@ def commerce_api():
     def override_user():
         return SimpleNamespace(id=current["user_id"])
 
+    previous_db_override = app.dependency_overrides.get(get_db)
+    previous_user_override = app.dependency_overrides.get(get_current_user)
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_current_user] = override_user
     client = TestClient(app)
@@ -89,8 +91,14 @@ def commerce_api():
     try:
         yield context
     finally:
-        app.dependency_overrides.pop(get_db, None)
-        app.dependency_overrides.pop(get_current_user, None)
+        if previous_db_override is None:
+            app.dependency_overrides.pop(get_db, None)
+        else:
+            app.dependency_overrides[get_db] = previous_db_override
+        if previous_user_override is None:
+            app.dependency_overrides.pop(get_current_user, None)
+        else:
+            app.dependency_overrides[get_current_user] = previous_user_override
         engine.dispose()
         get_settings.cache_clear()
         if previous_url is None:
@@ -148,6 +156,16 @@ def test_catalog_inventory_isolation_atomicity_and_idempotency(commerce_api):
 
     blocked = _adjust_stock(api, item_id, -9, "adjust-" + uuid4().hex[:12])
     assert blocked.status_code == 409
+
+    api.as_user("commerce-owner-two")
+    cross_business = api.client.post(
+        "/api/v1/commerce/businesses/commerce-business/catalog",
+        json={
+            "category_id": api.category_id, "sku": "CROSS-" + uuid4().hex[:8],
+            "title": "Cross-business item", "unit_price_minor": 1, "currency": "ETB",
+        },
+    )
+    assert cross_business.status_code == 403
 
     api.as_user("commerce-outsider")
     denied = api.client.post(
