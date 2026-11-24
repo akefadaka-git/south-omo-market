@@ -52,6 +52,61 @@ def require_permission(permission_code: str):
     return dependency
 
 
+def ensure_marketplace_seller_role(db: Session, user_id: str) -> None:
+    """Bind a seller profile to the least-privilege merchant role.
+
+    The profile is the eligibility signal; public account registration alone
+    never grants seller permissions. Existing seller profiles are reconciled
+    idempotently when they next perform a protected listing operation.
+    """
+    has_profile = db.execute(text(
+        "SELECT EXISTS (SELECT 1 FROM seller_profiles WHERE user_id=:user_id)"
+    ), {"user_id": user_id}).scalar_one()
+    if not has_profile:
+        raise HTTPException(status_code=409, detail="Create a seller profile before listing")
+    configured = db.execute(text("""
+        SELECT EXISTS (
+            SELECT 1 FROM roles r
+            JOIN role_permissions rp ON rp.role_id=r.id
+            JOIN permissions p ON p.id=rp.permission_id
+            WHERE r.code='merchant' AND p.code='marketplace.listing.create'
+        )
+    """)).scalar_one()
+    if not configured:
+        raise HTTPException(status_code=503, detail="Marketplace seller permissions are not configured")
+    db.execute(text("""
+        INSERT INTO user_roles (user_id, role_id, assigned_by, expires_at)
+        SELECT :user_id, r.id, NULL, NULL FROM roles r
+        WHERE r.code='merchant'
+        ON CONFLICT (user_id, role_id) DO NOTHING
+    """), {"user_id": user_id})
+
+
+def require_marketplace_listing_policy(
+    db: Session, user: User, *, action: str, category_id: str
+) -> None:
+    """Require both the merchant RBAC grant and an affirmative policy decision."""
+    from app.policy_engine import evaluate_policy
+
+    ensure_marketplace_seller_role(db, user.id)
+    allowed = db.execute(text("""
+        SELECT EXISTS (
+            SELECT 1 FROM user_roles ur
+            JOIN roles r ON r.id=ur.role_id
+            JOIN role_permissions rp ON rp.role_id=r.id
+            JOIN permissions p ON p.id=rp.permission_id
+            WHERE ur.user_id=:user_id AND r.code='merchant'
+              AND (ur.expires_at IS NULL OR ur.expires_at>CURRENT_TIMESTAMP)
+              AND p.code='marketplace.listing.create'
+        )
+    """), {"user_id": user.id}).scalar_one()
+    if not allowed or not evaluate_policy(
+        db, subject="role:merchant", action=action, resource="listings",
+        facts={"category_id": category_id},
+    ):
+        raise HTTPException(status_code=403, detail="Marketplace listing policy denied this action")
+
+
 def require_business_permission(permission_code: str):
     """Require a verified, active business, active membership and role-scoped permission."""
     def dependency(
