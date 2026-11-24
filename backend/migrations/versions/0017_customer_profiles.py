@@ -25,11 +25,10 @@ def upgrade() -> None:
         sa.Column("contact_preference", sa.String(16), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.UniqueConstraint("user_id", name="uq_customer_profiles_user"),
         sa.CheckConstraint("preferred_language IN ('am','en')", name="ck_customer_profile_language"),
         sa.CheckConstraint("contact_preference IS NULL OR contact_preference IN ('phone','sms','email')", name="ck_customer_profile_contact_preference"),
     )
-    op.create_index("ix_customer_profiles_user_id", "customer_profiles", ["user_id"])
+    op.create_index("ix_customer_profiles_user_id", "customer_profiles", ["user_id"], unique=True)
     op.create_index("ix_customer_profiles_preferred_location_id", "customer_profiles", ["preferred_location_id"])
     op.create_index("ix_customer_profiles_preferred_market_id", "customer_profiles", ["preferred_market_id"])
 
