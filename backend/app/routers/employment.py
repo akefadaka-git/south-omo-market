@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import JSON, bindparam, text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -69,7 +69,7 @@ def verify_advertising_payment(
             (id, actor_id, event_type, resource_type, resource_id, event_metadata)
         VALUES (:id, :actor, 'advertising.payment.verified',
                 'advertising_payment', :resource, :metadata)
-    """), {
+    """).bindparams(bindparam("metadata", type_=JSON)), {
         "id": str(uuid4()), "actor": owner.id, "resource": payment_id,
         "metadata": {"advertisement_id": advertisement_id, "verification_note": payload.verification_note},
     })
@@ -126,7 +126,7 @@ def publish_employment_advertisement(
             (id, actor_id, event_type, resource_type, resource_id, event_metadata)
         VALUES (:id, :actor, 'employment.advertisement.published',
                 'employment_advertisement', :resource, :metadata)
-    """), {
+    """).bindparams(bindparam("metadata", type_=JSON)), {
         "id": str(uuid4()), "actor": owner.id, "resource": advertisement_id,
         "metadata": {"agreement_id": row["agreement_id"], "verified_payment_minor": int(row["verified_total"])},
     })
@@ -155,7 +155,7 @@ def upsert_private_job_seeker_profile(
         SELECT id FROM job_seeker_profiles WHERE user_id = :user_id
     """), {"user_id": user.id}).scalar_one_or_none()
     profile_id = existing or str(uuid4())
-    db.execute(text("""
+    profile_statement = text("""
         INSERT INTO job_seeker_profiles
             (id, user_id, skills, experience, qualifications, preferred_occupations,
              preferred_location_codes, availability, contact_preferences, visibility)
@@ -168,7 +168,12 @@ def upsert_private_job_seeker_profile(
             preferred_location_codes = EXCLUDED.preferred_location_codes,
             availability = EXCLUDED.availability,
             contact_preferences = EXCLUDED.contact_preferences
-    """), {
+    """).bindparams(
+        bindparam("skills", type_=JSON), bindparam("experience", type_=JSON),
+        bindparam("qualifications", type_=JSON), bindparam("occupations", type_=JSON),
+        bindparam("locations", type_=JSON), bindparam("contacts", type_=JSON),
+    )
+    db.execute(profile_statement, {
         "id": profile_id, "user_id": user.id,
         "skills": payload.get("skills", []), "experience": payload.get("experience", []),
         "qualifications": payload.get("qualifications", []),
