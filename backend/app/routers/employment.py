@@ -328,7 +328,7 @@ def withdraw_candidate_sharing_consent(
     application_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> dict[str, str]:
+) -> dict[str, object]:
     result = db.execute(text("""
         UPDATE candidate_consents cc
         SET withdrawn_at = CURRENT_TIMESTAMP
@@ -343,11 +343,15 @@ def withdraw_candidate_sharing_consent(
           AND cc.withdrawn_at IS NULL
         RETURNING cc.id
     """), {"application": application_id, "user_id": user.id})
-    consent_id = result.scalar_one_or_none()
-    if consent_id is None:
+    consent_ids = result.scalars().all()
+    if not consent_ids:
         raise HTTPException(status_code=404, detail="Active consent not found")
     db.commit()
-    return {"consent_id": consent_id, "status": "withdrawn"}
+    return {
+        "withdrawn_consent_ids": consent_ids,
+        "withdrawn_count": len(consent_ids),
+        "status": "withdrawn",
+    }
 
 
 @router.get("/providers/{provider_id}/consented-candidates")

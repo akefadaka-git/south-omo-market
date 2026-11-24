@@ -84,3 +84,66 @@ def test_legacy_employment_category_draft_cannot_be_submitted(monkeypatch) -> No
     assert error.value.status_code == 403
     assert listing.status == "draft"
     assert db.committed is False
+
+def test_withdraw_consent_revokes_all_active_consents_for_that_provider() -> None:
+    from app.routers.employment import withdraw_candidate_sharing_consent
+
+    engine = create_engine("sqlite://")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE employment_applications "
+                "(id TEXT PRIMARY KEY, job_seeker_id TEXT, opportunity_id TEXT)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE job_seeker_profiles "
+                "(id TEXT PRIMARY KEY, user_id TEXT)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE employment_opportunities "
+                "(id TEXT PRIMARY KEY, provider_id TEXT)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE candidate_consents "
+                "(id TEXT PRIMARY KEY, job_seeker_id TEXT, provider_id TEXT, "
+                "purpose TEXT, withdrawn_at TEXT)"
+            )
+            connection.execute(text(
+                "INSERT INTO job_seeker_profiles (id, user_id) VALUES ('profile-1', 'candidate-1')"
+            ))
+            connection.execute(text(
+                "INSERT INTO employment_opportunities (id, provider_id) "
+                "VALUES ('opportunity-1', 'provider-1')"
+            ))
+            connection.execute(text(
+                "INSERT INTO employment_applications (id, job_seeker_id, opportunity_id) "
+                "VALUES ('application-1', 'profile-1', 'opportunity-1')"
+            ))
+            connection.execute(text(
+                "INSERT INTO candidate_consents "
+                "(id, job_seeker_id, provider_id, purpose, withdrawn_at) VALUES "
+                "('consent-1', 'profile-1', 'provider-1', 'application review', NULL), "
+                "('consent-2', 'profile-1', 'provider-1', 'candidate matching', NULL), "
+                "('consent-3', 'profile-1', 'provider-2', 'unrelated provider', NULL)"
+            ))
+
+        with Session(engine) as db:
+            result = withdraw_candidate_sharing_consent(
+                "application-1",
+                user=SimpleNamespace(id="candidate-1"),
+                db=db,
+            )
+            assert result["status"] == "withdrawn"
+            assert result["withdrawn_count"] == 2
+            assert set(result["withdrawn_consent_ids"]) == {"consent-1", "consent-2"}
+            assert db.execute(text(
+                "SELECT COUNT(*) FROM candidate_consents "
+                "WHERE provider_id = 'provider-1' AND withdrawn_at IS NOT NULL"
+            )).scalar_one() == 2
+            assert db.execute(text(
+                "SELECT COUNT(*) FROM candidate_consents "
+                "WHERE provider_id = 'provider-2' AND withdrawn_at IS NULL"
+            )).scalar_one() == 1
+    finally:
+        engine.dispose()
+
