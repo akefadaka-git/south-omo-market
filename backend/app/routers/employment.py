@@ -18,6 +18,154 @@ class PaymentVerification(BaseModel):
     verification_note: str = Field(min_length=3, max_length=1000)
 
 
+class OwnerAdvertisementCreate(BaseModel):
+    provider_id: str
+    title: str = Field(min_length=3, max_length=180)
+    description: str = Field(min_length=10, max_length=5000)
+    occupation_code: str = Field(min_length=2, max_length=80)
+    location_code: str = Field(min_length=2, max_length=80)
+    employment_type: str = Field(min_length=2, max_length=40)
+    requirements: list[dict[str, object]] = Field(default_factory=list)
+    agreed_price_minor: int = Field(gt=0)
+    duration_days: int = Field(gt=0, le=365)
+    terms_version: str = Field(min_length=1, max_length=40)
+
+
+class AgreementAcceptance(BaseModel):
+    acceptance_evidence: str = Field(min_length=3, max_length=2000)
+
+
+class PaymentSubmission(BaseModel):
+    amount_minor: int = Field(gt=0)
+    currency: str = Field(default="ETB", min_length=3, max_length=3)
+    payment_method: str = Field(min_length=2, max_length=40)
+    evidence_ref: str = Field(min_length=3, max_length=2000)
+    external_reference: str | None = Field(default=None, max_length=160)
+
+
+@router.post("/admin/advertisements", status_code=201)
+def create_owner_managed_advertisement(
+    payload: OwnerAdvertisementCreate,
+    owner: User = Depends(require_permission("employment.advertisement.manage")),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    provider_status = db.execute(text("""
+        SELECT verification_status FROM employment_providers WHERE id = :provider_id
+    """), {"provider_id": payload.provider_id}).scalar_one_or_none()
+    if provider_status is None:
+        raise HTTPException(status_code=404, detail="Employment provider not found")
+    if provider_status != "verified":
+        raise HTTPException(status_code=409, detail="Provider must be verified before an ad is prepared")
+    opportunity_id, agreement_id, advertisement_id = str(uuid4()), str(uuid4()), str(uuid4())
+    db.execute(text("""
+        INSERT INTO employment_opportunities
+            (id, provider_id, title, description, occupation_code, location_code,
+             employment_type, requirements, status)
+        VALUES (:id, :provider, :title, :description, :occupation, :location,
+                :employment_type, :requirements, 'draft')
+    """).bindparams(bindparam("requirements", type_=JSON)), {
+        "id": opportunity_id, "provider": payload.provider_id,
+        "title": payload.title, "description": payload.description,
+        "occupation": payload.occupation_code, "location": payload.location_code,
+        "employment_type": payload.employment_type, "requirements": payload.requirements,
+    })
+    db.execute(text("""
+        INSERT INTO advertising_agreements
+            (id, provider_id, opportunity_id, terms_version, agreed_price_minor,
+             currency, duration_days, status)
+        VALUES (:id, :provider, :opportunity, :terms, :price, 'ETB', :duration, 'pending')
+    """), {
+        "id": agreement_id, "provider": payload.provider_id,
+        "opportunity": opportunity_id, "terms": payload.terms_version,
+        "price": payload.agreed_price_minor, "duration": payload.duration_days,
+    })
+    db.execute(text("""
+        INSERT INTO employment_advertisements
+            (id, opportunity_id, agreement_id, status)
+        VALUES (:id, :opportunity, :agreement, 'pending_owner')
+    """), {"id": advertisement_id, "opportunity": opportunity_id, "agreement": agreement_id})
+    db.execute(text("""
+        INSERT INTO employment_events
+            (id, actor_id, event_type, resource_type, resource_id, event_metadata)
+        VALUES (:id, :actor, 'employment.advertisement.prepared',
+                'employment_advertisement', :resource, :metadata)
+    """).bindparams(bindparam("metadata", type_=JSON)), {
+        "id": str(uuid4()), "actor": owner.id, "resource": advertisement_id,
+        "metadata": {"provider_id": payload.provider_id, "agreement_id": agreement_id},
+    })
+    db.commit()
+    return {"advertisement_id": advertisement_id, "agreement_id": agreement_id, "status": "pending_provider_acceptance"}
+
+
+@router.post("/advertising-agreements/{agreement_id}/accept")
+def accept_advertising_agreement(
+    agreement_id: str,
+    payload: AgreementAcceptance,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    row = db.execute(text("""
+        SELECT ag.id, ag.status, ep.verification_status
+        FROM advertising_agreements ag
+        JOIN employment_providers ep ON ep.id = ag.provider_id
+        JOIN business_memberships bm ON bm.business_id = ep.business_id
+        WHERE ag.id = :agreement_id AND bm.user_id = :user_id
+          AND bm.status = 'active'
+        FOR UPDATE OF ag
+    """), {"agreement_id": agreement_id, "user_id": user.id}).mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Agreement not found for this provider account")
+    if row["verification_status"] != "verified":
+        raise HTTPException(status_code=403, detail="Provider is not verified")
+    if row["status"] != "pending":
+        raise HTTPException(status_code=409, detail="Agreement is not awaiting acceptance")
+    db.execute(text("""
+        UPDATE advertising_agreements
+        SET status = 'accepted', provider_accepted_at = CURRENT_TIMESTAMP,
+            provider_acceptance_evidence = :evidence
+        WHERE id = :agreement_id
+    """), {"evidence": payload.acceptance_evidence, "agreement_id": agreement_id})
+    db.commit()
+    return {"agreement_id": agreement_id, "status": "accepted"}
+
+
+@router.post("/advertising-agreements/{agreement_id}/payments", status_code=201)
+def submit_advertising_payment_evidence(
+    agreement_id: str,
+    payload: PaymentSubmission,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    row = db.execute(text("""
+        SELECT ag.id, ag.status, ag.currency, ep.verification_status
+        FROM advertising_agreements ag
+        JOIN employment_providers ep ON ep.id = ag.provider_id
+        JOIN business_memberships bm ON bm.business_id = ep.business_id
+        WHERE ag.id = :agreement_id AND bm.user_id = :user_id
+          AND bm.status = 'active'
+        FOR UPDATE OF ag
+    """), {"agreement_id": agreement_id, "user_id": user.id}).mappings().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Agreement not found for this provider account")
+    if row["verification_status"] != "verified" or row["status"] != "accepted":
+        raise HTTPException(status_code=409, detail="Verified provider and accepted agreement are required")
+    if payload.currency != row["currency"]:
+        raise HTTPException(status_code=422, detail="Payment currency does not match the agreement")
+    payment_id = str(uuid4())
+    db.execute(text("""
+        INSERT INTO advertising_payments
+            (id, agreement_id, amount_minor, currency, payment_method,
+             external_reference, evidence_ref, status)
+        VALUES (:id, :agreement, :amount, :currency, :method, :external, :evidence, 'submitted')
+    """), {
+        "id": payment_id, "agreement": agreement_id, "amount": payload.amount_minor,
+        "currency": payload.currency, "method": payload.payment_method,
+        "external": payload.external_reference, "evidence": payload.evidence_ref,
+    })
+    db.commit()
+    return {"payment_id": payment_id, "status": "submitted_for_owner_verification"}
+
+
 @router.get("/advertisements")
 def list_published_employment_advertisements(
     db: Session = Depends(get_db),
