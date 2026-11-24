@@ -13,10 +13,13 @@ from app.core.rate_limit import limiter
 from app.main import app
 from app import models  # noqa: F401
 from app.models import Category, Listing, Location, SellerProfile, User
+from app.seeders.system_reference import seed_system_reference_data
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 Base.metadata.create_all(engine)
+with TestingSession() as seed_db:
+    seed_system_reference_data(seed_db)
 
 
 def override_db():
