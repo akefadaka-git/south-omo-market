@@ -156,9 +156,13 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Buyer Test');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000007');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-password-123');
+    await tester.ensureVisible(find.byKey(const Key('buyer-preferred-location')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('buyer-preferred-location')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Jinka').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Register and continue'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Register and continue'));
     await tester.pumpAndSettle();
