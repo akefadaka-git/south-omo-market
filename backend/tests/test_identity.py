@@ -1351,10 +1351,15 @@ def test_seller_role_and_policy_are_enforced_for_every_listing_write_path() -> N
         **base_payload, "title": "Offline policy draft",
         "client_sync_id": str(uuid4()),
     }
+    synced = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
+    assert synced.status_code == 200
     deny("marketplace.listing.sync")
-    denied_sync = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
+    denied_sync = client.post("/api/v1/listings/sync", headers=headers, json={
+        **base_payload, "title": "New offline policy draft",
+        "client_sync_id": str(uuid4()),
+    })
     assert denied_sync.status_code == 403
 
     # Replaying an already-synced payload is also subject to current policy.
-    allow_sync = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
-    assert allow_sync.status_code == 403
+    denied_replay = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
+    assert denied_replay.status_code == 403
