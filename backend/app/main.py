@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.routers import admin, businesses, categories, commerce, employment, health, identity, inquiries, listings, locations, markets, reports, sellers
+from app.routers import admin, businesses, categories, commerce, customers, employment, health, identity, inquiries, listings, locations, markets, reports, sellers
 from app.core.rate_limit import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -11,6 +11,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(health.router, tags=["health"])
 app.include_router(identity.router, prefix=settings.api_v1_prefix, tags=["identity"])
+app.include_router(customers.router, prefix=settings.api_v1_prefix, tags=["customers"])
 app.include_router(categories.router, prefix=settings.api_v1_prefix, tags=["categories"])
 app.include_router(locations.router, prefix=settings.api_v1_prefix, tags=["locations"])
 app.include_router(markets.router, prefix=settings.api_v1_prefix, tags=["markets"])
