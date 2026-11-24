@@ -184,3 +184,8 @@ class MarketScheduleDay(Base):
     effective_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     market: Mapped[Market] = relationship(back_populates="schedule_days")
+
+
+# Register the shared business/governance mappings in Base.metadata for test and
+# application processes that import only the core models module.
+from app import governance_models as _governance_models  # noqa: F401,E402
