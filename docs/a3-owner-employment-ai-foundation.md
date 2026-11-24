@@ -36,7 +36,7 @@ ORM mappings are registered in Alembic metadata through `app.governance_models`.
 
 Ordinary seller listing create/update/offline-sync is blocked for the `work-opportunities` category and every descendant. Ordinary admins do not receive the Owner-only employment permissions. Job-seeker profiles are private by default; the profile endpoint ignores attempts to set public visibility.
 
-IROKA matching is not an autonomous hiring or eligibility decision. Candidate referrals are constrained to a human-review decision state in the schema. Employer access to private profiles requires a future explicit consent/referral workflow.
+IROKA matching is not an autonomous hiring or eligibility decision. Candidate referrals are constrained to a human-review decision state in the schema. Employer access to private profiles is gated by provider-specific active consent; the provider candidate view omits contact preferences and phone data. Consent withdrawal revokes all active purposes for that provider, and agent referrals require active consent and remain in `human_review`.
 
 ## AI provider and policy defaults
 
@@ -53,7 +53,7 @@ IROKA matching is not an autonomous hiring or eligibility decision. Candidate re
 ## Verification and activation gates
 
 - Automated tests cover migration head, schema presence, idempotent reference seeding, Owner permission mapping, absence of default Owner assignments, IROKA placeholder state, provider-request pending state/duplicate rejection, consent withdrawal across multiple purposes, and the full PostgreSQL Owner-controlled advertising lifecycle.
-- Exact-head CI run #877 PASS: backend Ruff; 45 backend pytest tests; 2 PostgreSQL migration/audit/employment lifecycle tests (including provider queue, rejection and paid-ad publication); 3 S3 storage tests; admin dependency audit (0 vulnerabilities), production build and 2 Vitest files/3 tests; Flutter analysis and 34 tests; Android staging readiness check and three-ABI debug APK artifact. Production release APK remains skipped.
+- Exact-head CI run #882 PASS: backend Ruff; 45 backend pytest tests; 2 PostgreSQL migration/audit/employment lifecycle tests (including provider queue/rejection, paid-ad publication, private job-seeker profile, applications, multiple-purpose consent, provider visibility, human-review referral and consent withdrawal); 3 S3 storage tests; admin dependency audit (0 vulnerabilities), production build and 2 Vitest files/3 tests; Flutter analysis and 34 tests; Android staging readiness check and three-ABI debug APK artifact. Production release APK remains skipped.
 - The Neon `south-omo-testing` branch remains the intended test database. This implementation has not run Alembic or seeders against Neon.
 - Production Neon branch, deployment, merge, public commercial launch, real provider/payment data, and live AI integration remain outside this authorization.
 - Employment agency licensing, recruitment and consumer/employment obligations require legal review before paid commercial activation.

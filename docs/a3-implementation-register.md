@@ -2,15 +2,15 @@
 
 ## Latest exact-head automated verification
 
-- Latest implementation head verified: `13c888060debd753083a5c3da67383f038f9f2b9`.
-- GitHub Actions run #877: PASS — https://github.com/akefadaka-git/south-omo-market/actions/runs/45393712192.
+- Latest implementation head verified: `43dce667f1d7d5ea3072a37c0f504c894d4a803c`.
+- GitHub Actions run #882: PASS — https://github.com/akefadaka-git/south-omo-market/actions/runs/45396551521.
 - Backend Ruff: PASS; backend pytest: 45 passed; PostgreSQL migration/audit/employment-lifecycle integration: 2 passed; S3-compatible storage integration: 3 passed.
 - Admin: dependency audit reported 0 vulnerabilities; production build PASS; Vitest: 2 test files and 3 tests passed.
 - Mobile: Flutter analysis PASS; Flutter tests: 34 passed.
-- Android staging job: PASS; HTTPS configuration and staging `/ready` check passed; three debug APK ABIs were built and uploaded as artifact `14918809712` (14-day retention).
+- Android staging job: PASS; HTTPS configuration and staging `/ready` check passed; three debug APK ABIs were built and uploaded as artifact `14922515348` (14-day retention).
 - Android production-release APK: SKIPPED by its configured release gate; physical-device acceptance remains NOT RUN.
-- Run #877 is exact-head evidence for SHA `13c888060debd753083a5c3da67383f038f9f2b9`. Any subsequent commit requires its own exact-head workflow verification.
-- The CI workflow is push-triggered for `main` and `feat/**`, and pull-request-triggered for opened/reopened/ready-for-review events; `.github/workflows/ci.yml` does not declare `workflow_dispatch`. Exact-head push runs #871, #873–#877 used the no-cost automatic route.
+- Run #882 is exact-head evidence for SHA `43dce667f1d7d5ea3072a37c0f504c894d4a803c`. Any subsequent commit requires its own exact-head workflow verification.
+- The CI workflow is push-triggered for `main` and `feat/**`, and pull-request-triggered for opened/reopened/ready-for-review events; `.github/workflows/ci.yml` does not declare `workflow_dispatch`. Exact-head push runs #871, #873–#878 and #882 used the no-cost automatic route; intermediate runs #872 and #879–#881 exposed regressions or were cancelled and are not counted as passes.
 - Overall A4 remains PARTIAL / NOT VERIFIED: CI staging readiness and APK build pass, but physical-device/accessibility, field validation and independent security/legal/operational acceptance remain open.
 
 **Branch:** `feat/a3-platform-foundation`  
@@ -35,7 +35,7 @@
 | Reports and complaints | Authenticated listing/seller reports, bounded evidence summaries/references, reporter status view, admin pending/in-review queue, investigation/resolve/dismiss decisions, listing removal, reversible listing removal/restoration, seller account suspension/reinstatement, permanent pre-suspension token revocation, public hiding of suspended sellers' listings/media and append-only audit events; API, mobile and admin UI slices added | IMPLEMENTED; backend and mobile regression suites pass at exact head `53607b25c695b7e4bc27f9a4a028ee012e53fbed` (run #797) |
 | Legacy employment-category submission guard | Revalidates category at listing submission and blocks legacy `work-opportunities` drafts before status change | VERIFIED; exact-head CI #871 and #875 PASS |
 | Owner-governed employment provider and advertising workflow | Authenticated provider requests remain pending; Owner queue lists pending requests; Owner can reject with a reason or verify and activate membership; Owner creates advertisements; provider accepts terms and submits payment evidence; Owner verifies and publishes; PostgreSQL lifecycle test covers underpayment denial, publication and rejection | VERIFIED; exact-head CI #877 PASS |
-| Candidate-consent withdrawal | Withdraws all active consent records for the candidate/provider and returns affected IDs/count without touching other providers | VERIFIED; SQLite regression and exact-head CI #873/#875 PASS |
+| Private job-seeker and candidate-consent workflow | Private profile creation; published-opportunity application; provider-specific consent across multiple purposes; provider view omits contact preferences/phone; agent referrals require active consent and remain human-review; withdrawal removes provider access | VERIFIED; PostgreSQL integration and exact-head CI #882 PASS |
 | Backend health/readiness | Liveness and database readiness endpoints | IMPLEMENTED |
 | CI trigger policy | `.github/workflows/ci.yml` runs on push to `main`/`feat/**` and selected pull-request events; no `workflow_dispatch` is declared in this workflow | VERIFIED; exact-head push runs #871, #873, #874 and #875 passed |
 | Search/sort regression coverage | Synthetic API test for description search, price ordering and invalid sort rejection | VERIFIED; backend/mobile tests passed at run #797 |
