@@ -55,7 +55,7 @@ def test_commerce_migrations_upgrade_downgrade_and_reupgrade(tmp_path, monkeypat
             assert expected.issubset(set(inspect(connection).get_table_names()))
             assert connection.execute(text(
                 "SELECT version_num FROM alembic_version"
-            )).scalar_one() == "0016_commerce_cart_orders"
+            )).scalar_one() == "0017_customer_profiles"
         engine.dispose()
     finally:
         get_settings.cache_clear()
