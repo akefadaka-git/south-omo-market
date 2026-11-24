@@ -38,7 +38,7 @@ def test_commerce_migrations_upgrade_downgrade_and_reupgrade(tmp_path, monkeypat
                 index for index in indexes
                 if index["name"] == "uq_commerce_cart_active_buyer_business"
             )
-            assert active_cart_index["unique"] is True
+            assert active_cart_index["unique"] == 1
             assert "status = 'active'" in str(active_cart_index["dialect_options"]["sqlite_where"])
             catalog_constraints = inspector.get_check_constraints("commerce_catalog_items")
             assert any("unit_price_minor >= 0" in item["sqltext"] for item in catalog_constraints)
