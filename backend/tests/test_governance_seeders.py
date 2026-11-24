@@ -55,6 +55,26 @@ def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monk
                 SELECT effect FROM policy_rules
                 WHERE rule_code = 'employment-advertisement-publish-owner-only'
             """)).scalar_one() == "allow"
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM policy_rules
+                WHERE rule_code LIKE '%-listing-%'
+                  AND resource='listings' AND effect='allow'
+            """)).scalar_one() == 8
+            assert db.execute(text("""
+                SELECT COUNT(*) FROM role_permissions rp
+                JOIN roles r ON r.id=rp.role_id
+                JOIN permissions p ON p.id=rp.permission_id
+                WHERE r.code='merchant' AND p.code='marketplace.listing.create'
+            """)).scalar_one() == 1
+            db.execute(text("""
+                UPDATE policy_rules SET effect='deny'
+                WHERE rule_code='merchant-listing-create'
+            """))
+            seed_system_reference_data(db)
+            assert db.execute(text("""
+                SELECT effect,subject,action,resource FROM policy_rules
+                WHERE rule_code='merchant-listing-create'
+            """)).one() == ("allow","role:merchant","marketplace.listing.create","listings")
             assert evaluate_policy(
                 db,
                 subject="role:owner",
