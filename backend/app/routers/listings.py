@@ -133,6 +133,19 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
 
 
 def _require_leaf_category(db: Session, category: Category) -> None:
+    # Employment is an Owner-managed agency, never an ordinary seller listing.
+    # Walk category ancestry so every descendant of the reserved root is covered.
+    ancestor: Category | None = category
+    seen: set[str] = set()
+    while ancestor is not None and ancestor.id not in seen:
+        seen.add(ancestor.id)
+        if ancestor.slug == "work-opportunities":
+            raise HTTPException(
+                status_code=403,
+                detail="Employment opportunities must use the Owner-controlled employment agency",
+            )
+        ancestor = db.get(Category, ancestor.parent_id) if ancestor.parent_id else None
+
     if db.scalar(select(Category.id).where(
         Category.parent_id == category.id, Category.is_active.is_(True)
     )) is not None:
