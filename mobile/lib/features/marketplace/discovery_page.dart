@@ -374,13 +374,23 @@ class _MarketplaceDiscoveryPageState extends State<MarketplaceDiscoveryPage> {
                     (entry) => entry['id'] == item['category_id'],
                     orElse: () => {'name': 'Local finds'},
                   )['name'] as String?) ?? 'Local finds';
+                  final images = item['images'] as List<dynamic>? ?? const [];
+                  String? imageUrl;
+                  if (images.isNotEmpty && images.first is Map) {
+                    final imagePath = (images.first as Map)['url'];
+                    if (imagePath is String && imagePath.isNotEmpty) {
+                      imageUrl = Uri.parse(widget.apiBaseUrl).resolve(imagePath).toString();
+                    }
+                  }
+                  final currency = item['currency'] as String? ?? 'ETB';
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: MarketListingCard(
                       title: item['title'] as String? ?? 'Listing',
                       location: item['location'] as String? ?? '',
-                      price: '${(((item['price_minor'] as num?) ?? 0) / 100).toStringAsFixed(2)} ETB',
+                      price: '${(((item['price_minor'] as num?) ?? 0) / 100).toStringAsFixed(2)} $currency',
                       category: category,
+                      imageUrl: imageUrl,
                       onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
                         builder: (_) => ListingDetailPage(
                           apiBaseUrl: widget.apiBaseUrl,
