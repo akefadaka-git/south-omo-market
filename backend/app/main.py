@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.routers import admin, businesses, categories, employment, health, identity, inquiries, listings, locations, markets, reports, sellers
+from app.routers import admin, businesses, categories, commerce, employment, health, identity, inquiries, listings, locations, markets, reports, sellers
 from app.core.rate_limit import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -21,7 +21,7 @@ app.include_router(inquiries.router, prefix=settings.api_v1_prefix, tags=["inqui
 app.include_router(reports.router, prefix=settings.api_v1_prefix)
 app.include_router(admin.router, prefix=settings.api_v1_prefix)
 app.include_router(employment.router, prefix=settings.api_v1_prefix, tags=["employment-agency"])
-app.include_router(businesses.router, prefix=settings.api_v1_prefix, tags=["businesses"])
+app.include_router(businesses.router, prefix=settings.api_v1_prefix, tags=["businesses"])\napp.include_router(commerce.router, prefix=settings.api_v1_prefix, tags=["commerce"])
 
 
 @app.get("/", include_in_schema=False)
