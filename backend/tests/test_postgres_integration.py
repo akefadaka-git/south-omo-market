@@ -149,21 +149,28 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
     from app.seeders.system_reference import seed_system_reference_data
     from app.routers.employment import (
         AgreementAcceptance,
+        CandidateConsentRequest,
         OwnerAdvertisementCreate,
         PaymentSubmission,
         PaymentVerification,
         ProviderRequest,
         ProviderRejection,
         accept_advertising_agreement,
+        apply_to_published_opportunity,
+        create_human_review_candidate_referral,
         create_owner_managed_advertisement,
+        grant_candidate_sharing_consent,
         list_employment_provider_requests,
+        list_consented_candidates,
         list_published_employment_advertisements,
         publish_employment_advertisement,
         reject_employment_provider,
         request_employment_provider,
         submit_advertising_payment_evidence,
+        upsert_private_job_seeker_profile,
         verify_advertising_payment,
         verify_employment_provider,
+        withdraw_candidate_sharing_consent,
     )
 
     get_settings.cache_clear()
@@ -190,9 +197,33 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
                 is_active=True,
                 is_admin=False,
             )
-            db.add_all([provider_user, owner])
+            job_seeker_user = User(
+                id="synthetic-job-seeker-user",
+                phone_number="+251900000104",
+                display_name="Synthetic Job Seeker",
+                password_hash="synthetic-test-hash",
+                is_active=True,
+                is_admin=False,
+            )
+            agent_user = User(
+                id="synthetic-agent-user",
+                phone_number="+251900000105",
+                display_name="Synthetic Agency Agent",
+                password_hash="synthetic-test-hash",
+                is_active=True,
+                is_admin=False,
+            )
+            db.add_all([provider_user, owner, job_seeker_user, agent_user])
             db.commit()
             seed_system_reference_data(db)
+            agent_role_id = db.execute(text(
+                "SELECT id FROM roles WHERE code = 'agent'"
+            )).scalar_one()
+            db.execute(text("""
+                INSERT INTO user_roles (user_id, role_id, assigned_by)
+                VALUES (:user_id, :role_id, :owner_id)
+            """), {"user_id": agent_user.id, "role_id": agent_role_id, "owner_id": owner.id})
+            db.commit()
 
             request = request_employment_provider(
                 ProviderRequest(
@@ -289,6 +320,96 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
             assert len(public_ads) == 1
             assert public_ads[0]["title"] == "Synthetic agricultural worker"
             assert public_ads[0]["location_code"] == "KOYBE"
+
+            profile = upsert_private_job_seeker_profile(
+                {
+                    "skills": ["farm work"],
+                    "experience": [{"role": "seasonal farm worker", "years": 2}],
+                    "contact_preferences": {"preferred_channel": "phone"},
+                },
+                user=job_seeker_user,
+                db=db,
+            )
+            assert db.execute(text("""
+                SELECT visibility FROM job_seeker_profiles WHERE id = :id
+            """), {"id": profile["profile_id"]}).scalar_one() == "private"
+            with pytest.raises(HTTPException) as public_profile:
+                upsert_private_job_seeker_profile(
+                    {"visibility": "public"},
+                    user=job_seeker_user,
+                    db=db,
+                )
+            assert public_profile.value.status_code == 422
+
+            opportunity_id = db.execute(text("""
+                SELECT opportunity_id FROM employment_advertisements WHERE id = :id
+            """), {"id": advertisement["advertisement_id"]}).scalar_one()
+            application = apply_to_published_opportunity(
+                opportunity_id,
+                user=job_seeker_user,
+                db=db,
+            )
+            duplicate_application = apply_to_published_opportunity(
+                opportunity_id,
+                user=job_seeker_user,
+                db=db,
+            )
+            assert duplicate_application["application_id"] == application["application_id"]
+
+            consent = grant_candidate_sharing_consent(
+                application["application_id"],
+                CandidateConsentRequest(
+                    purpose="provider review",
+                    consent_version="TEST-CONSENT-1",
+                ),
+                user=job_seeker_user,
+                db=db,
+            )
+            assert consent["status"] == "granted"
+            visible_candidates = list_consented_candidates(
+                request["provider_id"],
+                user=provider_user,
+                db=db,
+            )
+            assert len(visible_candidates) == 1
+            assert visible_candidates[0]["profile_id"] == profile["profile_id"]
+            assert "contact_preferences" not in visible_candidates[0]
+            assert "phone_number" not in visible_candidates[0]
+
+            from app.governance import require_permission
+
+            with pytest.raises(HTTPException) as provider_referral_denied:
+                require_permission("employment.candidate.refer")(user=provider_user, db=db)
+            assert provider_referral_denied.value.status_code == 403
+            assert require_permission("employment.candidate.refer")(user=agent_user, db=db).id == agent_user.id
+            referral = create_human_review_candidate_referral(
+                application["application_id"],
+                user=agent_user,
+                db=db,
+            )
+            assert referral["decision"] == "human_review"
+            assert db.execute(text("""
+                SELECT decision FROM candidate_referrals WHERE id = :id
+            """), {"id": referral["referral_id"]}).scalar_one() == "human_review"
+
+            withdrawn = withdraw_candidate_sharing_consent(
+                application["application_id"],
+                user=job_seeker_user,
+                db=db,
+            )
+            assert withdrawn["withdrawn_count"] == 1
+            assert list_consented_candidates(
+                request["provider_id"],
+                user=provider_user,
+                db=db,
+            ) == []
+            with pytest.raises(HTTPException) as referral_after_withdrawal:
+                create_human_review_candidate_referral(
+                    application["application_id"],
+                    user=agent_user,
+                    db=db,
+                )
+            assert referral_after_withdrawal.value.status_code == 409
 
             rejected_provider_user = User(
                 id="synthetic-rejected-provider-user",
