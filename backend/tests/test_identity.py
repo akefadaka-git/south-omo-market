@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from PIL import Image
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -1267,3 +1267,94 @@ def test_market_search_effective_schedule_and_admin_audit() -> None:
     assert history.status_code == 200
     assert any(event["action"] == "market.created" and event["resource_id"] == market_id for event in history.json())
     assert any(event["action"] == "market.schedule.updated" and event["resource_id"] == market_id for event in history.json())
+
+
+def test_seller_role_and_policy_are_enforced_for_every_listing_write_path() -> None:
+    category_id = str(uuid4())
+    db = TestingSession()
+    db.add(Category(
+        id=category_id, slug=f"policy-test-{category_id[:8]}",
+        name_en="Policy test category", is_active=True,
+    ))
+    db.commit()
+    db.close()
+
+    phone = "+251900009991"
+    assert client.post("/api/v1/auth/register", json={
+        "phone_number": phone, "display_name": "Policy Seller",
+        "password": "synthetic-policy-seller-991",
+    }).status_code == 201
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": phone, "password": "synthetic-policy-seller-991",
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Public account registration grants no marketplace role. A seller profile
+    # is the explicit eligibility event that receives only the merchant role.
+    db = TestingSession()
+    user = db.query(User).filter(User.phone_number == phone).one()
+    assert db.execute(text("""
+        SELECT COUNT(*) FROM user_roles WHERE user_id=:uid
+    """), {"uid": user.id}).scalar_one() == 0
+    db.close()
+
+    profile = client.post("/api/v1/sellers/me", headers=headers, json={
+        "public_name": "Policy Test Seller", "location_label": "Koybe",
+    })
+    assert profile.status_code == 201
+    db = TestingSession()
+    user = db.query(User).filter(User.phone_number == phone).one()
+    assert db.execute(text("""
+        SELECT r.code FROM user_roles ur JOIN roles r ON r.id=ur.role_id
+        WHERE ur.user_id=:uid
+    """), {"uid": user.id}).scalars().all() == ["merchant"]
+    db.close()
+
+    def deny(action: str) -> None:
+        with TestingSession() as session:
+            pack_id = session.execute(text("""
+                SELECT id FROM policy_packs WHERE code='south-omo-default-deny'
+            """)).scalar_one()
+            session.execute(text("""
+                INSERT INTO policy_rules
+                    (id,policy_pack_id,rule_code,effect,subject,action,resource,conditions)
+                VALUES (:id,:pack,'test-deny-' || :action,'deny','role:merchant',:action,'listings','{}')
+            """), {"id": str(uuid4()), "pack": pack_id, "action": action})
+            session.commit()
+
+    base_payload = {
+        "category_id": category_id, "title": "Policy controlled item",
+        "description": "Synthetic policy regression", "price_minor": 1000,
+        "location_label": "Koybe",
+    }
+    created = client.post("/api/v1/listings", headers=headers, json=base_payload)
+    assert created.status_code == 201
+    listing_id = created.json()["id"]
+
+    deny("marketplace.listing.create")
+    denied_create = client.post("/api/v1/listings", headers=headers, json={
+        **base_payload, "title": "Denied create operation",
+    })
+    assert denied_create.status_code == 403
+
+    deny("marketplace.listing.update")
+    denied_update = client.patch(f"/api/v1/listings/{listing_id}", headers=headers, json={
+        "title": "Denied update operation",
+    })
+    assert denied_update.status_code == 403
+
+    deny("marketplace.listing.submit")
+    denied_submit = client.post(f"/api/v1/listings/{listing_id}/submit", headers=headers)
+    assert denied_submit.status_code == 403
+
+    sync_payload = {
+        **base_payload, "title": "Offline policy draft",
+        "client_sync_id": str(uuid4()),
+    }
+    deny("marketplace.listing.sync")
+    denied_sync = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
+    assert denied_sync.status_code == 403
+
+    # Replaying an already-synced payload is also subject to current policy.
+    allow_sync = client.post("/api/v1/listings/sync", headers=headers, json=sync_payload)
+    assert allow_sync.status_code == 403
