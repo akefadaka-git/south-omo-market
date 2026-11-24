@@ -146,6 +146,34 @@ def seed_system_reference_data(db: Session) -> None:
     })
 
     pack_id = _id("policy-pack", "south-omo-default-deny:1.0.0")
+    # Marketplace listing writes require both the merchant/vendor RBAC grant
+    # and an affirmative policy decision at every API mutation boundary.
+    for role_code in ("merchant", "vendor"):
+        for action in (
+            "marketplace.listing.create",
+            "marketplace.listing.update",
+            "marketplace.listing.submit",
+            "marketplace.listing.sync",
+        ):
+            rule_code = f"{role_code}-listing-{action.rsplit('.', 1)[-1]}"
+            db.execute(text("""
+                INSERT INTO policy_rules
+                    (id, policy_pack_id, rule_code, effect, subject, action, resource, conditions)
+                VALUES (:id, :pack_id, :rule_code, 'allow', :subject, :action,
+                        'listings', :conditions)
+                ON CONFLICT (policy_pack_id, rule_code) DO UPDATE SET
+                    effect=EXCLUDED.effect, subject=EXCLUDED.subject,
+                    action=EXCLUDED.action, resource=EXCLUDED.resource,
+                    conditions=EXCLUDED.conditions
+            """).bindparams(bindparam("conditions", type_=JSON)), {
+                "id": _id("policy-rule", rule_code),
+                "pack_id": pack_id,
+                "rule_code": rule_code,
+                "subject": f"role:{role_code}",
+                "action": action,
+                "conditions": {},
+            })
+
     db.execute(text("""
         INSERT INTO policy_rules
             (id, policy_pack_id, rule_code, effect, subject, action, resource, conditions)
