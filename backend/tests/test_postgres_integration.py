@@ -59,7 +59,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0013_governance_hardening"
+            assert revision == "0016_commerce_cart_orders"
             assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
             assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
             expected_markets = {
