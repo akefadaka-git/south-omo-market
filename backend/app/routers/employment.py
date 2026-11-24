@@ -330,7 +330,7 @@ def withdraw_candidate_sharing_consent(
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
     result = db.execute(text("""
-        UPDATE candidate_consents cc
+        UPDATE candidate_consents AS cc
         SET withdrawn_at = CURRENT_TIMESTAMP
         FROM employment_applications app, job_seeker_profiles jsp,
              employment_opportunities o
@@ -341,7 +341,7 @@ def withdraw_candidate_sharing_consent(
           AND cc.job_seeker_id = jsp.id
           AND cc.provider_id = o.provider_id
           AND cc.withdrawn_at IS NULL
-        RETURNING cc.id
+        RETURNING id
     """), {"application": application_id, "user_id": user.id})
     consent_ids = result.scalars().all()
     if not consent_ids:
