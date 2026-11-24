@@ -2,6 +2,12 @@
 
 Owner-approved during A2. Provider selections remain deferred.
 
+## Localization
+
+- Supported languages: Amharic (`am`, primary) and English (`en`, secondary).
+- New UI strings, API-facing reference labels and seed data use Amharic and English only.
+- Maale translations are out of scope and are not required. Preserve any legacy database columns for backward compatibility; do not populate or expand Maale translation data in new work.
+
 A modular monolith API serves one Flutter Android client and one React administration client. No MVP microservices.
 
 | Layer | Technology |
