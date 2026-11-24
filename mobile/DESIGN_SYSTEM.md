@@ -17,7 +17,7 @@ The mark is drawn in Flutter (MarketBrandMark), so it stays crisp at every densi
 
 The design theme includes Noto Sans Ethiopic / NotoSansEthiopic as explicit font fallbacks for Ethiopic glyph coverage. Android system font fallback supplies Noto Sans Ethiopic on supported Android builds, while Latin text uses the platform sans-serif family.
 
-**Packaging limitation:** the repository does not yet contain a licensed, bundled Noto Sans Ethiopic TTF/OTF asset. The current fallback is therefore device-provided, not an embedded font. A bundled font file and its licence notice must be added before claiming identical typography across every Android device or offline first-launch environment. No remote font download is required by this implementation.
+**Packaging:** Noto Sans Ethiopic is bundled as `assets/fonts/NotoSansEthiopic-Regular.ttf` and declared in `pubspec.yaml`, with its licence notice in the repository. This provides a consistent packaged font rather than relying solely on device fallback. Physical-device checks are still required for glyph coverage, weight rendering, line wrapping and large-text behavior.
 
 Maale (mdy) strings remain blank where reviewed translations are not yet available; the app deliberately falls back to English rather than inventing Maale wording.
 
