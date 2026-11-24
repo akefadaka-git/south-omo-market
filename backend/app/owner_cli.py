@@ -1,6 +1,7 @@
 """Out-of-band, one-time Owner-role assignment. Never exposed as an HTTP endpoint."""
 import argparse
-from sqlalchemy import text
+from uuid import uuid4
+from sqlalchemy import JSON, bindparam, text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_engine
@@ -10,6 +11,7 @@ def assign_owner(phone_number: str, operator: str) -> str:
     if not operator.strip():
         raise ValueError("Operator identifier is required")
     with Session(get_engine()) as db, db.begin():
+        db.execute(text("SELECT pg_advisory_xact_lock(734219051)"))
         user = db.execute(
             text("SELECT id FROM users WHERE phone_number = :phone FOR UPDATE"),
             {"phone": phone_number},
@@ -37,8 +39,8 @@ def assign_owner(phone_number: str, operator: str) -> str:
                 (id, actor_id, action, resource_type, resource_id, event_metadata)
             VALUES (:id, NULL, 'owner.role.assigned', 'user', :user_id,
                     :metadata)
-        """), {
-            "id": "owner-provision-" + user,
+        """).bindparams(bindparam("metadata", type_=JSON)), {
+            "id": str(uuid4()),
             "user_id": user,
             "metadata": {"provisioning_method": "trusted_cli", "operator": operator},
         })
