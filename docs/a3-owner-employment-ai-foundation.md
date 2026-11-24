@@ -1,6 +1,6 @@
 # A3 — Owner governance, employment agency and AI policy foundation
 
-Status: implementation in progress; exact-head automated verification not yet available.
+Status: implementation in progress; exact-head GitHub Actions run #875 PASS on `fc9eac63505445a6b6d595ca6a60ad3c75831561`.
 Target: `feat/a3-platform-foundation`; no production database or deployment changes.
 
 ## Migration and ORM
@@ -25,13 +25,13 @@ ORM mappings are registered in Alembic metadata through `app.governance_models`.
 
 ## Employment agency workflow
 
-1. Owner creates a provider record linked to an existing account; provider status begins pending.
-2. Owner verifies provider identity/business information.
+1. An authenticated account submits `POST /employment/providers/request`; the business profile, provider record and owner membership begin pending. Duplicate requests for the same account are rejected.
+2. Owner verifies provider identity/business information. Verification activates the pending business-owner membership.
 3. Owner prepares the opportunity, price, duration and versioned advertising agreement.
 4. An active provider business member accepts the agreement with recorded acceptance evidence.
 5. The provider submits direct-payment evidence; no gateway is enabled.
 6. Owner verifies the payment evidence.
-7. Owner publishes only when provider verification, agreement acceptance and verified payment coverage all pass.
+7. Owner publishes only when provider verification, agreement acceptance and verified payment coverage all pass. Underpayment is rejected.
 8. Published ads expire at the agreed end date. Public discovery returns published, unexpired opportunities only.
 
 Ordinary seller listing create/update/offline-sync is blocked for the `work-opportunities` category and every descendant. Ordinary admins do not receive the Owner-only employment permissions. Job-seeker profiles are private by default; the profile endpoint ignores attempts to set public visibility.
@@ -52,8 +52,8 @@ IROKA matching is not an autonomous hiring or eligibility decision. Candidate re
 
 ## Verification and activation gates
 
-- Automated tests cover migration head, schema presence, idempotent reference seeding, Owner permission mapping, absence of default Owner assignments, and IROKA placeholder state.
-- Current GitHub connector status for the implementation head has no workflow run/status result; do not claim tests have passed until an exact-head CI run is available.
+- Automated tests cover migration head, schema presence, idempotent reference seeding, Owner permission mapping, absence of default Owner assignments, IROKA placeholder state, provider-request pending state/duplicate rejection, consent withdrawal across multiple purposes, and the full PostgreSQL Owner-controlled advertising lifecycle.
+- Exact-head CI run #875 PASS: backend Ruff; 45 backend pytest tests; 2 PostgreSQL migration/audit/employment lifecycle tests; 3 S3 storage tests; admin dependency audit (0 vulnerabilities), production build and 2 Vitest files/3 tests; Flutter analysis and 34 tests; Android staging readiness check and three-ABI debug APK artifact. Production release APK remains skipped.
 - The Neon `south-omo-testing` branch remains the intended test database. This implementation has not run Alembic or seeders against Neon.
 - Production Neon branch, deployment, merge, public commercial launch, real provider/payment data, and live AI integration remain outside this authorization.
 - Employment agency licensing, recruitment and consumer/employment obligations require legal review before paid commercial activation.
