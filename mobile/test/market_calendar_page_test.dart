@@ -122,7 +122,7 @@ void main() {
       }
       if (request.url.path.endsWith('/markets/market-koybe')) {
         expect(request.url.queryParameters['lang'], 'am');
-        return http.Response(jsonEncode(detail), 200);
+        return http.Response(jsonEncode(detail), 200, encoding: utf8);
       }
       return http.Response('not found', 404);
     });

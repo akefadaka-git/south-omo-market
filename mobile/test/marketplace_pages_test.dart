@@ -128,7 +128,7 @@ void main() {
       if (request.url.path.endsWith('/locations')) {
         return http.Response(jsonEncode([
           {'id': 'town-jinka', 'level': 'town', 'name': 'Jinka', 'name_en': 'Jinka', 'name_am': 'ጂንካ'},
-        ]), 200);
+        ]), 200, encoding: utf8);
       }
       if (request.url.path.endsWith('/markets')) {
         return http.Response('[]', 200);

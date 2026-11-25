@@ -46,7 +46,6 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
       if (responses.any((response) => response.statusCode != 200)) {
         throw Exception(marketString(context, en: 'Could not load towns and markets. Retry registration options.', am: 'የአካባቢና ገበያ ዝርዝር መረጃ አልተጫነም። እንደገና ይሞክሩ።', mdy: ''));
       }
-      debugPrint('Buyer registration options responses: locations=${responses[0].statusCode}, markets=${responses[1].statusCode}');
       final locations = (jsonDecode(responses[0].body) as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .where((row) => (row['level'] == 'town' || row['level'] == 'locality') && row['name_en'] != null && row['name_am'] != null)
@@ -58,11 +57,9 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
       if (locations.isEmpty) {
         throw Exception(marketString(context, en: 'No fully bilingual towns or localities are available yet. Contact the administrator to complete the geographic names.', am: 'ሙሉ በሙሉ በአማርኛና በእንግሊዝኛ የተመዘገቡ ከተሞች ወይም አካባቢዎች አልተገኙም። እባክዎ አስተዳዳሪውን ያነጋግሩ።', mdy: ''));
       }
-      debugPrint('Buyer registration options parsed: locations=${locations.length}, markets=${markets.length}');
       if (!mounted) return;
       setState(() { _locations = locations; _markets = markets; });
     } catch (error) {
-      debugPrint('Buyer registration options failed: $error');
       if (mounted) setState(() => _optionsError = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loadingOptions = false);
