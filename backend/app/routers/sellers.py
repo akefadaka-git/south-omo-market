@@ -205,6 +205,10 @@ def create_my_seller_profile(
         raise HTTPException(status_code=422, detail="Public business name and operating locality are required")
     if payload.contact_email and "@" not in payload.contact_email:
         raise HTTPException(status_code=422, detail="Contact email is invalid")
+    if len(payload.operating_hours) > 14 or any(
+        not key.strip() or len(value) > 100 for key, value in payload.operating_hours.items()
+    ):
+        raise HTTPException(status_code=422, detail="Operating hours must contain up to 14 concise entries")
     if payload.publish_contact_phone and not (payload.contact_phone or user.phone_number):
         raise HTTPException(status_code=422, detail="A contact phone is required before publishing it")
     if payload.publish_contact_email and not payload.contact_email:
@@ -299,7 +303,10 @@ def update_my_seller_profile(
     if business is None:
         raise HTTPException(status_code=409, detail="This seller profile needs business onboarding before it can be edited")
     changes = payload.model_dump(exclude_unset=True)
-    if any(changes.get(key, object()) is None for key in ("public_name", "location_label", "business_type", "public_location_visibility") if key in changes):
+    if any(changes[key] is None for key in (
+        "public_name", "location_label", "business_type", "public_location_visibility",
+        "service_area", "operating_hours", "supported_languages",
+    ) if key in changes):
         raise HTTPException(status_code=422, detail="Required seller profile fields cannot be null")
     if ("public_name" in changes and len(changes["public_name"].strip()) < 2) or (
         "location_label" in changes and len(changes["location_label"].strip()) < 2
@@ -307,6 +314,11 @@ def update_my_seller_profile(
         raise HTTPException(status_code=422, detail="Public business name and operating locality are required")
     if "contact_email" in changes and changes["contact_email"] and "@" not in changes["contact_email"]:
         raise HTTPException(status_code=422, detail="Contact email is invalid")
+    if "operating_hours" in changes and (
+        len(changes["operating_hours"]) > 14
+        or any(not key.strip() or len(value) > 100 for key, value in changes["operating_hours"].items())
+    ):
+        raise HTTPException(status_code=422, detail="Operating hours must contain up to 14 concise entries")
 
     public_name = changes.get("public_name", profile.public_name)
     location_label = changes.get("location_label", profile.location_label)
