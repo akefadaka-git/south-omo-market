@@ -10,6 +10,10 @@ import 'package:south_omo_market/features/marketplace/my_reports_page.dart';
 
 void main() {
   testWidgets('buyer can report a listing with evidence through the real API contract', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     var reportBody = <String, dynamic>{};
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/locations')) {
