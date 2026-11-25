@@ -35,6 +35,13 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
         assert "description" in {column["name"] for column in inspector.get_columns("markets")}
         assert {"effective_from", "effective_until"} <= {column["name"] for column in inspector.get_columns("market_schedule_days")}
         assert "business_id" in {column["name"] for column in inspector.get_columns("seller_profiles")}
+        business_profile_columns = {column["name"] for column in inspector.get_columns("business_profiles")}
+        assert {
+            "description", "primary_category_id", "operating_location_id", "service_area",
+            "operating_hours", "supported_languages", "public_contact_phone",
+            "public_contact_email", "public_contact_method", "public_location_visibility",
+            "latitude", "longitude", "location_consent_at",
+        } <= business_profile_columns
         assert {"registration_number", "verification_evidence", "verified_by", "verified_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_profiles")}
         assert {"invited_by", "accepted_at", "revoked_at", "expires_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_memberships")}
         assert "client_sync_id" in {
@@ -62,7 +69,7 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            assert revision == "0017_customer_profiles"
+            assert revision == "0018_seller_business_profiles"
             assert connection.execute(text("SELECT COUNT(*) FROM markets")).scalar_one() == 8
             assert connection.execute(text("SELECT COUNT(*) FROM market_schedule_days WHERE is_active = TRUE")).scalar_one() == 8
             expected_markets = {
