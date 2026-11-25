@@ -166,9 +166,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Jinka').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Register and continue'));
+    await tester.ensureVisible(find.byKey(const Key('buyer-register-submit')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Register and continue'));
+    await tester.tap(find.byKey(const Key('buyer-register-submit')));
     await tester.pumpAndSettle();
     expect(registered, isTrue);
     expect(sent, isTrue, reason: 'Requests: ${calls.join(' | ')}');

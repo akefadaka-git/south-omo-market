@@ -64,9 +64,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Koybe').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Register and continue'));
+    await tester.ensureVisible(find.byKey(const Key('buyer-register-submit')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Register and continue'));
+    await tester.tap(find.byKey(const Key('buyer-register-submit')));
     await tester.pumpAndSettle();
 
 

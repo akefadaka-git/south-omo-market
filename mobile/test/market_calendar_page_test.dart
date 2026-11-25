@@ -137,9 +137,7 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('ቆይቤ ገበያ'), 250, scrollable: find.byType(Scrollable).last,
-    );
+    // The fixture has one market on one day and fits in the configured test viewport.
     expect(find.byKey(const Key('market-calendar-entry-market-koybe')), findsOneWidget);
     expect(find.text('ቆይቤ ገበያ'), findsOneWidget);
     await tester.tap(find.byKey(const Key('market-calendar-entry-market-koybe')));

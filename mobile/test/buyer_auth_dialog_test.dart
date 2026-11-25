@@ -81,9 +81,13 @@ void main() {
     expect(registrationBody, isNull,
         reason: 'Registration must be blocked until a preferred locality is selected');
 
+    await tester.ensureVisible(find.byKey(const Key('buyer-preferred-location')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('buyer-preferred-location')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('ቆይቤ').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('buyer-preferred-market')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('buyer-preferred-market')));
     await tester.pumpAndSettle();
