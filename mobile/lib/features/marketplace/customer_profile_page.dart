@@ -130,13 +130,13 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
       final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 88, maxWidth: 1200, maxHeight: 1200);
       if (picked == null) return;
       final request = http.MultipartRequest('POST', Uri.parse('$_base/customers/me/photo'));
-      request.headers['Authorization'] = 'Bearer \${widget.accessToken}';
+      request.headers['Authorization'] = 'Bearer ${widget.accessToken}';
       request.files.add(await http.MultipartFile.fromPath('file', picked.path));
       final response = await http.Response.fromStream(await widget.client.send(request));
       if (response.statusCode != 201) {
         throw Exception(response.statusCode == 401
           ? marketString(context, en: 'Your session has expired. Sign in again.', am: 'የመግቢያ ጊዜዎ አብቅቷል። እንደገና ይግቡ።', mdy: '')
-          : marketString(context, en: 'Profile photo could not be uploaded (\${response.statusCode}).', am: 'የመገለጫ ፎቶውን መጫን አልተቻለም (\${response.statusCode})።', mdy: ''));
+          : marketString(context, en: 'Profile photo could not be uploaded (${response.statusCode}).', am: 'የመገለጫ ፎቶውን መጫን አልተቻለም (${response.statusCode})።', mdy: ''));
       }
       if (mounted) setState(() {
         _profilePhotoUrl = '/customers/me/photo';
@@ -241,7 +241,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                     radius: 34,
                     backgroundImage: _profilePhotoUrl == null ? null : NetworkImage(
                       '$_base$_profilePhotoUrl',
-                      headers: {'Authorization': 'Bearer \${widget.accessToken}'},
+                      headers: {'Authorization': 'Bearer ${widget.accessToken}'},
                     ),
                     child: _profilePhotoUrl == null ? const Icon(Icons.person, size: 34) : null,
                   ),

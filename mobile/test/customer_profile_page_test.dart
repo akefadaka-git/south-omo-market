@@ -126,7 +126,7 @@ void main() {
     client.close();
   });
 
-o', (tester) async {
+  testWidgets('customer can remove a private profile photo', (tester) async {
     var deleteCalled = false;
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/customers/me') && request.method == 'GET') {
