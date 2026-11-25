@@ -102,6 +102,16 @@ void main() {
   testWidgets('new account completes seller profile onboarding before inbox', (tester) async {
     var profileCreated = false;
     final client = MockClient((request) async {
+      if (request.url.path.endsWith('/categories')) {
+        return http.Response(jsonEncode([
+          {'id': 'synthetic-business-category', 'name': 'Local produce', 'is_leaf': true},
+        ]), 200);
+      }
+      if (request.url.path.endsWith('/locations')) {
+        return http.Response(jsonEncode([
+          {'id': 'synthetic-koybe-location', 'level': 'town', 'name': 'Koybe'},
+        ]), 200);
+      }
       if (request.url.path.endsWith('/auth/login')) {
         return http.Response(jsonEncode({'access_token': 'synthetic-token'}), 200);
       }
@@ -133,11 +143,21 @@ void main() {
     await tester.enterText(find.byKey(const Key('seller-password')), 'synthetic-test-password-123');
     await tester.tap(find.text('ግባ'));
     await tester.pumpAndSettle();
-    expect(find.text('የሻጭ መገለጫ ያዘጋጁ'), findsOneWidget);
+    expect(find.text('የንግድ መገለጫ ያዘጋጁ'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField).first, 'Synthetic Shop');
-    await tester.enterText(find.byType(TextField).last, 'Koybe');
-    await tester.tap(find.text('የሻጭ መገለጫ ፍጠር'));
+    await tester.enterText(find.byKey(const Key('seller-business-name')), 'Synthetic Shop');
+    await tester.scrollUntilVisible(find.byKey(const Key('seller-business-category')), 300);
+    await tester.tap(find.byKey(const Key('seller-business-category')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Local produce').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const Key('seller-business-location')), 300);
+    await tester.tap(find.byKey(const Key('seller-business-location')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Koybe').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const Key('seller-business-save')), 300);
+    await tester.tap(find.text('የንግድ መገለጫውን አስገባ'));
     await tester.pumpAndSettle();
     expect(profileCreated, isTrue);
     expect(find.text('የሻጭ ጥያቄዎች'), findsOneWidget);
