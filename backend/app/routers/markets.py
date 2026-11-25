@@ -35,6 +35,22 @@ class MarketCreate(BaseModel):
             raise ValueError("Both English and Amharic market names are required")
         return value.strip()
 
+    @field_validator("address_am")
+    @classmethod
+    def bilingual_address_pair(cls, value: str | None, info):
+        address_en = info.data.get("address_en")
+        if (address_en or value) and not (address_en and value):
+            raise ValueError("Market addresses must be supplied in both English and Amharic")
+        return value.strip() if value else value
+
+    @field_validator("longitude")
+    @classmethod
+    def coordinate_pair(cls, value: float | None, info):
+        latitude = info.data.get("latitude")
+        if (latitude is None) != (value is None):
+            raise ValueError("Latitude and longitude must be supplied together")
+        return value
+
 
 class MarketUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
