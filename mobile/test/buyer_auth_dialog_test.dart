@@ -55,6 +55,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('buyer-registration-toggle')));
     await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+    });
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('buyer-account-type')), findsOneWidget);
     expect(find.byKey(const Key('buyer-preferred-location')), findsOneWidget);
@@ -92,7 +96,7 @@ void main() {
     await tester.tap(localityDropdown);
     await tester.pumpAndSettle();
     expect(find.text('ቆይቤ'), findsWidgets);
-    await tester.tap(find.text('ቆይቤ').last);
+    await tester.tap(find.byKey(const ValueKey('buyer-location-option-town-koybe')));
     await tester.pumpAndSettle();
     final marketDropdown = find.descendant(
       of: find.byKey(const Key('buyer-preferred-market')),
@@ -103,7 +107,7 @@ void main() {
     await tester.tap(marketDropdown);
     await tester.pumpAndSettle();
     expect(find.text('ቆይቤ ገበያ'), findsWidgets);
-    await tester.tap(find.text('ቆይቤ ገበያ').last);
+    await tester.tap(find.byKey(const ValueKey('buyer-market-option-market-koybe')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('buyer-register-submit')));

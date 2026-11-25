@@ -108,17 +108,17 @@ void main() {
       'location': {'name': 'ቆይቤ', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
       'schedule_days': [0],
     };
-    final cache = MemoryMarketScheduleCache();
+    final cache = MemoryMarketScheduleCache()..value = {
+      'timezone': 'Africa/Addis_Ababa',
+      'days': [
+        {'weekday': 0, 'weekday_name': 'Monday', 'markets': [
+          {'id': 'market-koybe', 'name': 'ቆይቤ ገበያ', 'name_en': 'Koybe Market', 'name_am': 'ቆይቤ ገበያ', 'location_id': 'town-koybe', 'schedule_days': [0]},
+        ]},
+      ],
+    };
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/markets/schedule')) {
-        return http.Response(jsonEncode({
-          'timezone': 'Africa/Addis_Ababa',
-          'days': [
-            {'weekday': 0, 'weekday_name': 'Monday', 'markets': [
-              {'id': 'market-koybe', 'name': 'ቆይቤ ገበያ', 'name_en': 'Koybe Market', 'name_am': 'ቆይቤ ገበያ', 'location_id': 'town-koybe', 'schedule_days': [0]},
-            ]},
-          ],
-        }), 200);
+        return http.Response('offline fixture: use the preloaded schedule cache', 503);
       }
       if (request.url.path.endsWith('/markets/market-koybe')) {
         expect(request.url.queryParameters['lang'], 'am');
@@ -137,11 +137,10 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    // Allow the mocked schedule response and its state update to complete before
-    // asserting the first lazily-built market-calendar row.
-    await tester.pump(const Duration(milliseconds: 100));
+    // This detail-flow test starts from a known cached schedule so it tests
+    // row rendering/navigation independently of the schedule transport test.
     await tester.pumpAndSettle();
-    final koybeEntry = find.text('ቆይቤ ገበያ');
+    final koybeEntry = find.byKey(const Key('market-calendar-entry-market-koybe'));
     await tester.ensureVisible(koybeEntry);
     await tester.pumpAndSettle();
     expect(koybeEntry, findsOneWidget);
