@@ -1140,7 +1140,7 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
         assert scheduled.json()["schedule_days"] == days
 
     assert client.post("/api/v1/admin/markets", headers=buyer_headers, json={
-        "code": "UNAUTHORIZED", "name": "Unauthorized market",
+        "code": "UNAUTHORIZED", "name": "Unauthorized market", "name_am": "ያልተፈቀደ ገበያ",
     }).status_code == 403
     duplicate_day = client.put(
         f"/api/v1/admin/markets/{created['Koybe']}/schedule",
