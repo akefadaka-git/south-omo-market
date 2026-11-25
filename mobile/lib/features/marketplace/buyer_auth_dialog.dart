@@ -48,10 +48,15 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
       }
       final locations = (jsonDecode(responses[0].body) as List<dynamic>)
           .cast<Map<String, dynamic>>()
-          .where((row) => row['level'] == 'town' || row['level'] == 'locality')
+          .where((row) => (row['level'] == 'town' || row['level'] == 'locality') && row['name_en'] != null && row['name_am'] != null)
           .toList();
       final markets = (jsonDecode(responses[1].body) as List<dynamic>)
-          .cast<Map<String, dynamic>>();
+          .cast<Map<String, dynamic>>()
+          .where((row) => row['name_en'] != null && row['name_am'] != null)
+          .toList();
+      if (locations.isEmpty) {
+        throw Exception(marketString(context, en: 'No fully bilingual towns or localities are available yet. Contact the administrator to complete the geographic names.', am: 'ሙሉ በሙሉ በአማርኛና በእንግሊዝኛ የተመዘገቡ ከተሞች ወይም አካባቢዎች አልተገኙም። እባክዎ አስተዳዳሪውን ያነጋግሩ።', mdy: ''));
+      }
       if (!mounted) return;
       setState(() { _locations = locations; _markets = markets; });
     } catch (error) {
