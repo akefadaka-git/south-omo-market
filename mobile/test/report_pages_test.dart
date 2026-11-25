@@ -58,7 +58,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic reporter');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000801');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-report-password-801');
-    await tester.testTextInput.hide();
+    tester.testTextInput.hide();
     await tester.pumpAndSettle();
     final localityDropdown = find.descendant(
       of: find.byKey(const Key('buyer-preferred-location')),

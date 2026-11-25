@@ -81,7 +81,7 @@ void main() {
     expect(registrationBody, isNull,
         reason: 'Registration must be blocked until a preferred locality is selected');
 
-    await tester.testTextInput.hide();
+    tester.testTextInput.hide();
     await tester.pumpAndSettle();
     final localityDropdown = find.descendant(
       of: find.byKey(const Key('buyer-preferred-location')),
