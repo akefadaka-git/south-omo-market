@@ -480,7 +480,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _load(); });
   }
 
   @override
@@ -531,7 +531,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
         _categories = categories.where((item) => item['is_leaf'] == true).toList();
         _locations = locations;
         if (profile != null) {
-          _editing = true;
+          _editing = profile['business_id'] != null;
           _name.text = _text(profile, 'public_name');
           _legalName.text = _text(profile, 'legal_name');
           _description.text = _text(profile, 'description');
@@ -730,7 +730,8 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
           items: _locations.map((item) => DropdownMenuItem<String>(
             value: item['id'] as String, child: Text(item['name']?.toString() ?? ''))).toList(),
           onChanged: _busy ? null : (value) {
-            final selected = _locations.where((item) => item['id'] == value).firstOrNull;
+            Map<String, dynamic>? selected;
+            for (final item in _locations) { if (item['id'] == value) { selected = item; break; } }
             setState(() {
               _locationId = value;
               if (selected != null) _locationLabel.text = selected['name']?.toString() ?? '';
