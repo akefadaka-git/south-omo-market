@@ -137,10 +137,15 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    // The fixture has one market on one day and fits in the configured test viewport.
-    expect(find.byKey(const Key('market-calendar-entry-market-koybe')), findsOneWidget);
-    expect(find.text('ቆይቤ ገበያ'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('market-calendar-entry-market-koybe')));
+    // Allow the mocked schedule response and its state update to complete before
+    // asserting the first lazily-built market-calendar row.
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+    final koybeEntry = find.text('ቆይቤ ገበያ');
+    await tester.ensureVisible(koybeEntry);
+    await tester.pumpAndSettle();
+    expect(koybeEntry, findsOneWidget);
+    await tester.tap(koybeEntry);
     await tester.pumpAndSettle();
     expect(find.text('ቆይቤ ዋና መንገድ'), findsOneWidget);
     expect(find.text('የአካባቢ ካርታ'), findsOneWidget);

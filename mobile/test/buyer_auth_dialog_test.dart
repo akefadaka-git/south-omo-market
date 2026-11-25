@@ -81,16 +81,28 @@ void main() {
     expect(registrationBody, isNull,
         reason: 'Registration must be blocked until a preferred locality is selected');
 
-    await tester.ensureVisible(find.byKey(const Key('buyer-preferred-location')));
+    await tester.testTextInput.hide();
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('buyer-preferred-location')));
+    final localityDropdown = find.descendant(
+      of: find.byKey(const Key('buyer-preferred-location')),
+      matching: find.byType(DropdownButton<String>),
+    );
+    await tester.ensureVisible(localityDropdown);
     await tester.pumpAndSettle();
+    await tester.tap(localityDropdown);
+    await tester.pumpAndSettle();
+    expect(find.text('ቆይቤ'), findsWidgets);
     await tester.tap(find.text('ቆይቤ').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('buyer-preferred-market')));
+    final marketDropdown = find.descendant(
+      of: find.byKey(const Key('buyer-preferred-market')),
+      matching: find.byType(DropdownButton<String>),
+    );
+    await tester.ensureVisible(marketDropdown);
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('buyer-preferred-market')));
+    await tester.tap(marketDropdown);
     await tester.pumpAndSettle();
+    expect(find.text('ቆይቤ ገበያ'), findsWidgets);
     await tester.tap(find.text('ቆይቤ ገበያ').last);
     await tester.pumpAndSettle();
 

@@ -58,10 +58,17 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic reporter');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000801');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-report-password-801');
-    await tester.ensureVisible(find.byKey(const Key('buyer-preferred-location')));
+    await tester.testTextInput.hide();
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('buyer-preferred-location')));
+    final localityDropdown = find.descendant(
+      of: find.byKey(const Key('buyer-preferred-location')),
+      matching: find.byType(DropdownButton<String>),
+    );
+    await tester.ensureVisible(localityDropdown);
     await tester.pumpAndSettle();
+    await tester.tap(localityDropdown);
+    await tester.pumpAndSettle();
+    expect(find.text('Koybe'), findsWidgets);
     await tester.tap(find.text('Koybe').last);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('buyer-register-submit')));
