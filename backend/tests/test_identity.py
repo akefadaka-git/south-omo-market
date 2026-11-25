@@ -13,6 +13,7 @@ from app.core.rate_limit import limiter
 from app.main import app
 from app import models  # noqa: F401
 from app.models import Category, Listing, Location, SellerProfile, User
+from app.governance_models import BusinessMembership, BusinessProfile
 from app.seeders.system_reference import seed_system_reference_data
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -1515,15 +1516,16 @@ def test_seller_onboarding_creates_business_and_pending_owner_membership() -> No
     assert body["operating_location_id"] == location_id
 
     db = TestingSession()
-    business = db.get(models.BusinessProfile, body["business_id"])
-    membership = db.query(models.BusinessMembership).filter_by(
-        business_id=body["business_id"], user_id=body["id"] if "user_id" in body else None,
-    ).one_or_none()
+    business = db.get(BusinessProfile, body["business_id"])
+    membership = db.query(BusinessMembership).filter_by(
+        business_id=body["business_id"],
+    ).one()
     assert business is not None
     assert business.legal_name == "Koybe Produce"
     assert business.public_location_visibility == "hidden"
     assert business.latitude is None and business.longitude is None
-    assert membership is None  # The API response intentionally does not expose owner user identifiers.
+    assert membership.membership_role == "owner"
+    assert membership.status == "pending"
     db.close()
 
     loaded = client.get("/api/v1/sellers/me", headers=headers)
@@ -1568,7 +1570,7 @@ def test_seller_can_edit_business_profile_and_must_consent_to_exact_location() -
     assert updated.json()["public_location_visibility"] == "exact"
 
     db = TestingSession()
-    business = db.get(models.BusinessProfile, updated.json()["business_id"])
+    business = db.get(BusinessProfile, updated.json()["business_id"])
     assert business.location_consent_at is not None
     assert business.latitude == 6.0 and business.longitude == 36.5
     db.close()
