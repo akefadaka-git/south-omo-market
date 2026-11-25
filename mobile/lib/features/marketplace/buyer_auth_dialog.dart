@@ -132,7 +132,11 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
           key: const Key('buyer-preferred-location'),
           value: _preferredLocationId,
           isExpanded: true,
-          decoration: InputDecoration(labelText: marketString(context, en: 'Preferred town / locality (required)', am: 'ተመራጭ ከተማ / አካባቢ (አስፈላጊ)', mdy: '')),
+          dropdownColor: Colors.white,
+          menuMaxHeight: 360,
+          style: const TextStyle(color: MarketPalette.ink, fontSize: 16, fontWeight: FontWeight.w600),
+          iconEnabledColor: MarketPalette.forest,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Preferred area (required)', am: 'የሚመርጡት አካባቢ (አስፈላጊ)', mdy: '')),
           items: _locations.map((row) => DropdownMenuItem<String>(
             value: row['id'] as String,
             child: Text((row['name'] ?? row['name_en'] ?? '') as String, overflow: TextOverflow.ellipsis),
@@ -141,13 +145,17 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
             _preferredLocationId = value;
             _preferredMarketId = null;
           }),
-          validator: (value) => value == null ? marketString(context, en: 'Select your preferred town or locality.', am: 'ተመራጭ ከተማዎን ወይም አካባቢዎን ይምረጡ።', mdy: '') : null,
+          validator: (value) => value == null ? marketString(context, en: 'Select your preferred area.', am: 'የሚመርጡትን አካባቢ ይምረጡ።', mdy: '') : null,
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           key: const Key('buyer-preferred-market'),
           value: _preferredMarketId,
           isExpanded: true,
+          dropdownColor: Colors.white,
+          menuMaxHeight: 360,
+          style: const TextStyle(color: MarketPalette.ink, fontSize: 16, fontWeight: FontWeight.w600),
+          iconEnabledColor: MarketPalette.forest,
           decoration: InputDecoration(labelText: marketString(context, en: 'Preferred market (optional)', am: 'ተመራጭ ገበያ (አማራጭ)', mdy: '')),
           items: _markets.where((row) => _preferredLocationId == null ||
               row['location_id'] == null || row['location_id'] == _preferredLocationId)
@@ -161,6 +169,10 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
         DropdownButtonFormField<String>(
           key: const Key('buyer-preferred-language'),
           value: _preferredLanguage,
+          dropdownColor: Colors.white,
+          menuMaxHeight: 240,
+          style: const TextStyle(color: MarketPalette.ink, fontSize: 16, fontWeight: FontWeight.w600),
+          iconEnabledColor: MarketPalette.forest,
           decoration: InputDecoration(labelText: marketString(context, en: 'Preferred language', am: 'ተመራጭ ቋንቋ', mdy: '')),
           items: [
             DropdownMenuItem(value: 'am', child: Text('አማርኛ')),
