@@ -33,6 +33,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   String? _contactPreference;
   bool _loading = true;
   bool _saving = false;
+  bool _loggingOut = false;
   String? _error;
   String? _notice;
   bool _started = false;
@@ -95,6 +96,27 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
     }
   }
 
+  Future<void> _logout() async {
+    if (_loggingOut || _saving) return;
+    setState(() { _loggingOut = true; _error = null; });
+    try {
+      final response = await widget.client.post(
+        Uri.parse('$_base/auth/logout'),
+        headers: _headers,
+      );
+      if (response.statusCode != 204 && response.statusCode != 401) {
+        throw Exception(marketString(context,
+          en: 'Could not securely sign out. Please retry.',
+          am: 'በደህና መውጣት አልተቻለም። እንደገና ይሞክሩ።', mdy: ''));
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loggingOut = false);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _saving = true; _error = null; _notice = null; });
@@ -132,8 +154,16 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
       actions: [
         IconButton(
           tooltip: marketString(context, en: 'Refresh profile', am: 'መገለጫውን አድስ', mdy: ''),
-          onPressed: _loading || _saving ? null : _load,
+          onPressed: _loading || _saving || _loggingOut ? null : _load,
           icon: const Icon(Icons.refresh),
+        ),
+        IconButton(
+          key: const Key('customer-profile-logout'),
+          tooltip: marketString(context, en: 'Sign out', am: 'ውጣ', mdy: ''),
+          onPressed: _loading || _saving || _loggingOut ? null : _logout,
+          icon: _loggingOut
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.logout),
         ),
       ],
     ),
