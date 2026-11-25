@@ -36,6 +36,22 @@ app.dependency_overrides[get_db] = override_db
 client = TestClient(app)
 
 
+def _verify_seller_business(phone: str) -> None:
+    """Prepare a verified business fixture for tests of authorized seller flows."""
+    with TestingSession() as db:
+        user = db.query(User).filter(User.phone_number == phone).one()
+        seller = db.query(SellerProfile).filter(SellerProfile.user_id == user.id).one()
+        business = db.get(BusinessProfile, seller.business_id)
+        membership = db.query(BusinessMembership).filter_by(
+            business_id=seller.business_id, user_id=user.id,
+        ).one()
+        assert business is not None
+        business.is_active = True
+        business.verification_status = "verified"
+        membership.status = "active"
+        db.commit()
+
+
 def test_register_and_login_with_synthetic_account() -> None:
     created = client.post("/api/v1/auth/register", json={
         "phone_number": "+251900000001",
@@ -92,6 +108,7 @@ def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
         "location_label": "Koybe",
     })
     assert profile.status_code == 201
+    _verify_seller_business("+251900000002")
     profile_read = client.get("/api/v1/sellers/me", headers=headers)
     assert profile_read.status_code == 200
     assert profile_read.json()["public_name"] == "Synthetic Livestock Seller"
@@ -171,6 +188,7 @@ def test_only_admin_can_approve_pending_listing() -> None:
         "public_name": "Test Livestock Seller", "location_label": "Koybe",
     })
     assert profile.status_code == 201
+    _verify_seller_business("+251900000101")
     category_id = "00000000-0000-4000-8000-000000000001"
     db = TestingSession()
     if db.get(Category, category_id) is None:
@@ -288,6 +306,7 @@ def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
         "public_name": "Inbox Seller Shop", "location_label": "Koybe",
     })
     assert profile.status_code == 201
+    _verify_seller_business("+251900000301")
 
     category_id = "00000000-0000-4000-8000-000000000001"
     db = TestingSession()
@@ -308,6 +327,7 @@ def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
     db.close()
     assert client.post("/api/v1/inquiries", headers=seller_headers, json={
         "listing_id": listing_id, "message": "Self inquiry must be blocked",
+        "contact_disclosure_consent": False,
     }).status_code == 409
 
     buyer_registration = client.post("/api/v1/auth/register", json={
@@ -323,6 +343,7 @@ def test_seller_inquiry_inbox_is_scoped_to_owned_listings() -> None:
     buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
     created = client.post("/api/v1/inquiries", headers=buyer_headers, json={
         "listing_id": listing_id, "message": "Is this item available?",
+        "contact_disclosure_consent": True,
     })
     assert created.status_code == 201
     inquiry_id = created.json()["id"]
@@ -398,6 +419,7 @@ def _register_seller(phone: str) -> tuple[str, str]:
         "public_name": "Synthetic Offline Shop", "location_label": "Koybe",
     })
     assert profile.status_code == 201
+    _verify_seller_business(phone)
     return created.json()["id"], token
 
 
@@ -610,11 +632,19 @@ def test_public_listing_location_filter_uses_normalized_location_id() -> None:
         is_admin=False,
         is_suspended=False,
     ))
+    business_id = str(uuid4())
+    db.add(BusinessProfile(
+        id=business_id, business_code=f"SOM-{suffix[:12].upper()}",
+        display_name="Synthetic location-filter seller", business_type="shop",
+        verification_status="verified", is_active=True,
+    ))
+    db.add(BusinessMembership(
+        id=str(uuid4()), business_id=business_id, user_id=user_id,
+        membership_role="owner", status="active",
+    ))
     db.add(SellerProfile(
-        id=seller_id,
-        user_id=user_id,
-        public_name="Synthetic location-filter seller",
-        location_label="Koybe",
+        id=seller_id, user_id=user_id, business_id=business_id,
+        public_name="Synthetic location-filter seller", location_label="Koybe",
     ))
     db.add(Category(
         id=category_id,
@@ -667,9 +697,19 @@ def test_public_discovery_searches_descriptions_and_sorts_prices() -> None:
         id=user_id, phone_number=f"+2519{suffix[:8]}", display_name="Synthetic Discovery",
         password_hash="not-a-real-login-hash", is_active=True, is_admin=False,
     ))
+    business_id = str(uuid4())
+    db.add(BusinessProfile(
+        id=business_id, business_code=f"SOM-{suffix.upper()}",
+        display_name="Synthetic Discovery Seller", business_type="shop",
+        verification_status="verified", is_active=True,
+    ))
+    db.add(BusinessMembership(
+        id=str(uuid4()), business_id=business_id, user_id=user_id,
+        membership_role="owner", status="active",
+    ))
     db.add(SellerProfile(
-        id=seller_id, user_id=user_id, public_name="Synthetic Discovery Seller",
-        location_label="Koybe",
+        id=seller_id, user_id=user_id, business_id=business_id,
+        public_name="Synthetic Discovery Seller", location_label="Koybe",
     ))
     db.add_all([
         Listing(
@@ -813,6 +853,7 @@ def test_expanded_category_catalogue_and_listing_attribute_contract() -> None:
         "public_name": "Catalogue Test Seller", "location_label": "Koybe",
     })
     assert profile.status_code == 201
+    _verify_seller_business("+251900000601")
 
     base_payload = {
         "category_id": leaf_id,
@@ -933,6 +974,7 @@ def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
         "public_name": "Report Test Shop", "location_label": "Koybe",
     })
     assert profile.status_code == 201
+    _verify_seller_business(seller_phone)
     seller_id = profile.json()["id"]
     listing = client.post("/api/v1/listings", headers=seller_headers, json={
         "category_id": category_id, "title": "Reported synthetic item",
@@ -1293,8 +1335,7 @@ def test_seller_role_and_policy_are_enforced_for_every_listing_write_path() -> N
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Public account registration grants no marketplace role. A seller profile
-    # is the explicit eligibility event that receives only the merchant role.
+    # Pending business onboarding must not grant global marketplace privileges.
     db = TestingSession()
     user = db.query(User).filter(User.phone_number == phone).one()
     assert db.execute(text("""
@@ -1309,10 +1350,10 @@ def test_seller_role_and_policy_are_enforced_for_every_listing_write_path() -> N
     db = TestingSession()
     user = db.query(User).filter(User.phone_number == phone).one()
     assert db.execute(text("""
-        SELECT r.code FROM user_roles ur JOIN roles r ON r.id=ur.role_id
-        WHERE ur.user_id=:uid
-    """), {"uid": user.id}).scalars().all() == ["merchant"]
+        SELECT COUNT(*) FROM user_roles WHERE user_id=:uid
+    """), {"uid": user.id}).scalar_one() == 0
     db.close()
+    _verify_seller_business(phone)
 
     def deny(action: str) -> None:
         with TestingSession() as session:
@@ -1334,6 +1375,12 @@ def test_seller_role_and_policy_are_enforced_for_every_listing_write_path() -> N
     created = client.post("/api/v1/listings", headers=headers, json=base_payload)
     assert created.status_code == 201
     listing_id = created.json()["id"]
+    with TestingSession() as session:
+        user = session.query(User).filter(User.phone_number == phone).one()
+        assert session.execute(text("""
+            SELECT r.code FROM user_roles ur JOIN roles r ON r.id=ur.role_id
+            WHERE ur.user_id=:uid
+        """), {"uid": user.id}).scalars().all() == ["merchant"]
 
     deny("marketplace.listing.create")
     denied_create = client.post("/api/v1/listings", headers=headers, json={

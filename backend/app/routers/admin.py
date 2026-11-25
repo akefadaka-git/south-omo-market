@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import require_admin
 from app.models import AuditEvent, Listing, Report, SellerProfile, User
+from app.governance_models import BusinessMembership, BusinessProfile
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -69,6 +70,18 @@ def decide_listing(
         raise HTTPException(status_code=404, detail="Pending listing not found")
 
     previous_status = listing.status
+    if payload.decision == "approve":
+        seller = db.get(SellerProfile, listing.seller_id)
+        business = db.get(BusinessProfile, seller.business_id) if seller and seller.business_id else None
+        membership = db.scalar(select(BusinessMembership).where(
+            BusinessMembership.business_id == business.id if business else False,
+            BusinessMembership.user_id == seller.user_id if seller else False,
+            BusinessMembership.status == "active",
+            BusinessMembership.membership_role.in_(("owner", "administrator", "manager", "staff")),
+            (BusinessMembership.expires_at.is_(None) | (BusinessMembership.expires_at > datetime.now(timezone.utc))),
+        )) if business and seller else None
+        if business is None or not business.is_active or business.verification_status != "verified" or membership is None:
+            raise HTTPException(status_code=409, detail="Only listings owned by a verified active business with an active authorized membership can be published")
     next_status = "published" if payload.decision == "approve" else "rejected"
     listing.status = next_status
     listing.moderation_note = payload.note

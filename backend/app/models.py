@@ -117,6 +117,13 @@ class ListingImage(Base):
 
 class Inquiry(Base):
     __tablename__ = "inquiries"
+    __table_args__ = (
+        CheckConstraint(
+            "(contact_disclosure_consent = FALSE AND contact_value IS NULL AND contact_consent_at IS NULL) "
+            "OR (contact_disclosure_consent = TRUE AND contact_value IS NOT NULL AND contact_consent_at IS NOT NULL)",
+            name="ck_inquiry_contact_consent_consistency",
+        ),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     listing_id: Mapped[str] = mapped_column(ForeignKey("listings.id"), index=True)
     buyer_user_id: Mapped[str | None] = mapped_column(

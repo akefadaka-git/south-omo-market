@@ -69,7 +69,7 @@ def test_inquiry_payload_never_discloses_contact_without_consent():
     assert payload["contact_disclosure_consent"] is False
     assert "buyer_contact" not in payload
     assert "buyer_user_id" not in payload
-    assert payload["buyer_name"] == "Marketplace customer"
+    assert "buyer_name" not in payload
 
 
 def test_inquiry_payload_discloses_contact_only_after_consent():

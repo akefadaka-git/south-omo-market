@@ -33,7 +33,7 @@ def test_commerce_migrations_upgrade_downgrade_and_reupgrade(tmp_path, monkeypat
             assert expected.issubset(set(inspector.get_table_names()))
             assert connection.execute(text(
                 "SELECT version_num FROM alembic_version"
-            )).scalar_one() == "0019_bilingual_market_roles"
+            )).scalar_one() == "0020_seller_contact_consent"
             indexes = inspector.get_indexes("commerce_carts")
             active_cart_index = next(
                 index for index in indexes
@@ -55,7 +55,7 @@ def test_commerce_migrations_upgrade_downgrade_and_reupgrade(tmp_path, monkeypat
             assert expected.issubset(set(inspect(connection).get_table_names()))
             assert connection.execute(text(
                 "SELECT version_num FROM alembic_version"
-            )).scalar_one() == "0019_bilingual_market_roles"
+            )).scalar_one() == "0020_seller_contact_consent"
         engine.dispose()
     finally:
         get_settings.cache_clear()
