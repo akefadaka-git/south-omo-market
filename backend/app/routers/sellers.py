@@ -347,9 +347,15 @@ def update_my_seller_profile(
                 value = [item.strip() for item in value]
             setattr(business, key, value)
     if "contact_phone" in changes:
+        was_public = business.public_contact_phone is not None
         business.contact_phone = _clean_text(changes["contact_phone"])
+        if was_public and "publish_contact_phone" not in changes:
+            business.public_contact_phone = business.contact_phone or user.phone_number
     if "contact_email" in changes:
+        was_public = business.public_contact_email is not None
         business.contact_email = _clean_text(changes["contact_email"])
+        if was_public and "publish_contact_email" not in changes:
+            business.public_contact_email = business.contact_email
     if changes.get("publish_contact_phone") is True:
         business.public_contact_phone = business.contact_phone or user.phone_number
     elif changes.get("publish_contact_phone") is False:
@@ -360,6 +366,10 @@ def update_my_seller_profile(
         business.public_contact_email = business.contact_email
     elif changes.get("publish_contact_email") is False:
         business.public_contact_email = None
+    if business.public_contact_method in {"phone", "sms"} and business.public_contact_phone is None:
+        business.public_contact_method = None
+    if business.public_contact_method == "email" and business.public_contact_email is None:
+        business.public_contact_method = None
     if "public_contact_method" in changes:
         if contact_method == "email" and not business.public_contact_email:
             raise HTTPException(status_code=422, detail="Publish an email address before selecting email contact")
