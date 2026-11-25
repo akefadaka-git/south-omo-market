@@ -115,7 +115,7 @@ void main() {
           'timezone': 'Africa/Addis_Ababa',
           'days': [
             {'weekday': 0, 'weekday_name': 'Monday', 'markets': [
-              {'id': 'market-koybe', 'name': 'ቆይቤ ገበያ'},
+              {'id': 'market-koybe', 'name': 'ቆይቤ ገበያ', 'name_en': 'Koybe Market', 'name_am': 'ቆይቤ ገበያ', 'location_id': 'town-koybe', 'schedule_days': [0]},
             ]},
           ],
         }), 200);
