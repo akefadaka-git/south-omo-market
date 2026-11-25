@@ -530,32 +530,32 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
       setState(() {
         _categories = categories.where((item) => item['is_leaf'] == true).toList();
         _locations = locations;
-        if (profile != null) {
-          _editing = profile['business_id'] != null;
-          _name.text = _text(profile, 'public_name');
-          _legalName.text = _text(profile, 'legal_name');
-          _description.text = _text(profile, 'description');
-          _locationLabel.text = _text(profile, 'location');
-          _phone.text = _text(profile, 'contact_phone');
-          _email.text = _text(profile, 'contact_email');
-          _registrationNumber.text = _text(profile, 'registration_number');
-          _categoryId = profile['primary_category_id'] as String?;
-          _locationId = profile['operating_location_id'] as String?;
-          _businessType = _text(profile, 'business_type').isEmpty ? 'individual' : _text(profile, 'business_type');
-          _serviceAreas.text = ((profile['service_area'] as List<dynamic>?) ?? const []).join(', ');
-          final hours = (profile['operating_hours'] as Map<String, dynamic>?) ?? const {};
+        if (profileData != null) {
+          _editing = profileData['business_id'] != null;
+          _name.text = _text(profileData, 'public_name');
+          _legalName.text = _text(profileData, 'legal_name');
+          _description.text = _text(profileData, 'description');
+          _locationLabel.text = _text(profileData, 'location');
+          _phone.text = _text(profileData, 'contact_phone');
+          _email.text = _text(profileData, 'contact_email');
+          _registrationNumber.text = _text(profileData, 'registration_number');
+          _categoryId = profileData['primary_category_id'] as String?;
+          _locationId = profileData['operating_location_id'] as String?;
+          _businessType = _text(profileData, 'business_type').isEmpty ? 'individual' : _text(profileData, 'business_type');
+          _serviceAreas.text = ((profileData['service_area'] as List<dynamic>?) ?? const []).join(', ');
+          final hours = (profileData['operating_hours'] as Map<String, dynamic>?) ?? const {};
           _hours.text = hours['public_note']?.toString() ?? '';
-          _languages = ((profile['supported_languages'] as List<dynamic>?) ?? const ['am', 'en'])
+          _languages = ((profileData['supported_languages'] as List<dynamic>?) ?? const ['am', 'en'])
               .map((item) => item.toString()).toList();
-          _publishPhone = profile['public_contact_phone'] != null;
-          _publishEmail = profile['public_contact_email'] != null;
-          _contactMethod = profile['public_contact_method'] as String?;
-          _locationVisibility = _text(profile, 'public_location_visibility').isEmpty
-              ? 'hidden' : _text(profile, 'public_location_visibility');
-          _latitude.text = _text(profile, 'latitude');
-          _longitude.text = _text(profile, 'longitude');
-          _verificationStatus = profile['verification_status'] as String?;
-          _membershipStatus = profile['membership_status'] as String?;
+          _publishPhone = profileData['public_contact_phone'] != null;
+          _publishEmail = profileData['public_contact_email'] != null;
+          _contactMethod = profileData['public_contact_method'] as String?;
+          _locationVisibility = _text(profileData, 'public_location_visibility').isEmpty
+              ? 'hidden' : _text(profileData, 'public_location_visibility');
+          _latitude.text = _text(profileData, 'latitude');
+          _longitude.text = _text(profileData, 'longitude');
+          _verificationStatus = profileData['verification_status'] as String?;
+          _membershipStatus = profileData['membership_status'] as String?;
         }
       });
     } catch (error) {
@@ -762,15 +762,15 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
           title: Text(marketString(context, en: 'Publish this email on my business profile',
             am: 'ይህን ኢሜይል በንግድ መገለጫዬ ላይ አሳይ', mdy: ''))),
         DropdownButtonFormField<String>(
-          value: _contactMethod,
+          value: _contactMethod ?? 'none',
           decoration: InputDecoration(labelText: marketString(context, en: 'Preferred public contact method', am: 'የሕዝብ መገናኛ ዘዴ', mdy: '')),
           items: [
-            DropdownMenuItem<String>(value: null, child: Text(marketString(context, en: 'Not selected', am: 'አልተመረጠም', mdy: ''))),
+            DropdownMenuItem<String>(value: 'none', child: Text(marketString(context, en: 'Not selected', am: 'አልተመረጠም', mdy: ''))),
             DropdownMenuItem(value: 'phone', child: Text(marketString(context, en: 'Phone call', am: 'በስልክ ጥሪ', mdy: ''))),
             DropdownMenuItem(value: 'sms', child: Text('SMS')),
             DropdownMenuItem(value: 'email', child: Text('Email')),
           ],
-          onChanged: _busy ? null : (value) => setState(() => _contactMethod = value),
+          onChanged: _busy ? null : (value) => setState(() => _contactMethod = value == 'none' ? null : value),
         ),
         _sectionTitle(marketString(context, en: 'Languages', am: 'ቋንቋዎች', mdy: '')),
         CheckboxListTile(contentPadding: EdgeInsets.zero, value: _languages.contains('am'),
