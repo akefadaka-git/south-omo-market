@@ -687,11 +687,12 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
           )),
         ),
         _sectionTitle(marketString(context, en: 'Business identity', am: 'የንግድ መለያ', mdy: '')),
-        TextField(controller: _name, decoration: InputDecoration(
+        TextField(key: const Key('seller-business-name'), controller: _name, decoration: InputDecoration(
           labelText: marketString(context, en: 'Public business name *', am: 'የንግድ ሕዝባዊ ስም *', mdy: ''),
           prefixIcon: const Icon(Icons.storefront_outlined))),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
+          key: const Key('seller-business-type'),
           value: _businessType,
           decoration: InputDecoration(labelText: marketString(context, en: 'Business type *', am: 'የንግድ ዓይነት *', mdy: '')),
           items: [
@@ -719,6 +720,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
             en: 'About your business', am: 'ስለ ንግድዎ', mdy: ''))),
         _sectionTitle(marketString(context, en: 'Category and operating area', am: 'ምድብ እና የሚሰሩበት አካባቢ', mdy: '')),
         DropdownButtonFormField<String>(
+          key: const Key('seller-business-category'),
           value: _categoryId,
           decoration: InputDecoration(labelText: marketString(context, en: 'Main business category *', am: 'ዋና የንግድ ምድብ *', mdy: '')),
           items: _categories.map((item) => DropdownMenuItem<String>(
@@ -727,6 +729,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
+          key: const Key('seller-business-location'),
           value: _locationId,
           decoration: InputDecoration(labelText: marketString(context, en: 'Operating town / locality *', am: 'የሚሰሩበት ከተማ / አካባቢ *', mdy: '')),
           items: _locations.map((item) => DropdownMenuItem<String>(
@@ -741,7 +744,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
           },
         ),
         const SizedBox(height: 10),
-        TextField(controller: _locationLabel, decoration: InputDecoration(
+        TextField(key: const Key('seller-business-location-label'), controller: _locationLabel, decoration: InputDecoration(
           labelText: marketString(context, en: 'Locality display label *', am: 'የአካባቢ ማሳያ ስም *', mdy: ''))),
         const SizedBox(height: 10),
         TextField(controller: _serviceAreas, decoration: InputDecoration(
@@ -751,19 +754,20 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
           labelText: marketString(context, en: 'Opening days / hours (optional)', am: 'የሥራ ቀናት / ሰዓታት (አማራጭ)', mdy: ''),
           hintText: 'Mon–Sat, 08:00–18:00')),
         _sectionTitle(marketString(context, en: 'Contact and privacy', am: 'የመገናኛ መረጃ እና ግላዊነት', mdy: '')),
-        TextField(controller: _phone, keyboardType: TextInputType.phone,
+        TextField(key: const Key('seller-business-phone'), controller: _phone, keyboardType: TextInputType.phone,
           decoration: InputDecoration(labelText: marketString(context, en: 'Business contact phone (private by default)', am: 'የንግድ ስልክ (በነባሪ ለሕዝብ አይታይም)', mdy: ''))),
-        CheckboxListTile(contentPadding: EdgeInsets.zero, value: _publishPhone,
+        CheckboxListTile(key: const Key('seller-business-publish-phone'), contentPadding: EdgeInsets.zero, value: _publishPhone,
           onChanged: _busy ? null : (value) => setState(() => _publishPhone = value ?? false),
           title: Text(marketString(context, en: 'Publish this phone number on my business profile',
             am: 'ይህን ስልክ ቁጥር በንግድ መገለጫዬ ላይ አሳይ', mdy: ''))),
-        TextField(controller: _email, keyboardType: TextInputType.emailAddress,
+        TextField(key: const Key('seller-business-email'), controller: _email, keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(labelText: marketString(context, en: 'Business email (optional)', am: 'የንግድ ኢሜይል (አማራጭ)', mdy: ''))),
-        CheckboxListTile(contentPadding: EdgeInsets.zero, value: _publishEmail,
+        CheckboxListTile(key: const Key('seller-business-publish-email'), contentPadding: EdgeInsets.zero, value: _publishEmail,
           onChanged: _busy ? null : (value) => setState(() => _publishEmail = value ?? false),
           title: Text(marketString(context, en: 'Publish this email on my business profile',
             am: 'ይህን ኢሜይል በንግድ መገለጫዬ ላይ አሳይ', mdy: ''))),
         DropdownButtonFormField<String>(
+          key: const Key('seller-business-contact-method'),
           value: _contactMethod ?? 'none',
           decoration: InputDecoration(labelText: marketString(context, en: 'Preferred public contact method', am: 'የሕዝብ መገናኛ ዘዴ', mdy: '')),
           items: [
@@ -785,6 +789,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
           }), title: const Text('English')),
         _sectionTitle(marketString(context, en: 'Public map location', am: 'የሕዝብ የካርታ አካባቢ', mdy: '')),
         DropdownButtonFormField<String>(
+          key: const Key('seller-business-location-visibility'),
           value: _locationVisibility,
           decoration: InputDecoration(labelText: marketString(context, en: 'Location visibility', am: 'የአካባቢ ታይነት', mdy: '')),
           items: [
@@ -817,6 +822,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
         ),
         const SizedBox(height: 20),
         FilledButton.icon(
+          key: const Key('seller-business-save'),
           onPressed: _busy ? null : _save,
           icon: _busy ? const SizedBox(width: 18, height: 18,
             child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined),
