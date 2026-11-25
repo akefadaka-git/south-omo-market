@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
+from app.core.image_storage import LocalImageStorage, get_image_storage
 from app.core.rate_limit import limiter
 from app.main import app
 from app import models  # noqa: F401
@@ -1598,3 +1599,66 @@ def test_legacy_seller_profile_can_be_upgraded_to_governed_business() -> None:
     assert upgraded.status_code == 201, upgraded.text
     assert upgraded.json()["business_id"]
     assert upgraded.json()["membership_status"] == "pending"
+
+
+def test_customer_profile_photo_upload_read_replace_delete_and_isolation(tmp_path) -> None:
+    storage = LocalImageStorage(tmp_path / "private-photos")
+    app.dependency_overrides[get_image_storage] = lambda: storage
+    try:
+        registered = client.post("/api/v1/auth/register", json={
+            "phone_number": "+251900000811",
+            "display_name": "Photo Buyer",
+            "password": "synthetic-photo-password",
+        })
+        assert registered.status_code == 201
+        token = client.post("/api/v1/auth/login", json={
+            "phone_number": "+251900000811",
+            "password": "synthetic-photo-password",
+        }).json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        first = BytesIO()
+        Image.new("RGB", (24, 24), color=(40, 90, 120)).save(first, format="PNG")
+        uploaded = client.post(
+            "/api/v1/customers/me/photo",
+            headers=headers,
+            files={"file": ("profile.png", first.getvalue(), "image/png")},
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        profile = client.get("/api/v1/customers/me", headers=headers).json()
+        assert profile["profile_photo_url"] == "/customers/me/photo"
+        assert "profile_photo_key" not in profile
+
+        photo = client.get("/api/v1/customers/me/photo", headers=headers)
+        assert photo.status_code == 200
+        assert photo.headers["content-type"] == "image/jpeg"
+        assert photo.headers["cache-control"] == "private, no-store"
+
+        second = BytesIO()
+        Image.new("RGB", (20, 20), color=(10, 20, 30)).save(second, format="JPEG")
+        replaced = client.post(
+            "/api/v1/customers/me/photo",
+            headers=headers,
+            files={"file": ("replacement.jpg", second.getvalue(), "image/jpeg")},
+        )
+        assert replaced.status_code == 201, replaced.text
+        assert client.get("/api/v1/customers/me/photo", headers=headers).status_code == 200
+
+        other = client.post("/api/v1/auth/register", json={
+            "phone_number": "+251900000812",
+            "display_name": "Other Buyer",
+            "password": "synthetic-photo-password",
+        })
+        assert other.status_code == 201
+        other_token = client.post("/api/v1/auth/login", json={
+            "phone_number": "+251900000812",
+            "password": "synthetic-photo-password",
+        }).json()["access_token"]
+        other_headers = {"Authorization": f"Bearer {other_token}"}
+        assert client.get("/api/v1/customers/me/photo", headers=other_headers).status_code == 404
+
+        deleted = client.delete("/api/v1/customers/me/photo", headers=headers)
+        assert deleted.status_code == 204
+        assert client.get("/api/v1/customers/me/photo", headers=headers).status_code == 404
+    finally:
+        app.dependency_overrides.pop(get_image_storage, None)
