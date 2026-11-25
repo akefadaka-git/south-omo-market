@@ -76,7 +76,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000901');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-password-901');
 
-    await tester.tap(find.text('Register and continue'));
+    await tester.tap(find.byKey(const Key('buyer-register-submit')));
     await tester.pumpAndSettle();
     expect(registrationBody, isNull,
         reason: 'Registration must be blocked until a preferred locality is selected');

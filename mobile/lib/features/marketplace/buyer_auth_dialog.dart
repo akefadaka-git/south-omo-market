@@ -301,7 +301,9 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
         },
         child: Text(_register ? marketString(context, en: 'I already have an account', am: 'መለያ አለኝ', mdy: '') : marketString(context, en: 'Create account', am: 'መለያ ፍጠር', mdy: '')),
       ),
-      FilledButton(onPressed: _busy ? null : _authenticate,
+      FilledButton(
+        key: const Key('buyer-register-submit'),
+        onPressed: _busy ? null : _authenticate,
         child: Text(_busy ? marketString(context, en: 'Please wait…', am: 'እባክዎ ይጠብቁ…', mdy: '') : (_register ? marketString(context, en: 'Register and continue', am: 'ተመዝግበው ይቀጥሉ', mdy: '') : marketString(context, en: 'Sign in', am: 'ግባ', mdy: '')))),
     ],
   );

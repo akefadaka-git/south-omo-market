@@ -36,6 +36,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   void dispose() { _messageController.dispose(); super.dispose(); }
 
   Future<void> _sendInquiry() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final message = _messageController.text.trim();
     if (message.isEmpty || message.length > 2000) {
       setState(() => _error = marketString(context, en: 'Enter a message of up to 2,000 characters.', am: 'እስከ 2,000 ፊደላት ያለው መልዕክት ያስገቡ።', mdy: ''));
@@ -80,6 +81,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
 
 
   Future<void> _report({required String? listingId, required String? sellerId}) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() { _sending = true; _error = null; _notice = null; });
     try {
       final token = await showDialog<String>(
