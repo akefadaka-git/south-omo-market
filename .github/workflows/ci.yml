@@ -156,7 +156,8 @@ jobs:
 
   android-staging-build:
     name: Android staging test APK (automatic, non-production)
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feat/a3-platform-foundation' && vars.STAGING_API_BASE_URL != '' }}
+    # Only build an acceptance APK from the active P1 branch; never use production release settings.
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feat/customer-platform-foundation' && vars.STAGING_API_BASE_URL != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -167,15 +168,21 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.35.7'
-      - name: Validate staging endpoint configuration
+      - name: Validate staging origin configuration
         env:
           STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
         run: |
           set -euo pipefail
-          case "$STAGING_API_BASE_URL" in
-            https://*) ;;
-            *) echo "STAGING_API_BASE_URL must use HTTPS"; exit 1 ;;
-          esac
+          python - <<'PY'
+          import os
+          from urllib.parse import urlparse
+          value = os.environ.get("STAGING_API_BASE_URL", "").strip()
+          parsed = urlparse(value)
+          if parsed.scheme != "https" or not parsed.netloc:
+              raise SystemExit("STAGING_API_BASE_URL must be an HTTPS origin")
+          if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+              raise SystemExit("STAGING_API_BASE_URL must be the origin only; do not include /api/v1 or /ready")
+          PY
       - name: Verify staging API and database readiness
         env:
           STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
@@ -185,7 +192,7 @@ jobs:
           response="$(curl --fail --silent --show-error \
             --retry 5 --retry-all-errors --retry-delay 10 \
             --connect-timeout 10 --max-time 30 \
-            "$STAGING_API_BASE_URL/ready")"
+            "${STAGING_API_BASE_URL%/}/ready")"
           echo "$response" | jq -e '.status == "ready" and .database == "ok"'
       - name: Generate Android platform scaffold
         working-directory: mobile
@@ -197,7 +204,10 @@ jobs:
         working-directory: mobile
         env:
           STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
-        run: flutter build apk --debug --split-per-abi --dart-define=API_BASE_URL="$STAGING_API_BASE_URL"
+        run: |
+          set -euo pipefail
+          flutter build apk --debug --split-per-abi \
+            --dart-define=API_BASE_URL="${STAGING_API_BASE_URL%/}/api/v1"
       - name: Upload staging test APKs
         uses: actions/upload-artifact@v4
         with:
