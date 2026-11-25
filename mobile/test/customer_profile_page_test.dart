@@ -78,3 +78,52 @@ void main() {
     client.close();
   });
 }
+
+
+  testWidgets('customer sign out revokes the server session and returns to prior page', (tester) async {
+    var logoutCalled = false;
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/customers/me')) {
+        return http.Response(jsonEncode({
+          'id': 'profile-2',
+          'user_id': 'user-2',
+          'phone_number': '+251900000902',
+          'display_name': 'Logout Buyer',
+          'preferred_language': 'am',
+        }), 200);
+      }
+      if (request.url.path.endsWith('/locations')) return http.Response('[]', 200);
+      if (request.url.path.endsWith('/markets')) return http.Response('[]', 200);
+      if (request.url.path.endsWith('/auth/logout') && request.method == 'POST') {
+        expect(request.headers['Authorization'], 'Bearer logout-token');
+        logoutCalled = true;
+        return http.Response('', 204);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(builder: (context) => Scaffold(
+        body: TextButton(
+          key: const Key('open-customer-profile'),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => CustomerProfilePage(
+              apiBaseUrl: 'https://market.example.test/api/v1',
+              accessToken: 'logout-token',
+              client: client,
+            ),
+          )),
+          child: const Text('Open profile'),
+        ),
+      )),
+    ));
+    await tester.tap(find.byKey(const Key('open-customer-profile')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('customer-profile-logout')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('customer-profile-logout')));
+    await tester.pumpAndSettle();
+
+    expect(logoutCalled, isTrue);
+    expect(find.text('Open profile'), findsOneWidget);
+    client.close();
+  });
