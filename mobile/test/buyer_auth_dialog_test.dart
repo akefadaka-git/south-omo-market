@@ -53,7 +53,7 @@ void main() {
     ));
     await tester.tap(find.text('Open buyer sign in'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Create account'));
+    await tester.tap(find.text('መለያ ፍጠር'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('buyer-account-type')), findsOneWidget);
