@@ -553,6 +553,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
           _contactMethod = profileData['public_contact_method'] as String?;
           _locationVisibility = _text(profileData, 'public_location_visibility').isEmpty
               ? 'hidden' : _text(profileData, 'public_location_visibility');
+          _confirmExactLocation = _locationVisibility == 'exact';
           _latitude.text = _text(profileData, 'latitude');
           _longitude.text = _text(profileData, 'longitude');
           _verificationStatus = profileData['verification_status'] as String?;
