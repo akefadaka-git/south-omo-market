@@ -586,6 +586,7 @@ def test_localized_category_and_hierarchical_location_catalog() -> None:
         "code": "ET-SO-MAALE-KOYBE",
         "level": "locality",
         "name": "ቆይቤ",
+        "translation_complete": True,
         "name_en": "Koybe",
         "name_am": "ቆይቤ",
         "name_mdy": None,
