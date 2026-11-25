@@ -14,7 +14,7 @@ def list_locations(
     level: str | None = Query(default=None, pattern="^(zone|woreda|town|locality)$"),
     lang: str = Query(default="en", pattern="^(en|am|mdy)$"),
     db: Session = Depends(get_db),
-) -> list[dict[str, str | None]]:
+) -> list[dict[str, object]]:
     query = select(Location).where(Location.is_active.is_(True))
     if parent_id is not None:
         query = query.where(Location.parent_id == parent_id)
