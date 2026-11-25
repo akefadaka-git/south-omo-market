@@ -43,6 +43,26 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
     _loadInbox();
   }
 
+  Future<void> _logout() async {
+    try {
+      final response = await widget.client.post(
+        Uri.parse('${widget.apiBaseUrl}/auth/logout'),
+        headers: _headers,
+      );
+      if (response.statusCode == 204 || response.statusCode == 401) {
+        widget.onLogout();
+        return;
+      }
+      if (mounted) setState(() => _error = marketString(context,
+        en: 'Secure sign out failed. Please retry.',
+        am: 'በደህና መውጣት አልተሳካም። እንደገና ይሞክሩ።', mdy: ''));
+    } catch (_) {
+      if (mounted) setState(() => _error = marketString(context,
+        en: 'Network error while signing out. Please retry.',
+        am: 'በመውጣት ጊዜ የኔትወርክ ስህተት ተፈጥሯል። እንደገና ይሞክሩ።', mdy: ''));
+    }
+  }
+
   Future<void> _loadInbox() async {
     setState(() {
       _loading = true;
@@ -128,13 +148,25 @@ class _SellerInboxPageState extends State<SellerInboxPage> {
               icon: const Icon(Icons.inventory_2_outlined),
             ),
             IconButton(
+              tooltip: marketString(context, en: 'Business profile', am: 'የንግድ መገለጫ', mdy: ''),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => SellerProfileSetupPage(
+                  apiBaseUrl: widget.apiBaseUrl,
+                  accessToken: widget.accessToken,
+                  client: widget.client,
+                  onComplete: () => Navigator.of(context).pop(),
+                ),
+              )),
+              icon: const Icon(Icons.business_outlined),
+            ),
+            IconButton(
               tooltip: marketString(context, en: 'Refresh', am: 'አድስ', mdy: ''),
               onPressed: _loading ? null : _loadInbox,
               icon: const Icon(Icons.refresh),
             ),
             IconButton(
               tooltip: marketString(context, en: 'Sign out', am: 'ውጣ', mdy: ''),
-              onPressed: widget.onLogout,
+              onPressed: _logout,
               icon: const Icon(Icons.logout),
             ),
           ],
