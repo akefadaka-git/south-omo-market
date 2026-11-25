@@ -336,6 +336,12 @@ class _MarketDetailPageState extends State<MarketDetailPage> {
                   )
                 else
                   _mapFallback(context, null, null),
+                if (latitude != null && longitude != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: SelectableText('$latitude, $longitude',
+                      style: Theme.of(context).textTheme.bodySmall),
+                  ),
               ],
             ),
     );
