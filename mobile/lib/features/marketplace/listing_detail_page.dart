@@ -36,6 +36,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   void dispose() { _messageController.dispose(); super.dispose(); }
 
   Future<void> _sendInquiry() async {
+    // Dismiss the input keyboard before opening the authentication/report dialog.
     FocusManager.instance.primaryFocus?.unfocus();
     final message = _messageController.text.trim();
     if (message.isEmpty || message.length > 2000) {
