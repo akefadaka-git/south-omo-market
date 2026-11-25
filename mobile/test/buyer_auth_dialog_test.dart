@@ -54,6 +54,7 @@ void main() {
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('buyer-account-type')), findsOneWidget);
     expect(find.byKey(const Key('buyer-preferred-location')), findsOneWidget);
     expect(find.text('የሚመርጡት አካባቢ (አስፈላጊ)'), findsOneWidget);
     final areaDropdown = tester.widget<DropdownButton<String>>(
@@ -65,6 +66,10 @@ void main() {
     expect(areaDropdown.dropdownColor, Colors.white);
     expect(areaDropdown.style?.color, const Color(0xFF102B2A));
     expect(find.byKey(const Key('buyer-preferred-language')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('buyer-account-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ጅምላ አከፋፋይ').last);
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic Buyer');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000901');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-password-901');
@@ -90,6 +95,7 @@ void main() {
     expect(registrationBody?['preferred_location_id'], 'town-koybe');
     expect(registrationBody?['preferred_market_id'], 'market-koybe');
     expect(registrationBody?['preferred_language'], 'am');
+    expect(registrationBody?['account_type'], 'bulk_distributor');
     expect(loginRequested, isTrue);
     expect(find.text('Create buyer account'), findsNothing);
     client.close();
