@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import func, inspect as sqlalchemy_inspect, select, text
+from sqlalchemy import exists, func, inspect as sqlalchemy_inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,8 @@ from app.core.database import get_db
 from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
 from app.governance import require_marketplace_listing_policy, require_seller_business_listing_access
-from app.models import BusinessProfile, Category, Listing, ListingImage, Location, SellerProfile, User
+from app.models import Category, Listing, ListingImage, Location, SellerProfile, User
+from app.governance_models import BusinessMembership, BusinessProfile
 
 router = APIRouter(prefix="/listings")
 
@@ -239,6 +240,12 @@ def list_public_listings(
         .where(
             BusinessProfile.is_active.is_(True),
             BusinessProfile.verification_status == "verified",
+            exists(select(BusinessMembership.id).where(
+                BusinessMembership.business_id == BusinessProfile.id,
+                BusinessMembership.status == "active",
+                BusinessMembership.membership_role.in_(("owner", "administrator", "manager", "staff")),
+                (BusinessMembership.expires_at.is_(None) | (BusinessMembership.expires_at > func.now())),
+            )),
             Listing.status == "published",
             User.is_active.is_(True),
             User.is_suspended.is_(False),
@@ -381,6 +388,12 @@ def get_public_listing(listing_id: str, db: Session = Depends(get_db)) -> dict[s
         .where(
             BusinessProfile.is_active.is_(True),
             BusinessProfile.verification_status == "verified",
+            exists(select(BusinessMembership.id).where(
+                BusinessMembership.business_id == BusinessProfile.id,
+                BusinessMembership.status == "active",
+                BusinessMembership.membership_role.in_(("owner", "administrator", "manager", "staff")),
+                (BusinessMembership.expires_at.is_(None) | (BusinessMembership.expires_at > func.now())),
+            )),
             Listing.id == listing_id,
             Listing.status == "published",
             User.is_active.is_(True),
@@ -558,6 +571,12 @@ def get_public_listing_image(
         .where(
             BusinessProfile.is_active.is_(True),
             BusinessProfile.verification_status == "verified",
+            exists(select(BusinessMembership.id).where(
+                BusinessMembership.business_id == BusinessProfile.id,
+                BusinessMembership.status == "active",
+                BusinessMembership.membership_role.in_(("owner", "administrator", "manager", "staff")),
+                (BusinessMembership.expires_at.is_(None) | (BusinessMembership.expires_at > func.now())),
+            )),
             ListingImage.id == image_id,
             Listing.id == listing_id,
             Listing.status == "published",
