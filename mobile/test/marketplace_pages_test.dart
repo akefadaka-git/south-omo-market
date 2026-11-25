@@ -155,7 +155,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-inquiry-message')), 'Is this available?');
     await tester.tap(find.text('Send inquiry'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Create account'));
+    await tester.tap(find.byKey(const Key('buyer-registration-toggle')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Buyer Test');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000007');

@@ -137,8 +137,9 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('market-calendar-entry-market-koybe')), findsOneWidget);
     expect(find.text('ቆይቤ ገበያ'), findsOneWidget);
-    await tester.tap(find.text('ቆይቤ ገበያ'));
+    await tester.tap(find.byKey(const Key('market-calendar-entry-market-koybe')));
     await tester.pumpAndSettle();
     expect(find.text('ቆይቤ ዋና መንገድ'), findsOneWidget);
     expect(find.text('የአካባቢ ካርታ'), findsOneWidget);

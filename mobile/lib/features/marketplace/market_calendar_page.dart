@@ -201,6 +201,7 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
                                   spacing: 8,
                                   runSpacing: 6,
                                   children: markets.map((market) => ActionChip(
+                                    key: Key('market-calendar-entry-${market['id']}'),
                                     label: Text((market['name'] as String?) ?? (Localizations.localeOf(context).languageCode == 'am' ? 'የአማርኛ ስም ይጠበቃል' : 'Market name unavailable')),
                                     avatar: const Icon(Icons.storefront_outlined, size: 18),
                                     onPressed: () {

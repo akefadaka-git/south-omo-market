@@ -293,6 +293,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     ])),
     actions: [
       TextButton(
+        key: const Key('buyer-registration-toggle'),
         onPressed: _busy ? null : () {
           final enteringRegistration = !_register;
           setState(() { _register = enteringRegistration; _error = null; });

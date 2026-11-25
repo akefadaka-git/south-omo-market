@@ -18,7 +18,7 @@ void main() {
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/locations')) {
         return http.Response(jsonEncode([
-          {'id': 'town-koybe', 'level': 'town', 'name': 'Koybe', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
+          {'id': 'town-koybe', 'level': 'town', 'name': 'Koybe', 'name_en': 'Koybe', 'name_am': 'ቆይቤ', 'name_am': 'ቆይቤ'},
         ]), 200);
       }
       if (request.url.path.endsWith('/markets')) {
@@ -53,7 +53,7 @@ void main() {
     await tester.tap(find.text('Report listing'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Create account'));
+    await tester.tap(find.byKey(const Key('buyer-registration-toggle')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic reporter');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000801');
