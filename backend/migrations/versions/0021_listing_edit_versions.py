@@ -28,6 +28,11 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint("listing_id", "pending_key", name="uq_listing_edit_one_pending"),
         sa.CheckConstraint("status IN ('pending_review', 'approved', 'rejected')", name="ck_listing_edit_status"),
+        sa.CheckConstraint(
+            "(status = 'pending_review' AND pending_key = 'pending') OR "
+            "(status IN ('approved', 'rejected') AND pending_key IS NULL)",
+            name="ck_listing_edit_pending_key",
+        ),
     )
     op.create_index("ix_listing_edits_listing_id", "listing_edits", ["listing_id"])
     op.create_index("ix_listing_edits_status", "listing_edits", ["status"])

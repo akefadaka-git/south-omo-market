@@ -137,7 +137,7 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
 
 def _is_minor_text_normalization(current: str, proposed: str) -> bool:
     """Permit punctuation/case/spacing cleanup only; token changes need review."""
-    tokens = lambda value: re.findall(r"\\w+", value.casefold(), flags=re.UNICODE)
+    tokens = lambda value: re.findall(r"\w+", value.casefold(), flags=re.UNICODE)
     return current != proposed and tokens(current) == tokens(proposed)
 
 
@@ -465,14 +465,16 @@ def update_my_listing(
         db, user, action="marketplace.listing.update", category_id=category.id
     )
     if "location_id" in changes or "location_label" in changes:
-        location_id = changes.get("location_id", listing.location_id)
-        location_label = changes.get("location_label", listing.location_label)
+        if "location_id" in changes:
+            location_id = changes["location_id"]
+        elif "location_label" in changes:
+            location_id = _resolve_location_id(db, None, changes["location_label"])
+        else:
+            location_id = listing.location_id
         if location_id is not None:
             location = db.get(Location, location_id)
             if location is None or not location.is_active:
                 raise HTTPException(status_code=404, detail="Location not found")
-        else:
-            location_id = _resolve_location_id(db, None, location_label)
         changes["location_id"] = location_id
     if "category_id" in changes or "attributes" in changes:
         candidate_attributes = changes.get("attributes", listing.attributes or {})

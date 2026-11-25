@@ -109,6 +109,11 @@ class ListingEdit(Base):
             "status IN ('pending_review', 'approved', 'rejected')",
             name="ck_listing_edit_status",
         ),
+        CheckConstraint(
+            "(status = 'pending_review' AND pending_key = 'pending') OR "
+            "(status IN ('approved', 'rejected') AND pending_key IS NULL)",
+            name="ck_listing_edit_pending_key",
+        ),
     )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     listing_id: Mapped[str] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"), index=True)
