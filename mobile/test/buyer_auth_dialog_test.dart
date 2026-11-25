@@ -53,6 +53,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('buyer-preferred-location')), findsOneWidget);
+    expect(find.text('የሚመርጡት አካባቢ (አስፈላጊ)'), findsOneWidget);
+    final areaDropdown = tester.widget<DropdownButtonFormField<String>>(
+      find.byKey(const Key('buyer-preferred-location')),
+    );
+    expect(areaDropdown.dropdownColor, Colors.white);
+    expect(areaDropdown.style?.color, const Color(0xFF102B2A));
     expect(find.byKey(const Key('buyer-preferred-language')), findsOneWidget);
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic Buyer');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000901');
