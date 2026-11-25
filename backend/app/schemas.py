@@ -8,6 +8,7 @@ class RegisterRequest(BaseModel):
     preferred_market_id: str | None = None
     preferred_language: str = Field(default="am", pattern="^(am|en)$")
     email: str | None = Field(default=None, max_length=254)
+    account_type: str = Field(default="buyer", pattern="^(buyer|merchant|bulk_distributor|producer|service_provider|other)$")
 
     @field_validator("display_name")
     @classmethod
