@@ -44,6 +44,11 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [draftNames, setDraftNames] = useState<Record<string, string>>({});
   const [draftNamesAm, setDraftNamesAm] = useState<Record<string, string>>({});
   const [draftDescriptions, setDraftDescriptions] = useState<Record<string, string>>({});
+  const [draftDescriptionsAm, setDraftDescriptionsAm] = useState<Record<string, string>>({});
+  const [draftAddressesEn, setDraftAddressesEn] = useState<Record<string, string>>({});
+  const [draftAddressesAm, setDraftAddressesAm] = useState<Record<string, string>>({});
+  const [draftLatitudes, setDraftLatitudes] = useState<Record<string, string>>({});
+  const [draftLongitudes, setDraftLongitudes] = useState<Record<string, string>>({});
   const [effectiveFrom, setEffectiveFrom] = useState<Record<string, string>>({});
   const [effectiveUntil, setEffectiveUntil] = useState<Record<string, string>>({});
   const [draftLocations, setDraftLocations] = useState<Record<string, string>>({});
@@ -66,6 +71,11 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
     setDraftNames(Object.fromEntries(rows.map((market) => [market.id, market.name_en ?? market.name])));
     setDraftNamesAm(Object.fromEntries(rows.map((market) => [market.id, market.name_am ?? ''])));
     setDraftDescriptions(Object.fromEntries(rows.map((market) => [market.id, market.description ?? ''])));
+    setDraftDescriptionsAm(Object.fromEntries(rows.map((market) => [market.id, market.description_am ?? ''])));
+    setDraftAddressesEn(Object.fromEntries(rows.map((market) => [market.id, market.address_en ?? ''])));
+    setDraftAddressesAm(Object.fromEntries(rows.map((market) => [market.id, market.address_am ?? ''])));
+    setDraftLatitudes(Object.fromEntries(rows.map((market) => [market.id, market.latitude == null ? '' : String(market.latitude)])));
+    setDraftLongitudes(Object.fromEntries(rows.map((market) => [market.id, market.longitude == null ? '' : String(market.longitude)])));
     setEffectiveFrom(Object.fromEntries(rows.map((market) => [market.id, market.schedule_entries?.find((entry) => entry.is_active)?.effective_from ?? ''])));
     setEffectiveUntil(Object.fromEntries(rows.map((market) => [market.id, market.schedule_entries?.find((entry) => entry.is_active)?.effective_until ?? ''])));
     setDraftLocations(Object.fromEntries(rows.map((market) => [market.id, market.location_id ?? ''])));
@@ -108,7 +118,11 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
           name: draftNames[market.id] ?? market.name,
           name_am: draftNamesAm[market.id] ?? market.name_am ?? '',
           description: (draftDescriptions[market.id] ?? market.description ?? '').trim() || null,
-          description_am: market.description_am ?? null,
+          description_am: (draftDescriptionsAm[market.id] ?? market.description_am ?? '').trim() || null,
+          address_en: (draftAddressesEn[market.id] ?? market.address_en ?? '').trim() || null,
+          address_am: (draftAddressesAm[market.id] ?? market.address_am ?? '').trim() || null,
+          latitude: (draftLatitudes[market.id] ?? '').trim() ? Number(draftLatitudes[market.id]) : null,
+          longitude: (draftLongitudes[market.id] ?? '').trim() ? Number(draftLongitudes[market.id]) : null,
           location_id: draftLocations[market.id] || null,
         }),
       });
@@ -205,8 +219,23 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
             <label>Market name (Amharic)
               <input maxLength={120} value={draftNamesAm[market.id] ?? market.name_am ?? ''} onChange={(event) => setDraftNamesAm((current) => ({ ...current, [market.id]: event.target.value }))} />
             </label>
-            <label>Description
+            <label>Description (English)
               <textarea maxLength={2000} value={draftDescriptions[market.id] ?? market.description ?? ''} onChange={(event) => setDraftDescriptions((current) => ({ ...current, [market.id]: event.target.value }))} />
+            </label>
+            <label>Description (Amharic)
+              <textarea maxLength={2000} value={draftDescriptionsAm[market.id] ?? market.description_am ?? ''} onChange={(event) => setDraftDescriptionsAm((current) => ({ ...current, [market.id]: event.target.value }))} />
+            </label>
+            <label>Address (English)
+              <input maxLength={500} value={draftAddressesEn[market.id] ?? market.address_en ?? ''} onChange={(event) => setDraftAddressesEn((current) => ({ ...current, [market.id]: event.target.value }))} />
+            </label>
+            <label>Address (Amharic)
+              <input maxLength={500} value={draftAddressesAm[market.id] ?? market.address_am ?? ''} onChange={(event) => setDraftAddressesAm((current) => ({ ...current, [market.id]: event.target.value }))} />
+            </label>
+            <label>Latitude
+              <input type="number" min="-90" max="90" step="any" value={draftLatitudes[market.id] ?? ''} onChange={(event) => setDraftLatitudes((current) => ({ ...current, [market.id]: event.target.value }))} />
+            </label>
+            <label>Longitude
+              <input type="number" min="-180" max="180" step="any" value={draftLongitudes[market.id] ?? ''} onChange={(event) => setDraftLongitudes((current) => ({ ...current, [market.id]: event.target.value }))} />
             </label>
             <label>Verified location
               <select
