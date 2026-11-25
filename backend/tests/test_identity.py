@@ -1725,6 +1725,19 @@ def test_registration_contract_reproduces_and_explains_422_with_synthetic_geogra
     assert accepted.status_code == 201, accepted.text
     assert accepted.json()["account_type"] == "bulk_distributor"
 
+    amharic_detail = client.get(f"/api/v1/markets/{market_id}", params={"lang": "am"})
+    assert amharic_detail.status_code == 200
+    assert amharic_detail.json()["name"] == "ሰው ሠራሽ ቆይቤ ገበያ"
+    assert amharic_detail.json()["address"] == "ሰው ሠራሽ የገበያ መንገድ፣ ቆይቤ"
+    assert amharic_detail.json()["location"]["name"] == "ሰው ሠራሽ ቆይቤ"
+    assert amharic_detail.json()["latitude"] == 6.0
+    assert amharic_detail.json()["longitude"] == 36.5
+    english_detail = client.get(f"/api/v1/markets/{market_id}", params={"lang": "en"})
+    assert english_detail.json()["name"] == "Synthetic Koybe Market"
+    weekly_am = client.get("/api/v1/markets/schedule", params={"lang": "am"})
+    assert weekly_am.status_code == 200
+    assert any(row["id"] == market_id for row in weekly_am.json()["days"][2]["markets"])
+
     with TestingSession() as db:
         user = db.query(User).filter_by(phone_number=phone).one()
         assert user.account_type == "bulk_distributor"
