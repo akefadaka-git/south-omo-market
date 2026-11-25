@@ -443,36 +443,209 @@ class SellerProfileSetupPage extends StatefulWidget {
 
 class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
   final _name = TextEditingController();
-  final _location = TextEditingController(text: 'Koybe');
+  final _legalName = TextEditingController();
+  final _description = TextEditingController();
+  final _locationLabel = TextEditingController();
+  final _phone = TextEditingController();
+  final _email = TextEditingController();
+  final _serviceAreas = TextEditingController();
+  final _hours = TextEditingController();
+  final _registrationNumber = TextEditingController();
+  final _latitude = TextEditingController();
+  final _longitude = TextEditingController();
+
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _locations = [];
+  String _businessType = 'individual';
+  String? _categoryId;
+  String? _locationId;
+  String? _contactMethod;
+  String _locationVisibility = 'hidden';
+  List<String> _languages = ['am', 'en'];
+  bool _publishPhone = false;
+  bool _publishEmail = false;
+  bool _confirmExactLocation = false;
+  bool _loading = true;
   bool _busy = false;
+  bool _editing = false;
+  String? _verificationStatus;
+  String? _membershipStatus;
   String? _error;
 
-  @override
-  void dispose() { _name.dispose(); _location.dispose(); super.dispose(); }
+  Map<String, String> get _headers => {
+    'Authorization': 'Bearer ${widget.accessToken}',
+    'Content-Type': 'application/json',
+  };
 
-  Future<void> _createProfile() async {
-    if (_name.text.trim().length < 2 || _location.text.trim().length < 2) {
-      setState(() => _error = marketString(context, en: 'Enter a public seller name and location.', am: 'የሻጭ ስምና አካባቢ ያስገቡ።', mdy: ''));
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _legalName.dispose();
+    _description.dispose();
+    _locationLabel.dispose();
+    _phone.dispose();
+    _email.dispose();
+    _serviceAreas.dispose();
+    _hours.dispose();
+    _registrationNumber.dispose();
+    _latitude.dispose();
+    _longitude.dispose();
+    super.dispose();
+  }
+
+  String _text(Map<String, dynamic> data, String key) =>
+      data[key]?.toString() ?? '';
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final responses = await Future.wait([
+        widget.client.get(Uri.parse('${widget.apiBaseUrl}/categories?lang=${Localizations.localeOf(context).languageCode}')),
+        widget.client.get(Uri.parse('${widget.apiBaseUrl}/locations?lang=${Localizations.localeOf(context).languageCode}')),
+        widget.client.get(Uri.parse('${widget.apiBaseUrl}/sellers/me'), headers: _headers),
+      ]);
+      if (responses[0].statusCode != 200 || responses[1].statusCode != 200 ||
+          (responses[2].statusCode != 200 && responses[2].statusCode != 404)) {
+        throw Exception(marketString(context,
+          en: 'Seller onboarding data could not be loaded. Please retry.',
+          am: 'የሻጭ ምዝገባ መረጃን መጫን አልተቻለም። እንደገና ይሞክሩ።', mdy: ''));
+      }
+      final categories = (jsonDecode(responses[0].body) as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      final locations = (jsonDecode(responses[1].body) as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .where((item) => item['level'] == 'town' || item['level'] == 'locality')
+          .toList();
+      Map<String, dynamic>? profile;
+      if (responses[2].statusCode == 200) {
+        profile = jsonDecode(responses[2].body) as Map<String, dynamic>;
+      }
+      if (!mounted) return;
+      setState(() {
+        _categories = categories.where((item) => item['is_leaf'] == true).toList();
+        _locations = locations;
+        if (profile != null) {
+          _editing = true;
+          _name.text = _text(profile, 'public_name');
+          _legalName.text = _text(profile, 'legal_name');
+          _description.text = _text(profile, 'description');
+          _locationLabel.text = _text(profile, 'location');
+          _phone.text = _text(profile, 'contact_phone');
+          _email.text = _text(profile, 'contact_email');
+          _registrationNumber.text = _text(profile, 'registration_number');
+          _categoryId = profile['primary_category_id'] as String?;
+          _locationId = profile['operating_location_id'] as String?;
+          _businessType = _text(profile, 'business_type').isEmpty ? 'individual' : _text(profile, 'business_type');
+          _serviceAreas.text = ((profile['service_area'] as List<dynamic>?) ?? const []).join(', ');
+          final hours = (profile['operating_hours'] as Map<String, dynamic>?) ?? const {};
+          _hours.text = hours['public_note']?.toString() ?? '';
+          _languages = ((profile['supported_languages'] as List<dynamic>?) ?? const ['am', 'en'])
+              .map((item) => item.toString()).toList();
+          _publishPhone = profile['public_contact_phone'] != null;
+          _publishEmail = profile['public_contact_email'] != null;
+          _contactMethod = profile['public_contact_method'] as String?;
+          _locationVisibility = _text(profile, 'public_location_visibility').isEmpty
+              ? 'hidden' : _text(profile, 'public_location_visibility');
+          _latitude.text = _text(profile, 'latitude');
+          _longitude.text = _text(profile, 'longitude');
+          _verificationStatus = profile['verification_status'] as String?;
+          _membershipStatus = profile['membership_status'] as String?;
+        }
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    if (_name.text.trim().length < 2 || _locationLabel.text.trim().length < 2 ||
+        _locationId == null || _categoryId == null) {
+      setState(() => _error = marketString(context,
+        en: 'Enter a business name, category and operating town/locality.',
+        am: 'የንግድ ስም፣ ምድብ እና የሚሰሩበትን ከተማ/አካባቢ ይምረጡ።', mdy: ''));
       return;
     }
+    if (_languages.isEmpty) {
+      setState(() => _error = marketString(context,
+        en: 'Choose at least one supported language.',
+        am: 'ቢያንስ አንድ የሚደገፍ ቋንቋ ይምረጡ።', mdy: ''));
+      return;
+    }
+    final lat = _locationVisibility == 'exact' ? double.tryParse(_latitude.text.trim()) : null;
+    final lon = _locationVisibility == 'exact' ? double.tryParse(_longitude.text.trim()) : null;
+    if (_locationVisibility == 'exact' &&
+        (lat == null || lon == null || !_confirmExactLocation)) {
+      setState(() => _error = marketString(context,
+        en: 'Exact map location requires valid coordinates and your explicit consent.',
+        am: 'ትክክለኛ የካርታ አካባቢ ትክክለኛ መጋጠሚያዎችንና ግልጽ ፈቃድዎን ይፈልጋል።', mdy: ''));
+      return;
+    }
+    if (_contactMethod == 'phone' || _contactMethod == 'sms') {
+      if (!_publishPhone) {
+        setState(() => _error = marketString(context,
+          en: 'Choose to publish your phone number before selecting phone contact.',
+          am: 'የስልክ አድራሻን ከመምረጥዎ በፊት ስልክ ቁጥርዎን ለሕዝብ ማሳየት ይፍቀዱ።', mdy: ''));
+        return;
+      }
+    }
+    if (_contactMethod == 'email' && (!_publishEmail || _email.text.trim().isEmpty)) {
+      setState(() => _error = marketString(context,
+        en: 'Choose to publish a valid email before selecting email contact.',
+        am: 'የኢሜይል አድራሻን ከመምረጥዎ በፊት ኢሜይልዎን ለሕዝብ ማሳየት ይፍቀዱ።', mdy: ''));
+      return;
+    }
+
     setState(() { _busy = true; _error = null; });
     try {
-      final response = await widget.client.post(
-        Uri.parse('${widget.apiBaseUrl}/sellers/me'),
-        headers: {
-          'Authorization': 'Bearer ${widget.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'public_name': _name.text.trim(),
-          'location_label': _location.text.trim(),
-        }),
-      );
-      if (response.statusCode != 201) {
-        throw Exception(response.statusCode == 409
-          ? marketString(context, en: 'A seller profile already exists. Sign out and sign in again.', am: 'የሻጭ መገለጫ አስቀድሞ አለ። ይውጡና እንደገና ይግቡ።', mdy: '')
-          : marketString(context, en: 'Seller profile setup failed (${response.statusCode}).', am: 'የሻጭ መገለጫ ማዘጋጀት አልተሳካም (${response.statusCode})።', mdy: ''));
+      final payload = <String, dynamic>{
+        'public_name': _name.text.trim(),
+        'legal_name': _legalName.text.trim().isEmpty ? null : _legalName.text.trim(),
+        'business_type': _businessType,
+        'description': _description.text.trim().isEmpty ? null : _description.text.trim(),
+        'primary_category_id': _categoryId,
+        'location_label': _locationLabel.text.trim(),
+        'operating_location_id': _locationId,
+        'service_area': _serviceAreas.text.split(',').map((item) => item.trim())
+            .where((item) => item.isNotEmpty).toList(),
+        'operating_hours': _hours.text.trim().isEmpty ? <String, String>{}
+            : <String, String>{'public_note': _hours.text.trim()},
+        'supported_languages': _languages,
+        'contact_phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+        'contact_email': _email.text.trim().isEmpty ? null : _email.text.trim(),
+        'publish_contact_phone': _publishPhone,
+        'publish_contact_email': _publishEmail,
+        'public_contact_method': _contactMethod,
+        'public_location_visibility': _locationVisibility,
+        'latitude': lat,
+        'longitude': lon,
+        'confirm_exact_location': _confirmExactLocation,
+        'registration_number': _registrationNumber.text.trim().isEmpty
+            ? null : _registrationNumber.text.trim(),
+      };
+      final uri = Uri.parse('${widget.apiBaseUrl}/sellers/me');
+      final response = _editing
+          ? await widget.client.patch(uri, headers: _headers, body: jsonEncode(payload))
+          : await widget.client.post(uri, headers: _headers, body: jsonEncode(payload));
+      final expected = _editing ? 200 : 201;
+      if (response.statusCode != expected) {
+        String detail = '';
+        try {
+          final body = jsonDecode(response.body) as Map<String, dynamic>;
+          detail = body['detail']?.toString() ?? '';
+        } catch (_) {}
+        throw Exception(detail.isNotEmpty ? detail : marketString(context,
+          en: 'Business profile could not be saved (${response.statusCode}).',
+          am: 'የንግድ መገለጫውን ማስቀመጥ አልተቻለም (${response.statusCode})።', mdy: ''));
       }
+      if (!mounted) return;
       widget.onComplete();
     } catch (error) {
       if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
@@ -481,31 +654,174 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
     }
   }
 
+  Widget _sectionTitle(String title) => Padding(
+    padding: const EdgeInsets.only(top: 18, bottom: 8),
+    child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(marketString(context, en: 'Set up seller profile', am: 'የሻጭ መገለጫ ያዘጋጁ', mdy: ''))),
-    body: ListView(padding: const EdgeInsets.all(24), children: [
-      MarketBrandPanel(
-        title: marketString(context, en: 'Meet your local customers.', am: 'ከአካባቢዎ ደንበኞች ጋር ይገናኙ።', mdy: ''),
-        subtitle: marketString(context, en: 'Set up a clear public seller identity so buyers know who they are contacting.', am: 'ገዢዎች ማንን እንደሚያነጋግሩ እንዲያውቁ የሻጭ መገለጫዎን ያዘጋጁ።', mdy: ''),
-      ),
-      const SizedBox(height: 20),
-      TextField(controller: _name, decoration: InputDecoration(
-        labelText: marketString(context, en: 'Public seller name', am: 'የሻጭ ስም', mdy: ''), prefixIcon: Icon(Icons.storefront_outlined))),
-      const SizedBox(height: 10),
-      TextField(controller: _location, decoration: InputDecoration(
-        labelText: marketString(context, en: 'Location', am: 'አካባቢ', mdy: ''), prefixIcon: Icon(Icons.location_on_outlined))),
-      const SizedBox(height: 16),
-      FilledButton(
-        onPressed: _busy ? null : _createProfile,
-        child: Text(_busy ? marketString(context, en: 'Saving…', am: 'በማስቀመጥ ላይ…', mdy: '') : marketString(context, en: 'Create seller profile', am: 'የሻጭ መገለጫ ፍጠር', mdy: '')),
-      ),
-      if (_error != null) Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-      ),
-    ]),
+    appBar: AppBar(title: Text(marketString(context,
+      en: _editing ? 'Business profile' : 'Set up business profile',
+      am: _editing ? 'የንግድ መገለጫ' : 'የንግድ መገለጫ ያዘጋጁ', mdy: '')),
+      actions: [IconButton(onPressed: _loading || _busy ? null : _load,
+        tooltip: marketString(context, en: 'Refresh', am: 'አድስ', mdy: ''),
+        icon: const Icon(Icons.refresh))]),
+    body: _loading ? const Center(child: CircularProgressIndicator())
+      : ListView(padding: const EdgeInsets.all(20), children: [
+        MarketBrandPanel(
+          title: marketString(context, en: 'Build your business presence.',
+            am: 'የንግድዎን መገኘት ያጠናክሩ።', mdy: ''),
+          subtitle: marketString(context,
+            en: 'Tell local buyers what you offer and how they can reach you. Your business starts pending review; it is not marked verified automatically.',
+            am: 'ለአካባቢ ገዢዎች ምን እንደሚያቀርቡና እንዴት ሊያገኙዎት እንደሚችሉ ያሳውቁ። የንግድዎ ሁኔታ ግምገማ በመጠባበቅ ላይ ይሆናል፤ በራስ-ሰር የተረጋገጠ አይሆንም።', mdy: ''),
+        ),
+        if (_verificationStatus != null) Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Card(child: ListTile(
+            leading: const Icon(Icons.verified_user_outlined),
+            title: Text(marketString(context, en: 'Business review status', am: 'የንግድ ግምገማ ሁኔታ', mdy: '')),
+            subtitle: Text('${marketStatusLabel(context, _verificationStatus!)} · ${_membershipStatus ?? ''}'),
+          )),
+        ),
+        _sectionTitle(marketString(context, en: 'Business identity', am: 'የንግድ መለያ', mdy: '')),
+        TextField(controller: _name, decoration: InputDecoration(
+          labelText: marketString(context, en: 'Public business name *', am: 'የንግድ ሕዝባዊ ስም *', mdy: ''),
+          prefixIcon: const Icon(Icons.storefront_outlined))),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: _businessType,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Business type *', am: 'የንግድ ዓይነት *', mdy: '')),
+          items: [
+            ('individual', 'Individual seller', 'ግለሰብ ሻጭ'),
+            ('shop', 'Shop', 'ሱቅ'),
+            ('producer', 'Producer / farmer', 'አምራች / አርሶ አደር'),
+            ('service_provider', 'Service provider', 'አገልግሎት ሰጪ'),
+            ('cooperative', 'Cooperative', 'ህብረት ሥራ ማህበር'),
+            ('company', 'Company', 'ኩባንያ'),
+            ('trader', 'Trader', 'ነጋዴ'),
+            ('other', 'Other', 'ሌላ'),
+          ].map((item) => DropdownMenuItem(value: item.$1,
+            child: Text(Localizations.localeOf(context).languageCode == 'am' ? item.$3 : item.$2))).toList(),
+          onChanged: _busy ? null : (value) { if (value != null) setState(() => _businessType = value); },
+        ),
+        const SizedBox(height: 10),
+        TextField(controller: _legalName, decoration: InputDecoration(
+          labelText: marketString(context, en: 'Legal name (optional)', am: 'ሕጋዊ ስም (አማራጭ)', mdy: ''))),
+        const SizedBox(height: 10),
+        TextField(controller: _registrationNumber, decoration: InputDecoration(
+          labelText: marketString(context, en: 'Business registration number (optional)', am: 'የንግድ ምዝገባ ቁጥር (አማራጭ)', mdy: ''))),
+        const SizedBox(height: 10),
+        TextField(controller: _description, maxLines: 4, maxLength: 2000,
+          decoration: InputDecoration(labelText: marketString(context,
+            en: 'About your business', am: 'ስለ ንግድዎ', mdy: ''))),
+        _sectionTitle(marketString(context, en: 'Category and operating area', am: 'ምድብ እና የሚሰሩበት አካባቢ', mdy: '')),
+        DropdownButtonFormField<String>(
+          value: _categoryId,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Main business category *', am: 'ዋና የንግድ ምድብ *', mdy: '')),
+          items: _categories.map((item) => DropdownMenuItem<String>(
+            value: item['id'] as String, child: Text(item['name']?.toString() ?? ''))).toList(),
+          onChanged: _busy ? null : (value) => setState(() => _categoryId = value),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: _locationId,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Operating town / locality *', am: 'የሚሰሩበት ከተማ / አካባቢ *', mdy: '')),
+          items: _locations.map((item) => DropdownMenuItem<String>(
+            value: item['id'] as String, child: Text(item['name']?.toString() ?? ''))).toList(),
+          onChanged: _busy ? null : (value) {
+            final selected = _locations.where((item) => item['id'] == value).firstOrNull;
+            setState(() {
+              _locationId = value;
+              if (selected != null) _locationLabel.text = selected['name']?.toString() ?? '';
+            });
+          },
+        ),
+        const SizedBox(height: 10),
+        TextField(controller: _locationLabel, decoration: InputDecoration(
+          labelText: marketString(context, en: 'Locality display label *', am: 'የአካባቢ ማሳያ ስም *', mdy: ''))),
+        const SizedBox(height: 10),
+        TextField(controller: _serviceAreas, decoration: InputDecoration(
+          labelText: marketString(context, en: 'Other service areas (comma separated)', am: 'ተጨማሪ የአገልግሎት አካባቢዎች (በኮማ ይለዩ)', mdy: ''))),
+        const SizedBox(height: 10),
+        TextField(controller: _hours, decoration: InputDecoration(
+          labelText: marketString(context, en: 'Opening days / hours (optional)', am: 'የሥራ ቀናት / ሰዓታት (አማራጭ)', mdy: ''),
+          hintText: 'Mon–Sat, 08:00–18:00')),
+        _sectionTitle(marketString(context, en: 'Contact and privacy', am: 'የመገናኛ መረጃ እና ግላዊነት', mdy: '')),
+        TextField(controller: _phone, keyboardType: TextInputType.phone,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Business contact phone (private by default)', am: 'የንግድ ስልክ (በነባሪ ለሕዝብ አይታይም)', mdy: ''))),
+        CheckboxListTile(contentPadding: EdgeInsets.zero, value: _publishPhone,
+          onChanged: _busy ? null : (value) => setState(() => _publishPhone = value ?? false),
+          title: Text(marketString(context, en: 'Publish this phone number on my business profile',
+            am: 'ይህን ስልክ ቁጥር በንግድ መገለጫዬ ላይ አሳይ', mdy: ''))),
+        TextField(controller: _email, keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Business email (optional)', am: 'የንግድ ኢሜይል (አማራጭ)', mdy: ''))),
+        CheckboxListTile(contentPadding: EdgeInsets.zero, value: _publishEmail,
+          onChanged: _busy ? null : (value) => setState(() => _publishEmail = value ?? false),
+          title: Text(marketString(context, en: 'Publish this email on my business profile',
+            am: 'ይህን ኢሜይል በንግድ መገለጫዬ ላይ አሳይ', mdy: ''))),
+        DropdownButtonFormField<String>(
+          value: _contactMethod,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Preferred public contact method', am: 'የሕዝብ መገናኛ ዘዴ', mdy: '')),
+          items: [
+            DropdownMenuItem<String>(value: null, child: Text(marketString(context, en: 'Not selected', am: 'አልተመረጠም', mdy: ''))),
+            DropdownMenuItem(value: 'phone', child: Text(marketString(context, en: 'Phone call', am: 'በስልክ ጥሪ', mdy: ''))),
+            DropdownMenuItem(value: 'sms', child: Text('SMS')),
+            DropdownMenuItem(value: 'email', child: Text('Email')),
+          ],
+          onChanged: _busy ? null : (value) => setState(() => _contactMethod = value),
+        ),
+        _sectionTitle(marketString(context, en: 'Languages', am: 'ቋንቋዎች', mdy: '')),
+        CheckboxListTile(contentPadding: EdgeInsets.zero, value: _languages.contains('am'),
+          onChanged: _busy ? null : (value) => setState(() {
+            if (value == true) { _languages.add('am'); } else { _languages.remove('am'); }
+          }), title: const Text('አማርኛ')),
+        CheckboxListTile(contentPadding: EdgeInsets.zero, value: _languages.contains('en'),
+          onChanged: _busy ? null : (value) => setState(() {
+            if (value == true) { _languages.add('en'); } else { _languages.remove('en'); }
+          }), title: const Text('English')),
+        _sectionTitle(marketString(context, en: 'Public map location', am: 'የሕዝብ የካርታ አካባቢ', mdy: '')),
+        DropdownButtonFormField<String>(
+          value: _locationVisibility,
+          decoration: InputDecoration(labelText: marketString(context, en: 'Location visibility', am: 'የአካባቢ ታይነት', mdy: '')),
+          items: [
+            DropdownMenuItem(value: 'hidden', child: Text(marketString(context, en: 'Hidden', am: 'የተደበቀ', mdy: ''))),
+            DropdownMenuItem(value: 'approximate', child: Text(marketString(context, en: 'Approximate locality only', am: 'ግምታዊ አካባቢ ብቻ', mdy: ''))),
+            DropdownMenuItem(value: 'exact', child: Text(marketString(context, en: 'Exact pin (consent required)', am: 'ትክክለኛ ነጥብ (ፈቃድ ያስፈልጋል)', mdy: ''))),
+          ],
+          onChanged: _busy ? null : (value) => setState(() {
+            _locationVisibility = value ?? 'hidden';
+            if (_locationVisibility != 'exact') {
+              _latitude.clear(); _longitude.clear(); _confirmExactLocation = false;
+            }
+          }),
+        ),
+        if (_locationVisibility == 'exact') ...[
+          const SizedBox(height: 10),
+          TextField(controller: _latitude, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            decoration: const InputDecoration(labelText: 'Latitude')),
+          const SizedBox(height: 8),
+          TextField(controller: _longitude, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            decoration: const InputDecoration(labelText: 'Longitude')),
+          CheckboxListTile(contentPadding: EdgeInsets.zero, value: _confirmExactLocation,
+            onChanged: _busy ? null : (value) => setState(() => _confirmExactLocation = value ?? false),
+            title: Text(marketString(context, en: 'I explicitly consent to publishing this exact business location.',
+              am: 'ይህን ትክክለኛ የንግድ አካባቢ ለሕዝብ ለማሳየት በግልጽ ፈቃደኛ ነኝ።', mdy: ''))),
+        ],
+        if (_error != null) Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ),
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          onPressed: _busy ? null : _save,
+          icon: _busy ? const SizedBox(width: 18, height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined),
+          label: Text(_busy
+            ? marketString(context, en: 'Saving…', am: 'በማስቀመጥ ላይ…', mdy: '')
+            : marketString(context, en: _editing ? 'Save business profile' : 'Submit business profile',
+              am: _editing ? 'የንግድ መገለጫውን አስቀምጥ' : 'የንግድ መገለጫውን አስገባ', mdy: '')),
+        ),
+      ]),
   );
 }
-
-
