@@ -146,6 +146,10 @@ void main() {
     expect(koybeEntry, findsOneWidget);
     await tester.tap(koybeEntry);
     await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+    });
+    await tester.pumpAndSettle();
     expect(find.text('ቆይቤ ዋና መንገድ'), findsOneWidget);
     expect(find.text('የአካባቢ ካርታ'), findsOneWidget);
     expect(find.text('6.0, 36.5'), findsOneWidget);

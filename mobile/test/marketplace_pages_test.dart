@@ -163,8 +163,9 @@ void main() {
     tester.testTextInput.hide();
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 25));
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     });
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
     final localityDropdown = find.descendant(
       of: find.byKey(const Key('buyer-preferred-location')),

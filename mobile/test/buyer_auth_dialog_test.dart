@@ -56,10 +56,12 @@ void main() {
     await tester.tap(find.byKey(const Key('buyer-registration-toggle')));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 25));
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     });
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.byKey(const Key('buyer-account-type')), findsOneWidget);
     expect(find.byKey(const Key('buyer-preferred-location')), findsOneWidget);
     expect(find.text('የሚመርጡት አካባቢ (አስፈላጊ)'), findsOneWidget);

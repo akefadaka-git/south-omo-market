@@ -243,7 +243,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
             value: row['id'] as String,
             child: Text((Localizations.localeOf(context).languageCode == 'am' ? (row['name_am'] ?? 'የአማርኛ ስም ይጠበቃል') : (row['name_en'] ?? '')) as String, overflow: TextOverflow.ellipsis),
           )).toList(),
-          onChanged: _loadingOptions ? null : (value) => setState(() {
+          onChanged: (value) => setState(() {
             _preferredLocationId = value;
             _preferredMarketId = null;
           }),
