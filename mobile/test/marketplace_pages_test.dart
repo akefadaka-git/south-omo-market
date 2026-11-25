@@ -112,6 +112,10 @@ void main() {
   });
 
   testWidgets('buyer can register and send listing inquiry', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     var registered = false;
     var sent = false;
     var authHeaderPresent = false;
