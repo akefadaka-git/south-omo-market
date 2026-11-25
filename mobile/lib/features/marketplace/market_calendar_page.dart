@@ -176,7 +176,7 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
                       final weekday = day['weekday'] as int;
                       final markets = (day['markets'] as List<dynamic>? ?? const [])
                           .cast<Map<String, dynamic>>()
-                          .where((market) => (market['name'] as String? ?? '').toLowerCase().contains(_search))
+                          .where((market) => (market['name'] as String? ?? (Localizations.localeOf(context).languageCode == 'am' ? 'የአማርኛ ስም ይጠበቃል' : 'Market name unavailable')).toLowerCase().contains(_search))
                           .toList();
                       return Card(
                         child: Padding(
@@ -201,7 +201,7 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
                                   spacing: 8,
                                   runSpacing: 6,
                                   children: markets.map((market) => ActionChip(
-                                    label: Text(market['name'] as String? ?? ''),
+                                    label: Text((market['name'] as String?) ?? (Localizations.localeOf(context).languageCode == 'am' ? 'የአማርኛ ስም ይጠበቃል' : 'Market name unavailable')),
                                     avatar: const Icon(Icons.storefront_outlined, size: 18),
                                     onPressed: () {
                                       final marketId = market['id'] as String?;
@@ -290,7 +290,7 @@ class _MarketDetailPageState extends State<MarketDetailPage> {
   @override
   Widget build(BuildContext context) {
     final language = Localizations.localeOf(context).languageCode;
-    final name = (_market['name'] ?? (language == 'am' ? _market['name_am'] : _market['name_en']) ?? '').toString();
+    final name = (_market['name'] ?? (language == 'am' ? _market['name_am'] : _market['name_en']) ?? (language == 'am' ? 'የአማርኛ ስም ይጠበቃል' : 'Market name unavailable')).toString();
     final location = _market['location'] is Map<String, dynamic>
         ? _market['location'] as Map<String, dynamic>
         : <String, dynamic>{};
