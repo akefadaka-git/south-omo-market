@@ -193,7 +193,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     title: Row(children: [
       const MarketBrandMark(size: 34),
       const SizedBox(width: 10),
-      Expanded(child: Text(_register ? _registrationTitle(context) : marketString(context, en: 'Sign in', am: 'መግቢያ', mdy: ''))),
+      Expanded(child: Text(_register ? _registrationTitle(context) : marketString(context, en: 'Buyer sign in', am: 'የገዢ መግቢያ', mdy: ''))),
     ]),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text(_register
