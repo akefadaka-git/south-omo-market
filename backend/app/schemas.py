@@ -31,6 +31,7 @@ class UserResponse(BaseModel):
     id: str
     phone_number: str
     display_name: str
+    # Registration intent only; authorization is assigned through governed roles.
     account_type: str = "buyer"
 
 class TokenResponse(BaseModel):
