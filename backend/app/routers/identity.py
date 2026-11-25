@@ -43,6 +43,7 @@ def register(request: Request, response: Response, payload: RegisterRequest, db:
     if db.scalar(select(User).where(User.phone_number == phone_number)):
         raise HTTPException(status_code=409, detail="Phone number is already registered")
     user = User(phone_number=phone_number, display_name=payload.display_name,
+                account_type=payload.account_type,
                 password_hash=hash_password(payload.password))
     profile = CustomerProfile(
         user=user,
