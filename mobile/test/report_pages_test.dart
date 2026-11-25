@@ -19,7 +19,7 @@ void main() {
       if (request.url.path.endsWith('/locations')) {
         return http.Response(jsonEncode([
           {'id': 'town-koybe', 'level': 'town', 'name': 'Koybe', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
-        ]), 200, encoding: utf8);
+        ]), 200, headers: {'content-type': 'application/json; charset=utf-8'});
       }
       if (request.url.path.endsWith('/markets')) {
         return http.Response('[]', 200);

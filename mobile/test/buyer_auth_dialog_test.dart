@@ -16,12 +16,12 @@ void main() {
       if (request.url.path.endsWith('/locations')) {
         return http.Response(jsonEncode([
           {'id': 'town-koybe', 'level': 'town', 'name': 'ቆይቤ', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
-        ]), 200, encoding: utf8);
+        ]), 200, headers: {'content-type': 'application/json; charset=utf-8'});
       }
       if (request.url.path.endsWith('/markets')) {
         return http.Response(jsonEncode([
           {'id': 'market-koybe', 'location_id': 'town-koybe', 'name': 'ቆይቤ ገበያ', 'name_en': 'Koybe market', 'name_am': 'ቆይቤ ገበያ'},
-        ]), 200, encoding: utf8);
+        ]), 200, headers: {'content-type': 'application/json; charset=utf-8'});
       }
       if (request.url.path.endsWith('/auth/register')) {
         registrationBody = jsonDecode(request.body) as Map<String, dynamic>;
