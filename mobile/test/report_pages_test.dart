@@ -18,7 +18,7 @@ void main() {
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/locations')) {
         return http.Response(jsonEncode([
-          {'id': 'town-koybe', 'level': 'town', 'name': 'Koybe', 'name_en': 'Koybe', 'name_am': 'ቆይቤ', 'name_am': 'ቆይቤ'},
+          {'id': 'town-koybe', 'level': 'town', 'name': 'Koybe', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
         ]), 200);
       }
       if (request.url.path.endsWith('/markets')) {
