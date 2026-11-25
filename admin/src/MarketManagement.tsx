@@ -31,6 +31,11 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [name, setName] = useState('');
   const [nameAm, setNameAm] = useState('');
   const [description, setDescription] = useState('');
+  const [descriptionAm, setDescriptionAm] = useState('');
+  const [addressEn, setAddressEn] = useState('');
+  const [addressAm, setAddressAm] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [search, setSearch] = useState('');
   const [weekdayFilter, setWeekdayFilter] = useState('all');
   const [auditEvents, setAuditEvents] = useState<Array<{id: string; action: string; resource_id: string; created_at: string; metadata: Record<string, unknown>}>>([]);
@@ -79,13 +84,13 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
       const response = await fetch(`${API_BASE}/admin/markets`, {
         method: 'POST',
         headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim(), name_am: nameAm.trim(), description: description.trim() || null, location_id: locationId || null }),
+        body: JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim(), name_am: nameAm.trim(), description: description.trim() || null, description_am: descriptionAm.trim() || null, address_en: addressEn.trim() || null, address_am: addressAm.trim() || null, latitude: latitude.trim() ? Number(latitude) : null, longitude: longitude.trim() ? Number(longitude) : null, location_id: locationId || null }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { detail?: string };
         throw new Error(body.detail ?? 'Could not create market.');
       }
-      setCode(''); setName(''); setNameAm(''); setDescription(''); setLocationId('');
+      setCode(''); setName(''); setNameAm(''); setDescription(''); setDescriptionAm(''); setAddressEn(''); setAddressAm(''); setLatitude(''); setLongitude(''); setLocationId('');
       await load();
       setMessage('Market created. Configure its weekly days below.');
     } catch (reason) {
@@ -169,7 +174,12 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
         <label>Market code<input required minLength={2} maxLength={40} pattern="[A-Za-z0-9-]+" value={code} onChange={(event) => setCode(event.target.value)} /></label>
         <label>Market name (English)<input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
         <label>Market name (Amharic)<input required maxLength={120} value={nameAm} onChange={(event) => setNameAm(event.target.value)} /></label>
-        <label>Description (optional)<textarea maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+        <label>Description (English)<textarea maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+        <label>Description (Amharic)<textarea maxLength={2000} value={descriptionAm} onChange={(event) => setDescriptionAm(event.target.value)} /></label>
+        <label>Address (English)<input maxLength={500} value={addressEn} onChange={(event) => setAddressEn(event.target.value)} /></label>
+        <label>Address (Amharic)<input maxLength={500} value={addressAm} onChange={(event) => setAddressAm(event.target.value)} /></label>
+        <label>Latitude<input type="number" min="-90" max="90" step="any" value={latitude} onChange={(event) => setLatitude(event.target.value)} /></label>
+        <label>Longitude<input type="number" min="-180" max="180" step="any" value={longitude} onChange={(event) => setLongitude(event.target.value)} /></label>
         <label>Verified location (optional)
           <select value={locationId} onChange={(event) => setLocationId(event.target.value)}>
             <option value="">Not assigned</option>
