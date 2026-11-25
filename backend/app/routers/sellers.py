@@ -102,7 +102,7 @@ def _validate_business_fields(
             raise HTTPException(status_code=422, detail="Choose an active town or locality")
     if len(service_area) > 20 or any(not isinstance(item, str) or not item.strip() or len(item.strip()) > 120 for item in service_area):
         raise HTTPException(status_code=422, detail="Service areas must be up to 20 non-empty locality names")
-    if not supported_languages or len(supported_languages) > 2 or not set(supported_languages).issubset({"am", "en"}):
+    if not supported_languages or len(supported_languages) > 2 or len(set(supported_languages)) != len(supported_languages) or not set(supported_languages).issubset({"am", "en"}):
         raise HTTPException(status_code=422, detail="Supported languages must include Amharic and/or English only")
     if public_contact_method is not None and public_contact_method not in CONTACT_METHODS:
         raise HTTPException(status_code=422, detail="Unsupported public contact method")
@@ -297,6 +297,10 @@ def update_my_seller_profile(
     changes = payload.model_dump(exclude_unset=True)
     if any(changes.get(key, object()) is None for key in ("public_name", "location_label", "business_type", "public_location_visibility") if key in changes):
         raise HTTPException(status_code=422, detail="Required seller profile fields cannot be null")
+    if ("public_name" in changes and len(changes["public_name"].strip()) < 2) or (
+        "location_label" in changes and len(changes["location_label"].strip()) < 2
+    ):
+        raise HTTPException(status_code=422, detail="Public business name and operating locality are required")
     if "contact_email" in changes and changes["contact_email"] and "@" not in changes["contact_email"]:
         raise HTTPException(status_code=422, detail="Contact email is invalid")
 
