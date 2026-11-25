@@ -1128,7 +1128,7 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
     created = {}
     for code, name, days in owner_schedule:
         response = client.post("/api/v1/admin/markets", headers=admin_headers, json={
-            "code": code, "name": name, "location_id": None,
+            "code": code, "name": name, "name_am": f"ሙከራ {name}", "location_id": None,
         })
         assert response.status_code == 201, response.text
         created[name] = response.json()["id"]
@@ -1153,7 +1153,7 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
     )
     assert invalid_day.status_code == 422
     invalid_location = client.post("/api/v1/admin/markets", headers=admin_headers, json={
-        "code": "INVALID-LOCATION", "name": "Synthetic market",
+        "code": "INVALID-LOCATION", "name": "Synthetic market", "name_am": "ሰው ሠራሽ ገበያ",
         "location_id": "missing-location",
     })
     assert invalid_location.status_code == 422
@@ -1235,6 +1235,7 @@ def test_market_search_effective_schedule_and_admin_audit() -> None:
     created = client.post("/api/v1/admin/markets", headers=headers, json={
         "code": "SYNTHETIC-MARKET",
         "name": "Synthetic Test Market",
+        "name_am": "ሰው ሠራሽ የሙከራ ገበያ",
         "description": "Synthetic searchable description",
     })
     assert created.status_code == 201
