@@ -19,14 +19,20 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 class MarketCreate(BaseModel):
     code: str = Field(min_length=2, max_length=40, pattern=r"^[A-Z0-9-]+$")
     name: str = Field(min_length=1, max_length=120)
+    name_am: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
+    description_am: str | None = Field(default=None, max_length=2000)
+    address_en: str | None = Field(default=None, max_length=500)
+    address_am: str | None = Field(default=None, max_length=500)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     location_id: str | None = None
 
-    @field_validator("name")
+    @field_validator("name", "name_am")
     @classmethod
     def nonblank_name(cls, value: str) -> str:
         if not value.strip():
-            raise ValueError("Market name cannot be blank")
+            raise ValueError("Both English and Amharic market names are required")
         return value.strip()
 
 
@@ -97,8 +103,16 @@ def _serialize_market(market: Market, db: Session, lang: str = "en", admin_view:
             "name_mdy": location.name_mdy,
         }
     return {
-        "id": market.id, "code": market.code, "name": market.name,
-        "description": market.description,
+        "id": market.id, "code": market.code,
+        "name": (market.name_am if lang == "am" else (market.name_en or market.name)) or market.name,
+        "name_en": market.name_en or market.name, "name_am": market.name_am,
+        "translation_complete": bool(market.name_am and (market.name_en or market.name)),
+        "description": (market.description_am if lang == "am" else (market.description_en or market.description)),
+        "description_en": market.description_en or market.description,
+        "description_am": market.description_am,
+        "address": market.address_am if lang == "am" else market.address_en,
+        "address_en": market.address_en, "address_am": market.address_am,
+        "latitude": market.latitude, "longitude": market.longitude,
         "location_id": market.location_id, "location": location_payload,
         "is_active": market.is_active,
         "schedule_days": sorted(day.weekday for day in market.schedule_days if (day.is_active if admin_view else _schedule_day_is_effective(day))),
@@ -198,7 +212,7 @@ def create_market(
     _validate_location(db, payload.location_id)
     if db.scalar(select(Market.id).where(Market.code == payload.code)) is not None:
         raise HTTPException(status_code=409, detail="Market code already exists")
-    market = Market(code=payload.code, name=payload.name.strip(), description=payload.description, location_id=payload.location_id)
+    market = Market(code=payload.code, name=payload.name.strip(), name_en=payload.name.strip(), name_am=payload.name_am, description=payload.description, description_en=payload.description, description_am=payload.description_am, address_en=payload.address_en, address_am=payload.address_am, latitude=payload.latitude, longitude=payload.longitude, location_id=payload.location_id)
     db.add(market)
     db.flush()
     db.add(AuditEvent(
