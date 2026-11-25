@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.core.database import get_db
+from app.dependencies import get_current_user
 from app.models import CustomerProfile, Location, Market, User
 from app.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.security import hash_password, issue_access_token, verify_password
@@ -68,3 +69,16 @@ def login(request: Request, response: Response, payload: LoginRequest, db: Sessi
     if user is None or not user.is_active or user.is_suspended or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return TokenResponse(access_token=issue_access_token(user.id, user.auth_version))
+
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Revoke every outstanding access token for this account."""
+    user.auth_version += 1
+    db.add(user)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
