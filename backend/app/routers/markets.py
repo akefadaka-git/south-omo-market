@@ -38,7 +38,13 @@ class MarketCreate(BaseModel):
 
 class MarketUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
+    name_am: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
+    description_am: str | None = Field(default=None, max_length=2000)
+    address_en: str | None = Field(default=None, max_length=500)
+    address_am: str | None = Field(default=None, max_length=500)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     location_id: str | None = None
 
     @field_validator("name")
@@ -234,10 +240,23 @@ def update_market(
     changes = payload.model_dump(exclude_unset=True)
     if "location_id" in changes:
         _validate_location(db, changes["location_id"])
-    before = {"name": market.name, "description": market.description, "location_id": market.location_id}
+    next_en = changes.get("name", market.name_en or market.name)
+    next_am = changes.get("name_am", market.name_am)
+    if ("name" in changes or "name_am" in changes) and (not next_en or not next_am):
+        raise HTTPException(status_code=422, detail="Both English and Amharic market names are required")
+    next_address_en = changes.get("address_en", market.address_en)
+    next_address_am = changes.get("address_am", market.address_am)
+    if (next_address_en or next_address_am) and not (next_address_en and next_address_am):
+        raise HTTPException(status_code=422, detail="Market addresses must be supplied in both English and Amharic")
+    next_latitude = changes.get("latitude", market.latitude)
+    next_longitude = changes.get("longitude", market.longitude)
+    if (next_latitude is None) != (next_longitude is None):
+        raise HTTPException(status_code=422, detail="Latitude and longitude must be supplied together")
+    before = {"name_en": market.name_en or market.name, "name_am": market.name_am, "address_en": market.address_en, "address_am": market.address_am, "location_id": market.location_id}
     for key, value in changes.items():
         if key == "name" and value is not None:
             value = value.strip()
+            market.name_en = value
         setattr(market, key, value)
     if changes:
         db.add(AuditEvent(
