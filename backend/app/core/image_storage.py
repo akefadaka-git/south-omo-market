@@ -11,6 +11,9 @@ from app.core.config import get_settings
 
 class ListingImageStorage(Protocol):
     def save_jpeg(self, listing_id: str, data: bytes) -> str: ...
+    def save_customer_jpeg(self, user_id: str, data: bytes) -> str: ...
+    def read_customer_jpeg(self, key: str, user_id: str) -> bytes: ...
+    def delete_customer_jpeg(self, key: str, user_id: str) -> None: ...
     def read(self, key: str) -> bytes: ...
     def delete(self, key: str) -> None: ...
 
@@ -37,6 +40,33 @@ class LocalImageStorage:
         finally:
             temporary.unlink(missing_ok=True)
         return key
+
+    def save_customer_jpeg(self, user_id: str, data: bytes) -> str:
+        key = f"customer-profiles/{user_id}/{uuid4().hex}.jpg"
+        destination = self._resolve(key)
+        self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.root.chmod(0o700)
+        destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        destination.parent.chmod(0o700)
+        temporary = destination.with_suffix(".tmp")
+        try:
+            with temporary.open("xb") as output:
+                output.write(data)
+            temporary.chmod(0o600)
+            temporary.replace(destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return key
+
+    def read_customer_jpeg(self, key: str, user_id: str) -> bytes:
+        if not key.startswith(f"customer-profiles/{user_id}/") or ".." in Path(key).parts:
+            raise ValueError("Invalid customer photo key")
+        return self.read(key)
+
+    def delete_customer_jpeg(self, key: str, user_id: str) -> None:
+        if not key.startswith(f"customer-profiles/{user_id}/") or ".." in Path(key).parts:
+            raise ValueError("Invalid customer photo key")
+        self.delete(key)
 
     def read(self, key: str) -> bytes:
         path = self._resolve(key)
@@ -93,6 +123,26 @@ class S3ImageStorage:
         )
         return key
 
+    def save_customer_jpeg(self, user_id: str, data: bytes) -> str:
+        key = f"customer-profiles/{user_id}/{uuid4().hex}.jpg"
+        self.client.put_object(Bucket=self.bucket, Key=key, Body=data,
+                               ContentType="image/jpeg", Metadata={"user-id": user_id})
+        return key
+
+    def read_customer_jpeg(self, key: str, user_id: str) -> bytes:
+        self._validate_customer_key(key, user_id)
+        return self.read(key)
+
+    def delete_customer_jpeg(self, key: str, user_id: str) -> None:
+        self._validate_customer_key(key, user_id)
+        self.delete(key)
+
+    @staticmethod
+    def _validate_customer_key(key: str, user_id: str) -> None:
+        path = Path(key)
+        if path.is_absolute() or ".." in path.parts or not key.startswith(f"customer-profiles/{user_id}/"):
+            raise ValueError("Invalid customer photo key")
+
     def read(self, key: str) -> bytes:
         self._validate_key(key)
         try:
@@ -111,7 +161,7 @@ class S3ImageStorage:
     @staticmethod
     def _validate_key(key: str) -> None:
         path = Path(key)
-        if path.is_absolute() or ".." in path.parts or not key.startswith("listings/"):
+        if path.is_absolute() or ".." in path.parts or not key.startswith(("listings/", "customer-profiles/")):
             raise ValueError("Invalid storage key")
 
 
