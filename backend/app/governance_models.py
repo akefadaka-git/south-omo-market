@@ -53,6 +53,28 @@ class UserPermission(Base):
 
 class BusinessProfile(Base):
     __tablename__ = "business_profiles"
+    __table_args__ = (
+        CheckConstraint(
+            "public_contact_method IS NULL OR public_contact_method IN ('phone','sms','email')",
+            name="ck_business_public_contact_method",
+        ),
+        CheckConstraint(
+            "public_location_visibility IN ('hidden','approximate','exact')",
+            name="ck_business_public_location_visibility",
+        ),
+        CheckConstraint(
+            "(latitude IS NULL AND longitude IS NULL) OR (latitude IS NOT NULL AND longitude IS NOT NULL)",
+            name="ck_business_public_coordinates_pair",
+        ),
+        CheckConstraint(
+            "(latitude IS NULL OR latitude BETWEEN -90 AND 90) AND (longitude IS NULL OR longitude BETWEEN -180 AND 180)",
+            name="ck_business_public_coordinates_range",
+        ),
+        CheckConstraint(
+            "public_location_visibility != 'exact' OR (latitude IS NOT NULL AND longitude IS NOT NULL AND location_consent_at IS NOT NULL)",
+            name="ck_business_exact_location_consent",
+        ),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     business_code: Mapped[str] = mapped_column(String(80), unique=True)
     legal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -65,15 +87,15 @@ class BusinessProfile(Base):
     contact_email: Mapped[str | None] = mapped_column(String(254))
     contact_phone: Mapped[str | None] = mapped_column(String(32))
     description: Mapped[str | None] = mapped_column(Text)
-    primary_category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"))
-    operating_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id", ondelete="SET NULL"))
+    primary_category_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), index=True)
+    operating_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id", ondelete="SET NULL"), index=True)
     service_area: Mapped[list] = mapped_column(JSON, default=list)
     operating_hours: Mapped[dict] = mapped_column(JSON, default=dict)
     supported_languages: Mapped[list] = mapped_column(JSON, default=lambda: ["am", "en"])
     public_contact_phone: Mapped[str | None] = mapped_column(String(32))
     public_contact_email: Mapped[str | None] = mapped_column(String(254))
     public_contact_method: Mapped[str | None] = mapped_column(String(16))
-    public_location_visibility: Mapped[str] = mapped_column(String(16), default="hidden")
+    public_location_visibility: Mapped[str] = mapped_column(String(16), default="hidden", server_default="hidden")
     latitude: Mapped[float | None] = mapped_column(Float)
     longitude: Mapped[float | None] = mapped_column(Float)
     location_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
