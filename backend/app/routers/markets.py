@@ -3,7 +3,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -43,13 +43,13 @@ class MarketCreate(BaseModel):
             raise ValueError("Market addresses must be supplied in both English and Amharic")
         return value.strip() if value else value
 
-    @field_validator("longitude")
-    @classmethod
-    def coordinate_pair(cls, value: float | None, info):
-        latitude = info.data.get("latitude")
-        if (latitude is None) != (value is None):
+    @model_validator(mode="after")
+    def validate_address_and_coordinates(self):
+        if (self.address_en or self.address_am) and not (self.address_en and self.address_am):
+            raise ValueError("Market addresses must be supplied in both English and Amharic")
+        if (self.latitude is None) != (self.longitude is None):
             raise ValueError("Latitude and longitude must be supplied together")
-        return value
+        return self
 
 
 class MarketUpdate(BaseModel):
