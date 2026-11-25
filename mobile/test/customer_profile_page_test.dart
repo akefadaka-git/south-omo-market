@@ -77,8 +77,6 @@ void main() {
     expect(find.text('Profile updated successfully.'), findsOneWidget);
     client.close();
   });
-}
-
 
   testWidgets('customer sign out revokes the server session and returns to prior page', (tester) async {
     var logoutCalled = false;
@@ -127,3 +125,4 @@ void main() {
     expect(find.text('Open profile'), findsOneWidget);
     client.close();
   });
+}
