@@ -1089,7 +1089,7 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
     from app.admin_cli import set_admin_role
     from app.models import AuditEvent, Market, MarketScheduleDay
 
-    admin_phone = "+251900000811"
+    admin_phone = "+251911111811"
     registered = client.post("/api/v1/auth/register", json={
         "phone_number": admin_phone,
         "display_name": "Synthetic Market Admin",
@@ -1104,7 +1104,7 @@ def test_maale_market_directory_schedule_admin_and_public_calendar() -> None:
     }).json()["access_token"]
     admin_headers = {"Authorization": f"Bearer {token}"}
 
-    buyer_phone = "+251900000812"
+    buyer_phone = "+251911111812"
     assert client.post("/api/v1/auth/register", json={
         "phone_number": buyer_phone, "display_name": "Synthetic Buyer",
         "password": "synthetic-market-buyer-812",
@@ -1606,13 +1606,13 @@ def test_customer_profile_photo_upload_read_replace_delete_and_isolation(tmp_pat
     app.dependency_overrides[get_image_storage] = lambda: storage
     try:
         registered = client.post("/api/v1/auth/register", json={
-            "phone_number": "+251900000811",
+            "phone_number": "+251911111811",
             "display_name": "Photo Buyer",
             "password": "synthetic-photo-password",
         })
         assert registered.status_code == 201
         token = client.post("/api/v1/auth/login", json={
-            "phone_number": "+251900000811",
+            "phone_number": "+251911111811",
             "password": "synthetic-photo-password",
         }).json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -1645,13 +1645,13 @@ def test_customer_profile_photo_upload_read_replace_delete_and_isolation(tmp_pat
         assert client.get("/api/v1/customers/me/photo", headers=headers).status_code == 200
 
         other = client.post("/api/v1/auth/register", json={
-            "phone_number": "+251900000812",
+            "phone_number": "+251911111812",
             "display_name": "Other Buyer",
             "password": "synthetic-photo-password",
         })
         assert other.status_code == 201
         other_token = client.post("/api/v1/auth/login", json={
-            "phone_number": "+251900000812",
+            "phone_number": "+251911111812",
             "password": "synthetic-photo-password",
         }).json()["access_token"]
         other_headers = {"Authorization": f"Bearer {other_token}"}

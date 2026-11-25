@@ -125,10 +125,8 @@ void main() {
     expect(find.text('Open profile'), findsOneWidget);
     client.close();
   });
-}
 
-
-  testWidgets('customer can remove a private profile photo', (tester) async {
+o', (tester) async {
     var deleteCalled = false;
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/customers/me') && request.method == 'GET') {
@@ -160,3 +158,4 @@ void main() {
     expect(find.byKey(const Key('customer-profile-photo-remove')), findsNothing);
     client.close();
   });
+}
