@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer,
+    BigInteger, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer,
     JSON, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -55,7 +55,7 @@ class BusinessProfile(Base):
     __tablename__ = "business_profiles"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     business_code: Mapped[str] = mapped_column(String(80), unique=True)
-    legal_name: Mapped[str] = mapped_column(String(200))
+    legal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     display_name: Mapped[str] = mapped_column(String(200))
     business_type: Mapped[str] = mapped_column(String(60))
     verification_status: Mapped[str] = mapped_column(String(24), default="pending")
@@ -74,8 +74,8 @@ class BusinessProfile(Base):
     public_contact_email: Mapped[str | None] = mapped_column(String(254))
     public_contact_method: Mapped[str | None] = mapped_column(String(16))
     public_location_visibility: Mapped[str] = mapped_column(String(16), default="hidden")
-    latitude: Mapped[float | None] = mapped_column()
-    longitude: Mapped[float | None] = mapped_column()
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
     location_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     verification_evidence: Mapped[list] = mapped_column(JSON, default=list)
     verification_notes: Mapped[str | None] = mapped_column(Text)
