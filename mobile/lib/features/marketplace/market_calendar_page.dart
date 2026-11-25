@@ -309,7 +309,7 @@ class _MarketDetailPageState extends State<MarketDetailPage> {
                 const SizedBox(height: 16),
                 _detailRow(context, Icons.location_on_outlined,
                   marketString(context, en: 'Town / locality', am: 'ከተማ / አካባቢ', mdy: ''),
-                  (location['name'] ?? location['name_en'] ?? '').toString()),
+                  (language == 'am' ? (location['name_am'] ?? 'የአማርኛ ስም ይጠበቃል') : (location['name_en'] ?? '')).toString()),
                 _detailRow(context, Icons.place_outlined,
                   marketString(context, en: 'Address', am: 'አድራሻ', mdy: ''),
                   address ?? marketString(context, en: 'Address not yet verified', am: 'አድራሻው ገና አልተረጋገጠም', mdy: '')),
