@@ -1437,3 +1437,24 @@ def test_customer_registration_rejects_duplicate_normalized_phone_and_invalid_lo
     db = TestingSession()
     assert db.query(User).filter_by(phone_number="+251900000804").count() == 0
     db.close()
+
+
+def test_logout_revokes_existing_access_token() -> None:
+    phone = f"+2519{uuid4().int % 10**8:08d}"
+    registered = client.post("/api/v1/auth/register", json={
+        "phone_number": phone,
+        "display_name": "Synthetic Logout Account",
+        "password": "synthetic-logout-password",
+    })
+    assert registered.status_code == 201
+    token_response = client.post("/api/v1/auth/login", json={
+        "phone_number": phone,
+        "password": "synthetic-logout-password",
+    })
+    assert token_response.status_code == 200
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+    assert client.get("/api/v1/customers/me", headers=headers).status_code == 200
+
+    logged_out = client.post("/api/v1/auth/logout", headers=headers)
+    assert logged_out.status_code == 204
+    assert client.get("/api/v1/customers/me", headers=headers).status_code == 401
