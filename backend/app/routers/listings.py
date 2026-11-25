@@ -571,6 +571,12 @@ def get_public_listing_image(
         .where(
             BusinessProfile.is_active.is_(True),
             BusinessProfile.verification_status == "verified",
+            exists(select(BusinessMembership.id).where(
+                BusinessMembership.business_id == BusinessProfile.id,
+                BusinessMembership.status == "active",
+                BusinessMembership.membership_role.in_(("owner", "administrator", "manager", "staff")),
+                (BusinessMembership.expires_at.is_(None) | (BusinessMembership.expires_at > func.now())),
+            )),
             ListingImage.id == image_id,
             Listing.id == listing_id,
             Listing.status == "published",

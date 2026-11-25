@@ -10,7 +10,7 @@ from app.governance import require_seller_business_listing_access
 from app.routers.inquiries import InquiryCreate, _inquiry_payload
 
 
-def _seller_access_db(*, verified=True, active=True, membership="active", role="owner", user_active=True, suspended=False):
+def _seller_access_db(*, verified=True, active=True, membership="active", role="owner", user_active=True, suspended=False, expired=False):
     engine = create_engine("sqlite://")
     with engine.begin() as c:
         c.exec_driver_sql("CREATE TABLE users (id TEXT, is_active BOOLEAN, is_suspended BOOLEAN)")
@@ -20,7 +20,8 @@ def _seller_access_db(*, verified=True, active=True, membership="active", role="
         c.exec_driver_sql("INSERT INTO users VALUES ('u1', ?, ?)", (user_active, suspended))
         c.exec_driver_sql("INSERT INTO seller_profiles VALUES ('s1','u1','b1')")
         c.exec_driver_sql("INSERT INTO business_profiles VALUES ('b1', ?, ?)", (active, "verified" if verified else "pending"))
-        c.exec_driver_sql("INSERT INTO business_memberships VALUES ('b1','u1',?,NULL,?)", (membership, role))
+        expires_at = "2000-01-01 00:00:00" if expired else None
+        c.exec_driver_sql("INSERT INTO business_memberships VALUES ('b1','u1',?,?,?)", (membership, expires_at, role))
     return engine
 
 
@@ -31,6 +32,7 @@ def _seller_access_db(*, verified=True, active=True, membership="active", role="
     {"membership": "revoked"},
     {"role": "finance"},
     {"role": "viewer"},
+    {"expired": True},
     {"user_active": False},
     {"suspended": True},
 ])

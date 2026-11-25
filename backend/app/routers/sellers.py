@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
+from app.governance import ensure_marketplace_seller_role
 from app.governance_models import BusinessMembership, BusinessMembershipEvent, BusinessProfile
 from app.models import Category, Location, SellerProfile, User
 
@@ -280,6 +281,7 @@ def create_my_seller_profile(
         event_metadata={"verification_status": "pending"},
     ))
     db.flush()
+    ensure_marketplace_seller_role(db, user.id)
     try:
         db.commit()
     except IntegrityError:

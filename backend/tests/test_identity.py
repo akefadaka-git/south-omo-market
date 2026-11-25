@@ -223,6 +223,22 @@ def test_only_admin_can_approve_pending_listing() -> None:
     queue = client.get("/api/v1/admin/moderation/queue", headers=admin_headers)
     assert queue.status_code == 200
     assert any(item["id"] == listing_id for item in queue.json())
+    # A business that loses verification after submission must not be
+    # published by the moderation endpoint.
+    with TestingSession() as gate_db:
+        business = gate_db.get(BusinessProfile, profile.json()["business_id"])
+        business.verification_status = "pending"
+        gate_db.commit()
+    denied_decision = client.post(
+        f"/api/v1/admin/moderation/{listing_id}/decision",
+        headers=admin_headers,
+        json={"decision": "approve", "note": "Must remain blocked"},
+    )
+    assert denied_decision.status_code == 409
+    with TestingSession() as gate_db:
+        business = gate_db.get(BusinessProfile, profile.json()["business_id"])
+        business.verification_status = "verified"
+        gate_db.commit()
     decision = client.post(
         f"/api/v1/admin/moderation/{listing_id}/decision",
         headers=admin_headers,

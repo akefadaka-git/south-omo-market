@@ -1,7 +1,7 @@
 """Require verified seller businesses and explicit inquiry contact consent.
 
 Revision ID: 0020_seller_contact_consent
-Revises: 0019_account_intent_bilingual_markets
+Revises: 0019_bilingual_market_roles
 """
 from alembic import op
 import sqlalchemy as sa
@@ -49,11 +49,12 @@ def downgrade() -> None:
     # Existing records without affirmative consent intentionally remain
     # non-disclosing; downgrade restores the old NOT NULL contract using a
     # non-contact placeholder for rows where consent was not granted.
+    with op.batch_alter_table("inquiries") as batch:
+        batch.drop_constraint("ck_inquiry_contact_consent_consistency", type_="check")
     op.execute(
         "UPDATE inquiries SET contact_value = 'not-shared' WHERE contact_value IS NULL"
     )
     with op.batch_alter_table("inquiries") as batch:
-        batch.drop_constraint("ck_inquiry_contact_consent_consistency", type_="check")
         batch.drop_column("contact_consent_at")
         batch.drop_column("contact_disclosure_consent")
         batch.alter_column(
