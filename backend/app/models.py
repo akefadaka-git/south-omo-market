@@ -16,6 +16,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     phone_number: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(120))
+    account_type: Mapped[str] = mapped_column(String(32), default="buyer", nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -173,7 +174,15 @@ class Market(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     code: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(120))
+    name_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    name_am: Mapped[str | None] = mapped_column(String(120), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_am: Mapped[str | None] = mapped_column(Text, nullable=True)
+    address_en: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    address_am: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    latitude: Mapped[float | None] = mapped_column(nullable=True)
+    longitude: Mapped[float | None] = mapped_column(nullable=True)
     location_id: Mapped[str | None] = mapped_column(
         ForeignKey("locations.id", ondelete="SET NULL"), nullable=True, index=True
     )
