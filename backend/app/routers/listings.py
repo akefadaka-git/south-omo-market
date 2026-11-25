@@ -14,7 +14,8 @@ from app.core.database import get_db
 from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
 from app.governance import require_marketplace_listing_policy, require_seller_business_listing_access
-from app.models import BusinessProfile, Category, Listing, ListingImage, Location, SellerProfile, User
+from app.models import Category, Listing, ListingImage, Location, SellerProfile, User
+from app.governance_models import BusinessProfile
 
 router = APIRouter(prefix="/listings")
 

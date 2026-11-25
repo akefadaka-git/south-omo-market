@@ -7,7 +7,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "0020_seller_business_contact_consent"
-down_revision = "0019_account_intent_bilingual_markets"
+down_revision = "0019_bilingual_market_roles"
 branch_labels = None
 depends_on = None
 
