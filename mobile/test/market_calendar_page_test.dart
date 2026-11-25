@@ -90,6 +90,67 @@ void main() {
 
 
 
+
+
+  testWidgets('market calendar entry opens bilingual detail page with location map data', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final detail = {
+      'id': 'market-koybe',
+      'name': 'ቆይቤ ገበያ',
+      'name_en': 'Koybe Market',
+      'name_am': 'ቆይቤ ገበያ',
+      'address': 'ቆይቤ ዋና መንገድ',
+      'address_en': 'Main Road, Koybe',
+      'address_am': 'ቆይቤ ዋና መንገድ',
+      'description': 'የሳምንታዊ አካባቢ ገበያ',
+      'latitude': 6.0,
+      'longitude': 36.5,
+      'location': {'name': 'ቆይቤ', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
+      'schedule_days': [0],
+    };
+    final cache = MemoryMarketScheduleCache();
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/markets/schedule')) {
+        return http.Response(jsonEncode({
+          'timezone': 'Africa/Addis_Ababa',
+          'days': [
+            {'weekday': 0, 'weekday_name': 'Monday', 'markets': [
+              {'id': 'market-koybe', 'name': 'ቆይቤ ገበያ'},
+            ]},
+          ],
+        }), 200);
+      }
+      if (request.url.path.endsWith('/markets/market-koybe')) {
+        expect(request.url.queryParameters['lang'], 'am');
+        return http.Response(jsonEncode(detail), 200);
+      }
+      return http.Response('not found', 404);
+    });
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('am'),
+      home: MarketCalendarPage(
+        apiBaseUrl: 'https://market.example.test/api/v1',
+        client: client,
+        cache: cache,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('ቆይቤ ገበያ'), findsOneWidget);
+    await tester.tap(find.text('ቆይቤ ገበያ'));
+    await tester.pumpAndSettle();
+    expect(find.text('ቆይቤ ዋና መንገድ'), findsOneWidget);
+    expect(find.text('የአካባቢ ካርታ'), findsOneWidget);
+    expect(find.text('6.0, 36.5'), findsOneWidget);
+    client.close();
+  })
+
+}
+
+
+
   testWidgets('market calendar entry opens bilingual detail page with location map data', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1;
