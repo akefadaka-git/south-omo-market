@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies import require_admin
-from app.models import AuditEvent, Listing, Report, SellerProfile, User
+from app.models import AuditEvent, Category, Listing, ListingEdit, Location, Report, SellerProfile, User
 from app.governance_models import BusinessMembership, BusinessProfile
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -96,6 +96,121 @@ def decide_listing(
     ))
     db.commit()
     return {"id": listing.id, "status": listing.status}
+
+
+class ListingEditDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
+@router.get("/moderation/listing-edits")
+def listing_edit_queue(
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[dict[str, object]]:
+    rows = db.execute(
+        select(ListingEdit, Listing, SellerProfile)
+        .join(Listing, ListingEdit.listing_id == Listing.id)
+        .join(SellerProfile, Listing.seller_id == SellerProfile.id)
+        .where(ListingEdit.status == "pending_review")
+        .order_by(ListingEdit.created_at.asc(), ListingEdit.id)
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    return [{
+        "edit_id": edit.id,
+        "listing_id": listing.id,
+        "listing_status": listing.status,
+        "seller_id": seller.id,
+        "seller_name": seller.public_name,
+        "current": {
+            "title": listing.title,
+            "description": listing.description,
+            "category_id": listing.category_id,
+            "price_minor": listing.price_minor,
+            "location_label": listing.location_label,
+            "location_id": listing.location_id,
+            "attributes": listing.attributes or {},
+        },
+        "proposed_values": edit.proposed_values,
+        "changed_fields": edit.changed_fields,
+        "submitted_at": edit.created_at,
+    } for edit, listing, seller in rows]
+
+
+@router.post("/moderation/listing-edits/{edit_id}/decision")
+def decide_listing_edit(
+    edit_id: str,
+    payload: ListingEditDecision,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    edit = db.scalar(
+        select(ListingEdit).where(ListingEdit.id == edit_id).with_for_update()
+    )
+    if edit is None or edit.status != "pending_review":
+        raise HTTPException(status_code=404, detail="Pending listing edit not found")
+    listing = db.scalar(
+        select(Listing).where(Listing.id == edit.listing_id).with_for_update()
+    )
+    if listing is None or listing.status != "published":
+        raise HTTPException(status_code=409, detail="The published listing is no longer eligible for an edit decision")
+
+    if payload.decision == "approve":
+        seller = db.get(SellerProfile, listing.seller_id)
+        business = db.get(BusinessProfile, seller.business_id) if seller and seller.business_id else None
+        membership = db.scalar(select(BusinessMembership).where(
+            BusinessMembership.business_id == business.id if business else False,
+            BusinessMembership.user_id == seller.user_id if seller else False,
+            BusinessMembership.status == "active",
+            BusinessMembership.membership_role.in_(("owner", "administrator", "manager", "staff")),
+            (BusinessMembership.expires_at.is_(None) | (BusinessMembership.expires_at > datetime.now(timezone.utc))),
+        )) if business and seller else None
+        seller_user = db.get(User, seller.user_id) if seller else None
+        if (
+            business is None or not business.is_active or business.verification_status != "verified"
+            or membership is None or seller_user is None or not seller_user.is_active or seller_user.is_suspended
+        ):
+            raise HTTPException(status_code=409, detail="Only a verified active business with an active authorized seller can publish this edit")
+        allowed = {"category_id", "title", "description", "attributes", "price_minor", "location_label", "location_id"}
+        proposed = edit.proposed_values
+        if not isinstance(proposed, dict) or not proposed or not set(proposed).issubset(allowed):
+            raise HTTPException(status_code=409, detail="The proposed listing edit is invalid")
+        if "category_id" in proposed:
+            category = db.get(Category, proposed["category_id"])
+            if category is None or not category.is_active:
+                raise HTTPException(status_code=409, detail="The proposed category is no longer active")
+        if proposed.get("location_id") is not None:
+            location = db.get(Location, proposed["location_id"])
+            if location is None or not location.is_active:
+                raise HTTPException(status_code=409, detail="The proposed location is no longer active")
+        previous = {field: getattr(listing, field) for field in proposed}
+        for field, value in proposed.items():
+            setattr(listing, field, value)
+        next_status = "approved"
+        action = "listing.edit.approved"
+        metadata = {"edit_id": edit.id, "changed_fields": edit.changed_fields, "previous_values": previous, "new_values": proposed, "note": payload.note}
+    else:
+        next_status = "rejected"
+        action = "listing.edit.rejected"
+        metadata = {"edit_id": edit.id, "changed_fields": edit.changed_fields, "note": payload.note}
+
+    edit.status = next_status
+    edit.pending_key = None
+    edit.reviewed_by = admin.id
+    edit.reviewed_at = datetime.now(timezone.utc)
+    edit.moderation_note = payload.note
+    db.add(AuditEvent(
+        actor_id=admin.id,
+        action=action,
+        resource_type="listing",
+        resource_id=listing.id,
+        event_metadata=metadata,
+    ))
+    db.commit()
+    return {"id": edit.id, "listing_id": listing.id, "status": edit.status}
 
 
 @router.get("/reports")

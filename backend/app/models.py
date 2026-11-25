@@ -101,6 +101,28 @@ class Listing(Base):
     images: Mapped[list["ListingImage"]] = relationship(back_populates="listing", cascade="all, delete-orphan")
 
 
+class ListingEdit(Base):
+    __tablename__ = "listing_edits"
+    __table_args__ = (
+        UniqueConstraint("listing_id", "pending_key", name="uq_listing_edit_one_pending"),
+        CheckConstraint(
+            "status IN ('pending_review', 'approved', 'rejected')",
+            name="ck_listing_edit_status",
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    listing_id: Mapped[str] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"), index=True)
+    submitted_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    proposed_values: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    changed_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(24), default="pending_review", nullable=False, index=True)
+    pending_key: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ListingImage(Base):
     __tablename__ = "listing_images"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)

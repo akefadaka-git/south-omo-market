@@ -1,4 +1,5 @@
 from io import BytesIO
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
@@ -14,7 +15,7 @@ from app.core.database import get_db
 from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
 from app.governance import require_marketplace_listing_policy, require_seller_business_listing_access
-from app.models import Category, Listing, ListingImage, Location, SellerProfile, User
+from app.models import AuditEvent, Category, Listing, ListingEdit, ListingImage, Location, SellerProfile, User
 from app.governance_models import BusinessMembership, BusinessProfile
 
 router = APIRouter(prefix="/listings")
@@ -132,6 +133,12 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
                 raise HTTPException(status_code=422, detail={"attributes": f"Invalid choice for {key}"})
         cleaned[key] = value
     return cleaned
+
+
+def _is_minor_text_normalization(current: str, proposed: str) -> bool:
+    """Permit punctuation/case/spacing cleanup only; token changes need review."""
+    tokens = lambda value: re.findall(r"\\w+", value.casefold(), flags=re.UNICODE)
+    return current != proposed and tokens(current) == tokens(proposed)
 
 
 def _require_leaf_category(db: Session, category: Category) -> None:
@@ -425,50 +432,110 @@ def create_my_listing(
     attributes = _validated_attributes(category, payload.attributes)
     resolved_location_id = _resolve_location_id(db, payload.location_id, payload.location_label)
     listing = Listing(
-        seller_id=seller.id, category_id=category.id,
-        title=payload.title, description=payload.description, attributes=attributes,
-        price_minor=payload.price_minor, location_label=payload.location_label,
-        location_id=resolved_location_id, status="draft",
-    )
-    db.add(listing)
-    db.commit()
-    db.refresh(listing)
-    return {"id": listing.id, "status": "draft"}
-
-
-@router.patch("/{listing_id}")
+        seller_id=seller.id, category_id=category@router.patch("/{listing_id}")
 def update_my_listing(
     listing_id: str,
     payload: ListingUpdate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
-    listing = _owned_listing(db, user, listing_id)
-    if listing.status != "draft":
-        raise HTTPException(status_code=409, detail="Only draft listings can be edited")
+    seller = db.scalar(select(SellerProfile).where(SellerProfile.user_id == user.id))
+    if seller is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    listing = db.scalar(
+        select(Listing).where(
+            Listing.id == listing_id, Listing.seller_id == seller.id
+        ).with_for_update()
+    )
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    if listing.status not in {"draft", "published"}:
+        raise HTTPException(status_code=409, detail="Only draft or published listings can be edited")
     changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        return _listing_summary(listing)
     if any(value is None for value in changes.values()):
         raise HTTPException(status_code=422, detail="Listing fields cannot be null")
-    if "location_id" in changes and changes["location_id"] is not None:
-        location = db.get(Location, changes["location_id"])
-        if location is None or not location.is_active:
-            raise HTTPException(status_code=404, detail="Location not found")
+    require_seller_business_listing_access(db, user)
     category = db.get(Category, changes.get("category_id", listing.category_id))
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
-    require_seller_business_listing_access(db, user)
     require_marketplace_listing_policy(
         db, user, action="marketplace.listing.update", category_id=category.id
     )
+    if "location_id" in changes or "location_label" in changes:
+        location_id = changes.get("location_id", listing.location_id)
+        location_label = changes.get("location_label", listing.location_label)
+        if location_id is not None:
+            location = db.get(Location, location_id)
+            if location is None or not location.is_active:
+                raise HTTPException(status_code=404, detail="Location not found")
+        else:
+            location_id = _resolve_location_id(db, None, location_label)
+        changes["location_id"] = location_id
     if "category_id" in changes or "attributes" in changes:
         candidate_attributes = changes.get("attributes", listing.attributes or {})
         changes["attributes"] = _validated_attributes(category, candidate_attributes)
-    for field, value in changes.items():
-        setattr(listing, field, value)
-    db.commit()
-    db.refresh(listing)
-    return _listing_summary(listing)
+
+    if listing.status == "draft":
+        for field, value in changes.items():
+            setattr(listing, field, value)
+        db.commit()
+        db.refresh(listing)
+        return _listing_summary(listing)
+
+    # Published content is immutable while a material edit is reviewed.
+    # Only description formatting changes preserving all Unicode word tokens
+    # are eligible for direct publication; wording/claims require moderation.
+    if set(changes) == {"description"} and _is_minor_text_normalization(
+        listing.description, str(changes["description"])
+    ):
+        previous_description = listing.description
+        listing.description = str(changes["description"])
+        db.add(AuditEvent(
+            actor_id=user.id,
+            action="listing.minor_correction.published",
+            resource_type="listing",
+            resource_id=listing.id,
+            event_metadata={
+                "changed_fields": ["description"],
+                "previous_description": previous_description,
+                "new_description": listing.description,
+            },
+        ))
+        db.commit()
+        db.refresh(listing)
+        return {**_listing_summary(listing), "edit_status": "published_minor_correction"}
+
+    pending = db.scalar(select(ListingEdit.id).where(
+        ListingEdit.listing_id == listing.id,
+        ListingEdit.status == "pending_review",
+    ))
+    if pending is not None:
+        raise HTTPException(status_code=409, detail="A listing edit is already awaiting moderation")
+    edit = ListingEdit(
+        listing_id=listing.id,
+        submitted_by=user.id,
+        proposed_values=changes,
+        changed_fields=sorted(changes),
+        status="pending_review",
+        pending_key="pending",
+    )
+    db.add(edit)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A listing edit is already awaiting moderation") from None
+    db.refresh(edit)
+    return {
+        "id": listing.id,
+        "status": listing.status,
+        "edit_id": edit.id,
+        "edit_status": edit.status,
+        "changed_fields": edit.changed_fields,
+    }
 
 
 @router.post("/{listing_id}/images", status_code=status.HTTP_201_CREATED)
