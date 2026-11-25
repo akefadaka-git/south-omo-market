@@ -50,16 +50,19 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('seller-business-name')), 'Koybe Produce');
+    await tester.ensureVisible(find.byKey(const Key('seller-business-category')));
     await tester.tap(find.byKey(const Key('seller-business-category')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Local produce').last);
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.byKey(const Key('seller-business-location')));
     await tester.tap(find.byKey(const Key('seller-business-location')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Koybe').last);
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.byKey(const Key('seller-business-save')));
     await tester.tap(find.byKey(const Key('seller-business-save')));
     await tester.pumpAndSettle();
 
