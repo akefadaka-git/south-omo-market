@@ -67,6 +67,11 @@ void main() {
     await tester.enterText(find.byKey(const Key('customer-profile-name')), 'Updated Buyer');
     await tester.enterText(find.byKey(const Key('customer-profile-email')), 'updated@example.test');
 
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('save-customer-profile')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const Key('save-customer-profile')));
     await tester.pumpAndSettle();
 
@@ -154,6 +159,11 @@ void main() {
     await tester.tap(find.byKey(const Key('customer-profile-photo-remove')));
     await tester.pumpAndSettle();
     expect(deleteCalled, isTrue);
+    await tester.scrollUntilVisible(
+      find.text('Profile photo removed.'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Profile photo removed.'), findsOneWidget);
     expect(find.byKey(const Key('customer-profile-photo-remove')), findsNothing);
     client.close();
