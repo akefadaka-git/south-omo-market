@@ -44,7 +44,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
         widget.client.get(Uri.parse('${widget.apiBaseUrl}/markets?lang=$language')),
       ]);
       if (responses.any((response) => response.statusCode != 200)) {
-        throw Exception('Could not load towns and markets. You can retry by closing and reopening registration.');
+        throw Exception(marketString(context, en: 'Could not load towns and markets. Retry registration options.', am: 'የአካባቢና ገበያ ዝርዝር መረጃ አልተጫነም። እንደገና ይሞክሩ።', mdy: ''));
       }
       final locations = (jsonDecode(responses[0].body) as List<dynamic>)
           .cast<Map<String, dynamic>>()
@@ -88,6 +88,10 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
           }
           final message = error['message']?.toString();
           if (response.statusCode == 422 && isAmharic) {
+            if (message?.contains('Preferred locality') ?? false) return 'የመረጡት አካባቢ አልተገኘም ወይም ንቁ አይደለም። እንደገና ይምረጡ።';
+            if (message?.contains('Preferred market must be active') ?? false) return 'የመረጡት ገበያ ንቁ አይደለም።';
+            if (message?.contains('does not belong') ?? false) return 'የመረጡት ገበያ ከአካባቢው ጋር አይዛመድም።';
+            if (message?.contains('Phone number format') ?? false) return 'የስልክ ቁጥሩን ቅርጽ ያረጋግጡ።';
             return 'ያስገቡት መረጃ ትክክል አይደለም። እባክዎ የተጠቆሙትን መስኮች ያስተካክሉ።';
           }
           if (message != null && message.isNotEmpty) return message;
