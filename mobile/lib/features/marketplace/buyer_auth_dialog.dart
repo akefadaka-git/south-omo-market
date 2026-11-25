@@ -82,7 +82,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
                 'preferred_market_id': 'የሚመርጡት ገበያ',
                 'account_type': 'የመለያ አይነት',
               };
-              return '${labels[field] ?? field}፦ ${(first.value as List).join('፣ ')}';
+              return "Field " + field + ": " + first.value.toString();
             }
             return '${field}: ${(first.value as List).join('; ')}';
           }
