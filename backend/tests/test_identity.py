@@ -13,7 +13,7 @@ from app.core.image_storage import LocalImageStorage, get_image_storage
 from app.core.rate_limit import limiter
 from app.main import app
 from app import models  # noqa: F401
-from app.models import Category, Listing, Location, SellerProfile, User
+from app.models import Category, Listing, Location, Market, MarketScheduleDay, SellerProfile, User
 from app.governance_models import BusinessMembership, BusinessProfile
 from app.seeders.system_reference import seed_system_reference_data
 
@@ -1666,3 +1666,74 @@ def test_customer_profile_photo_upload_read_replace_delete_and_isolation(tmp_pat
         assert client.get("/api/v1/customers/me/photo", headers=headers).status_code == 404
     finally:
         app.dependency_overrides.pop(get_image_storage, None)
+
+
+
+def test_registration_contract_reproduces_and_explains_422_with_synthetic_geography() -> None:
+    location_id = str(uuid4())
+    market_id = str(uuid4())
+    with TestingSession() as db:
+        db.add(Location(
+            id=location_id,
+            code=f"TEST-TOWN-{location_id[:8]}",
+            level="town",
+            name_en="Synthetic Koybe",
+            name_am="ሰው ሠራሽ ቆይቤ",
+            is_active=True,
+        ))
+        market = Market(
+            id=market_id,
+            code=f"TEST-MARKET-{market_id[:8]}",
+            name="Synthetic Koybe Market",
+            name_en="Synthetic Koybe Market",
+            name_am="ሰው ሠራሽ ቆይቤ ገበያ",
+            address_en="Synthetic Market Road, Koybe",
+            address_am="ሰው ሠራሽ የገበያ መንገድ፣ ቆይቤ",
+            location_id=location_id,
+            latitude=6.0,
+            longitude=36.5,
+            is_active=True,
+        )
+        market.schedule_days.append(MarketScheduleDay(weekday=2, is_active=True))
+        db.add(market)
+        db.commit()
+
+    # Reproduce the prior 422: a stale/unknown locality ID is rejected before
+    # a user is created, and the client receives a stable machine-readable code.
+    rejected = client.post("/api/v1/auth/register", json={
+        "phone_number": f"+2519{uuid4().int % 10**8:08d}",
+        "display_name": "Synthetic Invalid Location",
+        "password": "synthetic-invalid-location",
+        "preferred_location_id": "00000000-0000-4000-8000-000000000000",
+        "account_type": "buyer",
+    })
+    assert rejected.status_code == 422
+    assert rejected.json()["error"]["code"] == "validation_error"
+    assert "active location" in rejected.json()["error"]["message"].lower()
+
+    phone = f"+2519{uuid4().int % 10**8:08d}"
+    accepted = client.post("/api/v1/auth/register", json={
+        "phone_number": phone,
+        "display_name": "Synthetic Bulk Distributor",
+        "password": "synthetic-bulk-distributor",
+        "preferred_location_id": location_id,
+        "preferred_market_id": market_id,
+        "preferred_language": "am",
+        "account_type": "bulk_distributor",
+    })
+    assert accepted.status_code == 201, accepted.text
+    assert accepted.json()["account_type"] == "bulk_distributor"
+
+    with TestingSession() as db:
+        user = db.query(User).filter_by(phone_number=phone).one()
+        assert user.account_type == "bulk_distributor"
+
+    invalid_type = client.post("/api/v1/auth/register", json={
+        "phone_number": f"+2519{uuid4().int % 10**8:08d}",
+        "display_name": "Synthetic Invalid Account Type",
+        "password": "synthetic-invalid-type",
+        "account_type": "super_admin",
+    })
+    assert invalid_type.status_code == 422
+    assert invalid_type.json()["error"]["code"] == "validation_error"
+    assert "account_type" in invalid_type.json()["error"]["field_errors"]
