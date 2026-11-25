@@ -1671,6 +1671,7 @@ def test_customer_profile_photo_upload_read_replace_delete_and_isolation(tmp_pat
 
 
 def test_registration_contract_reproduces_and_explains_422_with_synthetic_geography() -> None:
+    contract_client = TestClient(app, client=("registration-contract-test", 50001))
     location_id = str(uuid4())
     market_id = str(uuid4())
     with TestingSession() as db:
@@ -1701,7 +1702,7 @@ def test_registration_contract_reproduces_and_explains_422_with_synthetic_geogra
 
     # Reproduce the prior 422: a stale/unknown locality ID is rejected before
     # a user is created, and the client receives a stable machine-readable code.
-    rejected = client.post("/api/v1/auth/register", json={
+    rejected = contract_client.post("/api/v1/auth/register", json={
         "phone_number": f"+2519{uuid4().int % 10**8:08d}",
         "display_name": "Synthetic Invalid Location",
         "password": "synthetic-invalid-location",
@@ -1713,7 +1714,7 @@ def test_registration_contract_reproduces_and_explains_422_with_synthetic_geogra
     assert "active location" in rejected.json()["error"]["message"].lower()
 
     phone = f"+2519{uuid4().int % 10**8:08d}"
-    accepted = client.post("/api/v1/auth/register", json={
+    accepted = contract_client.post("/api/v1/auth/register", json={
         "phone_number": phone,
         "display_name": "Synthetic Bulk Distributor",
         "password": "synthetic-bulk-distributor",
@@ -1725,16 +1726,16 @@ def test_registration_contract_reproduces_and_explains_422_with_synthetic_geogra
     assert accepted.status_code == 201, accepted.text
     assert accepted.json()["account_type"] == "bulk_distributor"
 
-    amharic_detail = client.get(f"/api/v1/markets/{market_id}", params={"lang": "am"})
+    amharic_detail = contract_client.get(f"/api/v1/markets/{market_id}", params={"lang": "am"})
     assert amharic_detail.status_code == 200
     assert amharic_detail.json()["name"] == "ሰው ሠራሽ ቆይቤ ገበያ"
     assert amharic_detail.json()["address"] == "ሰው ሠራሽ የገበያ መንገድ፣ ቆይቤ"
     assert amharic_detail.json()["location"]["name"] == "ሰው ሠራሽ ቆይቤ"
     assert amharic_detail.json()["latitude"] == 6.0
     assert amharic_detail.json()["longitude"] == 36.5
-    english_detail = client.get(f"/api/v1/markets/{market_id}", params={"lang": "en"})
+    english_detail = contract_client.get(f"/api/v1/markets/{market_id}", params={"lang": "en"})
     assert english_detail.json()["name"] == "Synthetic Koybe Market"
-    weekly_am = client.get("/api/v1/markets/schedule", params={"lang": "am"})
+    weekly_am = contract_client.get("/api/v1/markets/schedule", params={"lang": "am"})
     assert weekly_am.status_code == 200
     assert any(row["id"] == market_id for row in weekly_am.json()["days"][2]["markets"])
 
@@ -1742,7 +1743,7 @@ def test_registration_contract_reproduces_and_explains_422_with_synthetic_geogra
         user = db.query(User).filter_by(phone_number=phone).one()
         assert user.account_type == "bulk_distributor"
 
-    invalid_type = client.post("/api/v1/auth/register", json={
+    invalid_type = contract_client.post("/api/v1/auth/register", json={
         "phone_number": f"+2519{uuid4().int % 10**8:08d}",
         "display_name": "Synthetic Invalid Account Type",
         "password": "synthetic-invalid-type",
