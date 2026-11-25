@@ -90,7 +90,7 @@ void main() {
     await tester.tap(find.text('ቆይቤ ገበያ').last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Register and continue'));
+    await tester.tap(find.byKey(const Key('buyer-register-submit')));
     await tester.pumpAndSettle();
 
     expect(registrationBody?['phone_number'], '+251900000901');
