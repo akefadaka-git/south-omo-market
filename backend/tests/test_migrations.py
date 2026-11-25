@@ -30,6 +30,13 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert {"registration_number", "verification_evidence", "verified_by", "verified_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_profiles")}
         assert {"invited_by", "accepted_at", "revoked_at", "expires_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_memberships")}
         assert "business_id" in {column["name"] for column in inspector.get_columns("seller_profiles")}
+        business_profile_columns = {column["name"] for column in inspector.get_columns("business_profiles")}
+        assert {
+            "description", "primary_category_id", "operating_location_id", "service_area",
+            "operating_hours", "supported_languages", "public_contact_phone",
+            "public_contact_email", "public_contact_method", "public_location_visibility",
+            "latitude", "longitude", "location_consent_at",
+        } <= business_profile_columns
         assert {"employment_providers", "job_seeker_profiles", "employment_opportunities", "employment_advertisements", "advertising_agreements", "advertising_payments", "employment_applications", "candidate_consents", "candidate_referrals", "employment_events"} <= set(inspector.get_table_names())
         assert {"policy_packs", "policy_rules", "ai_providers", "ai_models", "ai_task_routes",
                 "protected_category_roots"} <= set(inspector.get_table_names())
@@ -47,7 +54,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
                 ("Ajo", 5), ("Asheker", 1), ("Bala", 1), ("Beneta", 3),
                 ("Bobo", 2), ("Boshkoro", 5), ("Gento", 5), ("Koybe", 0),
             ]
-            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0017_customer_profiles"
+            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0018_seller_business_profiles"
 
         command.downgrade(config, "0008_reports_and_seller_blocks")
         command.upgrade(config, "head")
