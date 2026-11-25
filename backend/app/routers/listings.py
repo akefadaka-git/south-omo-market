@@ -138,7 +138,7 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
 def _is_minor_text_normalization(current: str, proposed: str) -> bool:
     """Permit punctuation/case/spacing cleanup only; token changes need review."""
     def word_tokens(value: str) -> list[str]:
-        return re.findall(r"\w+", value.casefold(), flags=re.UNICODE)
+        return re.findall(r"\\w+", value.casefold(), flags=re.UNICODE)
 
     return current != proposed and word_tokens(current) == word_tokens(proposed)
 
@@ -434,7 +434,18 @@ def create_my_listing(
     attributes = _validated_attributes(category, payload.attributes)
     resolved_location_id = _resolve_location_id(db, payload.location_id, payload.location_label)
     listing = Listing(
-        seller_id=seller.id, category_id=category@router.patch("/{listing_id}")
+        seller_id=seller.id, category_id=category.id,
+        title=payload.title, description=payload.description, attributes=attributes,
+        price_minor=payload.price_minor, location_label=payload.location_label,
+        location_id=resolved_location_id, status="draft",
+    )
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
+    return {"id": listing.id, "status": "draft"}
+
+
+@router.patch("/{listing_id}")
 def update_my_listing(
     listing_id: str,
     payload: ListingUpdate,
@@ -489,12 +500,15 @@ def update_my_listing(
         db.refresh(listing)
         return _listing_summary(listing)
 
+    # A single pending edit per listing prevents stale proposals and concurrent
+    # minor edits from changing the approved baseline while review is underway.
     pending = db.scalar(select(ListingEdit.id).where(
         ListingEdit.listing_id == listing.id,
         ListingEdit.status == "pending_review",
     ))
     if pending is not None:
         raise HTTPException(status_code=409, detail="A listing edit is already awaiting moderation")
+
     # Published content is immutable while a material edit is reviewed.
     # Only description formatting changes preserving all Unicode word tokens
     # are eligible for direct publication; wording/claims require moderation.
