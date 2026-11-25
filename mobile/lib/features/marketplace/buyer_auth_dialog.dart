@@ -25,6 +25,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
   String? _preferredLocationId;
   String? _preferredMarketId;
   String _preferredLanguage = 'am';
+  String _accountType = 'buyer';
   List<Map<String, dynamic>> _locations = [];
   List<Map<String, dynamic>> _markets = [];
 
@@ -60,6 +61,60 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     }
   }
 
+
+  String _apiError(http.Response response) {
+    final isAmharic = Localizations.localeOf(context).languageCode == 'am';
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        final error = body['error'];
+        if (error is Map<String, dynamic>) {
+          final fields = error['field_errors'];
+          if (fields is Map<String, dynamic> && fields.isNotEmpty) {
+            final first = fields.entries.first;
+            final field = first.key.toString();
+            if (isAmharic) {
+              const labels = {
+                'phone_number': 'ስልክ ቁጥር',
+                'display_name': 'ሙሉ ስም',
+                'password': 'የይለፍ ቃል',
+                'preferred_location_id': 'የሚመርጡት አካባቢ',
+                'preferred_market_id': 'የሚመርጡት ገበያ',
+                'account_type': 'የመለያ አይነት',
+              };
+              return '${labels[field] ?? field}፦ ${(first.value as List).join('፣ ')}';
+            }
+            return '${field}: ${(first.value as List).join('; ')}';
+          }
+          final message = error['message']?.toString();
+          if (response.statusCode == 422 && isAmharic) {
+            return message == null ? 'ያስገቡትን መረጃ ያረጋግጡ።' : 'ያስገቡት መረጃ ትክክል አይደለም። $message';
+          }
+          if (message != null && message.isNotEmpty) return message;
+        }
+        final detail = body['detail'];
+        if (detail is String) {
+          if (isAmharic) {
+            if (detail.contains('Preferred locality')) return 'የመረጡት አካባቢ አልተገኘም ወይም ንቁ አይደለም። እንደገና ይምረጡ።';
+            if (detail.contains('Preferred market must be active')) return 'የመረጡት ገበያ ንቁ አይደለም።';
+            if (detail.contains('does not belong')) return 'የመረጡት ገበያ ከአካባቢው ጋር አይዛመድም።';
+            if (detail.contains('Phone number format')) return 'የስልክ ቁጥሩን ቅርጽ ያረጋግጡ።';
+          }
+          return detail;
+        }
+      }
+    } catch (_) {
+      // A malformed/non-JSON error body receives the safe status fallback below.
+    }
+    if (response.statusCode == 409) {
+      return isAmharic ? 'ይህ ስልክ ቁጥር አስቀድሞ ተመዝግቧል። ወደ መግቢያ ይመለሱ።' : 'That phone number is already registered. Choose sign in.';
+    }
+    if (response.statusCode == 422) {
+      return isAmharic ? 'ምዝገባው አልተሳካም። የገቡትን መረጃ ያረጋግጡ።' : 'Registration data is invalid. Review the highlighted fields.';
+    }
+    return isAmharic ? 'ምዝገባው አልተሳካም (${response.statusCode})።' : 'Registration failed (${response.statusCode}).';
+  }
+
   Future<void> _authenticate() async {
     if (_phone.text.trim().length < 7 || _password.text.length < 6 ||
         (_register && (_name.text.trim().isEmpty || _preferredLocationId == null))) {
@@ -80,12 +135,11 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
             'preferred_location_id': _preferredLocationId,
             'preferred_market_id': _preferredMarketId,
             'preferred_language': _preferredLanguage,
+            'account_type': _accountType,
           }),
         );
         if (created.statusCode != 201) {
-          throw Exception(created.statusCode == 409
-            ? marketString(context, en: 'That phone number is already registered. Choose sign in.', am: 'ይህ ስልክ ቁጥር አስቀድሞ ተመዝግቧል። ወደ መግቢያ ይመለሱ።', mdy: '')
-            : marketString(context, en: 'Account registration failed (${created.statusCode}).', am: 'መለያ መመዝገብ አልተሳካም (${created.statusCode})።', mdy: ''));
+          throw Exception(_apiError(created));
         }
       }
       final response = await widget.client.post(
@@ -119,6 +173,24 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
         ? marketString(context, en: 'Create an account to contact sellers and follow up on your inquiries.', am: 'ሻጮችን ለማነጋገርና የላኩትን ጥያቄ ለመከታተል መለያ ይፍጠሩ።', mdy: '')
         : marketString(context, en: 'Sign in to contact this seller. Your registered phone number is shared with the seller.', am: 'ይህን ሻጭ ለማነጋገር ይግቡ። የተመዘገበው ስልክ ቁጥርዎ ለሻጩ ይታያል።', mdy: '')),
       const SizedBox(height: 14),
+      if (_register) DropdownButtonFormField<String>(
+        key: const Key('buyer-account-type'),
+        value: _accountType,
+        isExpanded: true,
+        dropdownColor: Colors.white,
+        style: const TextStyle(color: MarketPalette.ink, fontSize: 16, fontWeight: FontWeight.w600),
+        decoration: InputDecoration(labelText: marketString(context, en: 'Register as', am: 'የመለያ አይነት', mdy: '')),
+        items: [
+          DropdownMenuItem(value: 'buyer', child: Text(marketString(context, en: 'Buyer', am: 'ገዢ', mdy: ''))),
+          DropdownMenuItem(value: 'merchant', child: Text(marketString(context, en: 'Merchant / Seller', am: 'ነጋዴ / ሻጭ', mdy: ''))),
+          DropdownMenuItem(value: 'bulk_distributor', child: Text(marketString(context, en: 'Bulk distributor', am: 'ጅምላ አከፋፋይ', mdy: ''))),
+          DropdownMenuItem(value: 'producer', child: Text(marketString(context, en: 'Producer / Supplier', am: 'አምራች / አቅራቢ', mdy: ''))),
+          DropdownMenuItem(value: 'service_provider', child: Text(marketString(context, en: 'Service provider', am: 'አገልግሎት ሰጪ', mdy: ''))),
+          DropdownMenuItem(value: 'other', child: Text(marketString(context, en: 'Other', am: 'ሌላ', mdy: ''))),
+        ],
+        onChanged: (value) => setState(() => _accountType = value ?? 'buyer'),
+      ),
+      if (_register) const SizedBox(height: 10),
       if (_register) TextField(key: const Key('buyer-display-name'), controller: _name,
         decoration: InputDecoration(labelText: marketString(context, en: 'Full name', am: 'ሙሉ ስም', mdy: ''), prefixIcon: Icon(Icons.person_outline))),
       if (_register) ...[
