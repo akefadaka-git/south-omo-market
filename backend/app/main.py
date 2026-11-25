@@ -33,13 +33,20 @@ async def request_validation_error_handler(
     request: Request, exc: RequestValidationError,
 ) -> JSONResponse:
     field_errors: dict[str, list[str]] = {}
+    safe_details: list[dict[str, object]] = []
     for error in exc.errors():
         field = ".".join(str(part) for part in error.get("loc", ()) if part != "body") or "request"
-        field_errors.setdefault(field, []).append(str(error.get("msg", "Invalid value")))
+        message = str(error.get("msg", "Invalid value"))
+        field_errors.setdefault(field, []).append(message)
+        safe_details.append({
+            "type": str(error.get("type", "value_error")),
+            "loc": list(error.get("loc", ())),
+            "msg": message,
+        })
     return JSONResponse(
         status_code=422,
         content={
-            "detail": exc.errors(),
+            "detail": safe_details,
             "error": {
                 "code": "validation_error",
                 "message": "One or more fields need attention.",
