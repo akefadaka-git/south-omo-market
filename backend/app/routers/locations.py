@@ -26,7 +26,8 @@ def list_locations(
         translated = row.name_am if lang == "am" else row.name_mdy if lang == "mdy" else row.name_en
         result.append({
             "id": row.id, "parent_id": row.parent_id, "code": row.code, "level": row.level,
-            "name": translated or row.name_en, "name_en": row.name_en,
+            "name": translated,
+            "translation_complete": bool(row.name_en and row.name_am), "name_en": row.name_en,
             "name_am": row.name_am, "name_mdy": row.name_mdy,
         })
     return result
