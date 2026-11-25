@@ -191,8 +191,9 @@ def create_my_seller_profile(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
-    if db.scalar(select(SellerProfile).where(SellerProfile.user_id == user.id)):
-        raise HTTPException(status_code=409, detail="Seller profile already exists")
+    existing_profile = db.scalar(select(SellerProfile).where(SellerProfile.user_id == user.id))
+    if existing_profile is not None and existing_profile.business_id is not None:
+        raise HTTPException(status_code=409, detail="Seller business profile already exists")
 
     public_name = payload.public_name.strip()
     location_label = payload.location_label.strip()
@@ -251,12 +252,10 @@ def create_my_seller_profile(
         longitude=payload.longitude if payload.public_location_visibility == "exact" else None,
         location_consent_at=now if payload.public_location_visibility == "exact" else None,
     )
-    profile = SellerProfile(
-        user_id=user.id,
-        business_id=business_id,
-        public_name=public_name,
-        location_label=location_label,
-    )
+    profile = existing_profile or SellerProfile(user_id=user.id)
+    profile.business_id = business_id
+    profile.public_name = public_name
+    profile.location_label = location_label
     membership = BusinessMembership(
         id=membership_id,
         business_id=business_id,
