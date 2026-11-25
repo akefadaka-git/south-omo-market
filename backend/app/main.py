@@ -60,6 +60,15 @@ async def request_validation_error_handler(
 async def http_error_handler(
     request: Request, exc: StarletteHTTPException,
 ) -> JSONResponse:
+    # Preserve the established response contract for service/infrastructure
+    # failures such as /ready returning 503. The shared envelope applies to
+    # ordinary client/request errors only.
+    if exc.status_code not in {400, 401, 403, 404, 409, 413, 415, 422, 429}:
+        return JSONResponse(
+            status_code=exc.status_code,
+            headers=exc.headers,
+            content={"detail": exc.detail},
+        )
     message = str(exc.detail) if isinstance(exc.detail, str) else "The request could not be completed."
     return JSONResponse(
         status_code=exc.status_code,
