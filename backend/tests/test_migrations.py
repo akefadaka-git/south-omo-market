@@ -25,6 +25,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert "market_schedule_days" in inspector.get_table_names()
         assert "customer_profiles" in inspector.get_table_names()
         assert {"user_id", "preferred_location_id", "preferred_market_id", "preferred_language", "email", "contact_preference"} <= {column["name"] for column in inspector.get_columns("customer_profiles")}
+        assert "account_type" in {column["name"] for column in inspector.get_columns("users")}
         assert {"roles", "permissions", "role_permissions", "user_roles", "user_permissions"} <= set(inspector.get_table_names())
         assert {"business_membership_events", "business_verification_events", "business_role_permissions"} <= set(inspector.get_table_names())
         assert {"registration_number", "verification_evidence", "verified_by", "verified_at", "updated_at"} <= {column["name"] for column in inspector.get_columns("business_profiles")}
@@ -40,7 +41,8 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         assert {"employment_providers", "job_seeker_profiles", "employment_opportunities", "employment_advertisements", "advertising_agreements", "advertising_payments", "employment_applications", "candidate_consents", "candidate_referrals", "employment_events"} <= set(inspector.get_table_names())
         assert {"policy_packs", "policy_rules", "ai_providers", "ai_models", "ai_task_routes",
                 "protected_category_roots"} <= set(inspector.get_table_names())
-        assert "description" in {column["name"] for column in inspector.get_columns("markets")}
+        assert {"description", "name_en", "name_am", "description_en", "description_am", "address_en", "address_am", "latitude", "longitude"} <= {column["name"] for column in inspector.get_columns("markets")}
+        assert "account_type" in {column["name"] for column in inspector.get_columns("users")}
         assert {"effective_from", "effective_until"} <= {column["name"] for column in inspector.get_columns("market_schedule_days")}
         with engine.connect() as connection:
             assert connection.exec_driver_sql("SELECT COUNT(*) FROM markets").scalar_one() == 8
@@ -54,7 +56,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
                 ("Ajo", 5), ("Asheker", 1), ("Bala", 1), ("Beneta", 3),
                 ("Bobo", 2), ("Boshkoro", 5), ("Gento", 5), ("Koybe", 0),
             ]
-            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0018_seller_business_profiles"
+            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0019_account_intent_bilingual_markets"
 
         command.downgrade(config, "0008_reports_and_seller_blocks")
         command.upgrade(config, "head")
