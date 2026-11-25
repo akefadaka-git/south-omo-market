@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -36,6 +37,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('am'),
       supportedLocales: const [Locale('am'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: Scaffold(
         body: Builder(builder: (context) => TextButton(
           onPressed: () => showDialog<String>(
