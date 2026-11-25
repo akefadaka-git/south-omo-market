@@ -13,8 +13,8 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
-from app.governance import require_marketplace_listing_policy
-from app.models import Category, Listing, ListingImage, Location, SellerProfile, User
+from app.governance import require_marketplace_listing_policy, require_seller_business_listing_access
+from app.models import BusinessProfile, Category, Listing, ListingImage, Location, SellerProfile, User
 
 router = APIRouter(prefix="/listings")
 
@@ -235,7 +235,10 @@ def list_public_listings(
         select(Listing)
         .join(SellerProfile, Listing.seller_id == SellerProfile.id)
         .join(User, SellerProfile.user_id == User.id)
+        .join(BusinessProfile, BusinessProfile.id == SellerProfile.business_id)
         .where(
+            BusinessProfile.is_active.is_(True),
+            BusinessProfile.verification_status == "verified",
             Listing.status == "published",
             User.is_active.is_(True),
             User.is_suspended.is_(False),
@@ -304,6 +307,7 @@ def sync_my_offline_draft(
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
+    require_seller_business_listing_access(db, user)
     require_marketplace_listing_policy(
         db, user, action="marketplace.listing.sync", category_id=category.id
     )
@@ -373,7 +377,10 @@ def get_public_listing(listing_id: str, db: Session = Depends(get_db)) -> dict[s
         select(Listing)
         .join(SellerProfile, Listing.seller_id == SellerProfile.id)
         .join(User, SellerProfile.user_id == User.id)
+        .join(BusinessProfile, BusinessProfile.id == SellerProfile.business_id)
         .where(
+            BusinessProfile.is_active.is_(True),
+            BusinessProfile.verification_status == "verified",
             Listing.id == listing_id,
             Listing.status == "published",
             User.is_active.is_(True),
@@ -398,6 +405,7 @@ def create_my_listing(
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
+    require_seller_business_listing_access(db, user)
     require_marketplace_listing_policy(
         db, user, action="marketplace.listing.create", category_id=category.id
     )
@@ -436,6 +444,7 @@ def update_my_listing(
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
+    require_seller_business_listing_access(db, user)
     require_marketplace_listing_policy(
         db, user, action="marketplace.listing.update", category_id=category.id
     )
@@ -468,6 +477,7 @@ async def upload_listing_image(
     )
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
+    require_seller_business_listing_access(db, user)
     if listing.status != "draft":
         raise HTTPException(status_code=409, detail="Images can only be added to draft listings")
     image_key = str(client_image_id)
@@ -544,7 +554,10 @@ def get_public_listing_image(
         .join(Listing, ListingImage.listing_id == Listing.id)
         .join(SellerProfile, Listing.seller_id == SellerProfile.id)
         .join(User, SellerProfile.user_id == User.id)
+        .join(BusinessProfile, BusinessProfile.id == SellerProfile.business_id)
         .where(
+            BusinessProfile.is_active.is_(True),
+            BusinessProfile.verification_status == "verified",
             ListingImage.id == image_id,
             Listing.id == listing_id,
             Listing.status == "published",
@@ -580,6 +593,7 @@ def submit_my_listing(
     if category is None or not category.is_active:
         raise HTTPException(status_code=404, detail="Category not found")
     _require_leaf_category(db, category)
+    require_seller_business_listing_access(db, user)
     require_marketplace_listing_policy(
         db, user, action="marketplace.listing.submit", category_id=category.id
     )

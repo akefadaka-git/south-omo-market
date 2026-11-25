@@ -17,6 +17,7 @@ router = APIRouter(prefix="/inquiries")
 class InquiryCreate(BaseModel):
     listing_id: str
     message: str = Field(min_length=1, max_length=2000)
+    contact_disclosure_consent: bool
 
 
 class InquiryStatusUpdate(BaseModel):
@@ -37,11 +38,13 @@ def _inquiry_payload(
         "closed_at": inquiry.closed_at,
     }
     if include_buyer_contact:
-        result.update({
-            "buyer_name": inquiry.buyer_name,
-            "buyer_contact": inquiry.contact_value,
-            "buyer_user_id": inquiry.buyer_user_id,
-        })
+        result["contact_disclosure_consent"] = inquiry.contact_disclosure_consent
+        if inquiry.contact_disclosure_consent:
+            result.update({
+                "buyer_name": inquiry.buyer_name,
+                "buyer_contact": inquiry.contact_value,
+                "buyer_user_id": inquiry.buyer_user_id,
+            })
     return result
 
 
@@ -66,8 +69,10 @@ def create_inquiry(
     inquiry = Inquiry(
         listing_id=listing.id,
         buyer_user_id=user.id,
-        buyer_name=user.display_name,
-        contact_value=user.phone_number,
+        buyer_name=user.display_name if payload.contact_disclosure_consent else "Marketplace customer",
+        contact_value=user.phone_number if payload.contact_disclosure_consent else None,
+        contact_disclosure_consent=payload.contact_disclosure_consent,
+        contact_consent_at=datetime.now(timezone.utc) if payload.contact_disclosure_consent else None,
         message=payload.message,
         status="open",
     )

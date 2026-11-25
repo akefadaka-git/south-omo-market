@@ -123,7 +123,9 @@ class Inquiry(Base):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     buyer_name: Mapped[str] = mapped_column(String(120))
-    contact_value: Mapped[str] = mapped_column(String(160))
+    contact_value: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    contact_disclosure_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    contact_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     message: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(16), default="open", index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

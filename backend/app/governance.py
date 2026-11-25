@@ -137,3 +137,35 @@ def require_business_permission(permission_code: str):
             )
         return user
     return dependency
+
+
+
+def require_seller_business_listing_access(db: Session, user: User) -> None:
+    """Fail closed unless the seller belongs to a verified, active business.
+
+    Listing permissions are business-scoped. A global merchant role or the
+    existence of a seller profile is not sufficient authorization.
+    """
+    allowed = db.execute(text("""
+        SELECT EXISTS (
+            SELECT 1
+            FROM seller_profiles sp
+            JOIN business_profiles bp ON bp.id = sp.business_id
+            JOIN business_memberships bm ON bm.business_id = bp.id
+            JOIN users u ON u.id = bm.user_id
+            WHERE sp.user_id = :user_id
+              AND bm.user_id = :user_id
+              AND bm.status = 'active'
+              AND (bm.expires_at IS NULL OR bm.expires_at > CURRENT_TIMESTAMP)
+              AND bm.membership_role IN ('owner','administrator','manager','staff')
+              AND bp.is_active = TRUE
+              AND bp.verification_status = 'verified'
+              AND u.is_active = TRUE
+              AND u.is_suspended = FALSE
+        )
+    """), {"user_id": user.id}).scalar_one()
+    if not allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="A verified active business and active listing-authorized membership are required",
+        )
