@@ -527,6 +527,7 @@ class _SellerProfileSetupPageState extends State<SellerProfileSetupPage> {
         profile = jsonDecode(responses[2].body) as Map<String, dynamic>;
       }
       if (!mounted) return;
+      final profileData = profile;
       setState(() {
         _categories = categories.where((item) => item['is_leaf'] == true).toList();
         _locations = locations;
