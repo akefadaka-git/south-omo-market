@@ -6,7 +6,14 @@ type Market = {
   id: string;
   code: string;
   name: string;
+  name_en?: string | null;
+  name_am: string | null;
   description: string | null;
+  description_am?: string | null;
+  address_en?: string | null;
+  address_am?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   location_id: string | null;
   is_active: boolean;
   schedule_days: number[];
@@ -22,6 +29,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [locations, setLocations] = useState<Location[]>([]);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [nameAm, setNameAm] = useState('');
   const [description, setDescription] = useState('');
   const [search, setSearch] = useState('');
   const [weekdayFilter, setWeekdayFilter] = useState('all');
@@ -29,6 +37,7 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
   const [locationId, setLocationId] = useState('');
   const [draftDays, setDraftDays] = useState<Record<string, number[]>>({});
   const [draftNames, setDraftNames] = useState<Record<string, string>>({});
+  const [draftNamesAm, setDraftNamesAm] = useState<Record<string, string>>({});
   const [draftDescriptions, setDraftDescriptions] = useState<Record<string, string>>({});
   const [effectiveFrom, setEffectiveFrom] = useState<Record<string, string>>({});
   const [effectiveUntil, setEffectiveUntil] = useState<Record<string, string>>({});
@@ -49,7 +58,8 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
     const rows = await marketResponse.json() as Market[];
     setMarkets(rows);
     setDraftDays(Object.fromEntries(rows.map((market) => [market.id, market.schedule_days])));
-    setDraftNames(Object.fromEntries(rows.map((market) => [market.id, market.name])));
+    setDraftNames(Object.fromEntries(rows.map((market) => [market.id, market.name_en ?? market.name])));
+    setDraftNamesAm(Object.fromEntries(rows.map((market) => [market.id, market.name_am ?? ''])));
     setDraftDescriptions(Object.fromEntries(rows.map((market) => [market.id, market.description ?? ''])));
     setEffectiveFrom(Object.fromEntries(rows.map((market) => [market.id, market.schedule_entries?.find((entry) => entry.is_active)?.effective_from ?? ''])));
     setEffectiveUntil(Object.fromEntries(rows.map((market) => [market.id, market.schedule_entries?.find((entry) => entry.is_active)?.effective_until ?? ''])));
@@ -69,13 +79,13 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
       const response = await fetch(`${API_BASE}/admin/markets`, {
         method: 'POST',
         headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim(), description: description.trim() || null, location_id: locationId || null }),
+        body: JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim(), name_am: nameAm.trim(), description: description.trim() || null, location_id: locationId || null }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { detail?: string };
         throw new Error(body.detail ?? 'Could not create market.');
       }
-      setCode(''); setName(''); setDescription(''); setLocationId('');
+      setCode(''); setName(''); setNameAm(''); setDescription(''); setLocationId('');
       await load();
       setMessage('Market created. Configure its weekly days below.');
     } catch (reason) {
@@ -91,7 +101,9 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
         headers: { ...headers(accessToken), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: draftNames[market.id] ?? market.name,
+          name_am: draftNamesAm[market.id] ?? market.name_am ?? '',
           description: (draftDescriptions[market.id] ?? market.description ?? '').trim() || null,
+          description_am: market.description_am ?? null,
           location_id: draftLocations[market.id] || null,
         }),
       });
@@ -155,7 +167,8 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
       </section>
       <form onSubmit={createMarket} style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 20 }}>
         <label>Market code<input required minLength={2} maxLength={40} pattern="[A-Za-z0-9-]+" value={code} onChange={(event) => setCode(event.target.value)} /></label>
-        <label>Market name<input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
+        <label>Market name (English)<input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
+        <label>Market name (Amharic)<input required maxLength={120} value={nameAm} onChange={(event) => setNameAm(event.target.value)} /></label>
         <label>Description (optional)<textarea maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         <label>Verified location (optional)
           <select value={locationId} onChange={(event) => setLocationId(event.target.value)}>
@@ -172,12 +185,15 @@ export default function MarketManagement({ accessToken }: { accessToken: string 
             <button type="button" disabled={busy} onClick={() => toggleStatus(market)}>{market.is_active ? 'Deactivate' : 'Activate'}</button>
           </div>
           <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', margin: '14px 0' }}>
-            <label>Market name
+            <label>Market name (English)
               <input
                 maxLength={120}
                 value={draftNames[market.id] ?? market.name}
                 onChange={(event) => setDraftNames((current) => ({ ...current, [market.id]: event.target.value }))}
               />
+            </label>
+            <label>Market name (Amharic)
+              <input maxLength={120} value={draftNamesAm[market.id] ?? market.name_am ?? ''} onChange={(event) => setDraftNamesAm((current) => ({ ...current, [market.id]: event.target.value }))} />
             </label>
             <label>Description
               <textarea maxLength={2000} value={draftDescriptions[market.id] ?? market.description ?? ''} onChange={(event) => setDraftDescriptions((current) => ({ ...current, [market.id]: event.target.value }))} />
