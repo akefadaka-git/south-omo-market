@@ -138,7 +138,7 @@ def _validated_attributes(category: Category, values: dict[str, object]) -> dict
 def _is_minor_text_normalization(current: str, proposed: str) -> bool:
     """Permit punctuation/case/spacing cleanup only; token changes need review."""
     def word_tokens(value: str) -> list[str]:
-        return re.findall(r"\\w+", value.casefold(), flags=re.UNICODE)
+        return re.findall(r"\w+", value.casefold(), flags=re.UNICODE)
 
     return current != proposed and word_tokens(current) == word_tokens(proposed)
 
