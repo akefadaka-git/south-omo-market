@@ -155,10 +155,12 @@ def decide_listing_edit(
     listing = db.scalar(
         select(Listing).where(Listing.id == edit.listing_id).with_for_update()
     )
-    if listing is None or listing.status != "published":
-        raise HTTPException(status_code=409, detail="The published listing is no longer eligible for an edit decision")
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
 
     if payload.decision == "approve":
+        if listing.status != "published":
+            raise HTTPException(status_code=409, detail="Only a currently published listing can accept an approved edit")
         seller = db.get(SellerProfile, listing.seller_id)
         business = db.get(BusinessProfile, seller.business_id) if seller and seller.business_id else None
         membership = db.scalar(select(BusinessMembership).where(

@@ -487,6 +487,12 @@ def update_my_listing(
         db.refresh(listing)
         return _listing_summary(listing)
 
+    pending = db.scalar(select(ListingEdit.id).where(
+        ListingEdit.listing_id == listing.id,
+        ListingEdit.status == "pending_review",
+    ))
+    if pending is not None:
+        raise HTTPException(status_code=409, detail="A listing edit is already awaiting moderation")
     # Published content is immutable while a material edit is reviewed.
     # Only description formatting changes preserving all Unicode word tokens
     # are eligible for direct publication; wording/claims require moderation.
@@ -510,12 +516,6 @@ def update_my_listing(
         db.refresh(listing)
         return {**_listing_summary(listing), "edit_status": "published_minor_correction"}
 
-    pending = db.scalar(select(ListingEdit.id).where(
-        ListingEdit.listing_id == listing.id,
-        ListingEdit.status == "pending_review",
-    ))
-    if pending is not None:
-        raise HTTPException(status_code=409, detail="A listing edit is already awaiting moderation")
     edit = ListingEdit(
         listing_id=listing.id,
         submitted_by=user.id,
