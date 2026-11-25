@@ -25,12 +25,12 @@ void main() {
   final schedule = {
     'timezone': 'Africa/Addis_Ababa',
     'days': [
-      {'weekday': 0, 'weekday_name': 'Monday', 'markets': [{'name': 'Koybe'}]},
-      {'weekday': 1, 'weekday_name': 'Tuesday', 'markets': [{'name': 'Asheker'}, {'name': 'Bala'}]},
-      {'weekday': 2, 'weekday_name': 'Wednesday', 'markets': [{'name': 'Bobo'}]},
-      {'weekday': 3, 'weekday_name': 'Thursday', 'markets': [{'name': 'Beneta'}]},
+      {'weekday': 0, 'weekday_name': 'Monday', 'markets': [{'id': 'koybe', 'name': 'Koybe'}]},
+      {'weekday': 1, 'weekday_name': 'Tuesday', 'markets': [{'id': 'asheker', 'name': 'Asheker'}, {'id': 'bala', 'name': 'Bala'}]},
+      {'weekday': 2, 'weekday_name': 'Wednesday', 'markets': [{'id': 'bobo', 'name': 'Bobo'}]},
+      {'weekday': 3, 'weekday_name': 'Thursday', 'markets': [{'id': 'beneta', 'name': 'Beneta'}]},
       {'weekday': 4, 'weekday_name': 'Friday', 'markets': []},
-      {'weekday': 5, 'weekday_name': 'Saturday', 'markets': [{'name': 'Boshkoro'}, {'name': 'Ajo'}, {'name': 'Gento'}]},
+      {'weekday': 5, 'weekday_name': 'Saturday', 'markets': [{'id': 'boshkoro', 'name': 'Boshkoro'}, {'id': 'ajo', 'name': 'Ajo'}, {'id': 'gento', 'name': 'Gento'}]},
       {'weekday': 6, 'weekday_name': 'Sunday', 'markets': []},
     ],
   };
@@ -43,6 +43,7 @@ void main() {
     final cache = MemoryMarketScheduleCache();
     final client = MockClient((request) async {
       expect(request.url.path, endsWith('/markets/schedule'));
+      expect(request.url.queryParameters['lang'], 'en');
       return http.Response(jsonEncode(schedule), 200);
     });
     await tester.pumpWidget(MaterialApp(
@@ -86,70 +87,6 @@ void main() {
     expect(find.text('Gento'), findsOneWidget);
     client.close();
   });
-}
-
-
-
-
-
-  testWidgets('market calendar entry opens bilingual detail page with location map data', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final detail = {
-      'id': 'market-koybe',
-      'name': 'ቆይቤ ገበያ',
-      'name_en': 'Koybe Market',
-      'name_am': 'ቆይቤ ገበያ',
-      'address': 'ቆይቤ ዋና መንገድ',
-      'address_en': 'Main Road, Koybe',
-      'address_am': 'ቆይቤ ዋና መንገድ',
-      'description': 'የሳምንታዊ አካባቢ ገበያ',
-      'latitude': 6.0,
-      'longitude': 36.5,
-      'location': {'name': 'ቆይቤ', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
-      'schedule_days': [0],
-    };
-    final cache = MemoryMarketScheduleCache();
-    final client = MockClient((request) async {
-      if (request.url.path.endsWith('/markets/schedule')) {
-        return http.Response(jsonEncode({
-          'timezone': 'Africa/Addis_Ababa',
-          'days': [
-            {'weekday': 0, 'weekday_name': 'Monday', 'markets': [
-              {'id': 'market-koybe', 'name': 'ቆይቤ ገበያ'},
-            ]},
-          ],
-        }), 200);
-      }
-      if (request.url.path.endsWith('/markets/market-koybe')) {
-        expect(request.url.queryParameters['lang'], 'am');
-        return http.Response(jsonEncode(detail), 200);
-      }
-      return http.Response('not found', 404);
-    });
-    await tester.pumpWidget(MaterialApp(
-      locale: const Locale('am'),
-      home: MarketCalendarPage(
-        apiBaseUrl: 'https://market.example.test/api/v1',
-        client: client,
-        cache: cache,
-      ),
-    ));
-    await tester.pumpAndSettle();
-    expect(find.text('ቆይቤ ገበያ'), findsOneWidget);
-    await tester.tap(find.text('ቆይቤ ገበያ'));
-    await tester.pumpAndSettle();
-    expect(find.text('ቆይቤ ዋና መንገድ'), findsOneWidget);
-    expect(find.text('የአካባቢ ካርታ'), findsOneWidget);
-    expect(find.text('6.0, 36.5'), findsOneWidget);
-    client.close();
-  })
-
-}
-
-
 
   testWidgets('market calendar entry opens bilingual detail page with location map data', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
@@ -205,3 +142,4 @@ void main() {
     expect(find.text('6.0, 36.5'), findsOneWidget);
     client.close();
   });
+}
