@@ -96,6 +96,10 @@ def _validate_business_fields(
         category = db.get(Category, category_id)
         if category is None or not category.is_active:
             raise HTTPException(status_code=422, detail="Choose an active business category")
+        if db.scalar(select(Category.id).where(
+            Category.parent_id == category.id, Category.is_active.is_(True)
+        )) is not None:
+            raise HTTPException(status_code=422, detail="Choose a business subcategory")
     if location_id is not None:
         location = db.get(Location, location_id)
         if location is None or not location.is_active or location.level not in {"town", "locality"}:
