@@ -126,3 +126,37 @@ void main() {
     client.close();
   });
 }
+
+
+  testWidgets('customer can remove a private profile photo', (tester) async {
+    var deleteCalled = false;
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/customers/me') && request.method == 'GET') {
+        return http.Response(jsonEncode({
+          'id': 'profile-photo', 'user_id': 'buyer-photo',
+          'phone_number': '+251900000903', 'display_name': 'Photo Buyer',
+          'preferred_language': 'am', 'profile_photo_url': '/customers/me/photo',
+        }), 200);
+      }
+      if (request.url.path.endsWith('/locations')) return http.Response('[]', 200);
+      if (request.url.path.endsWith('/markets')) return http.Response('[]', 200);
+      if (request.url.path.endsWith('/customers/me/photo') && request.method == 'DELETE') {
+        expect(request.headers['Authorization'], 'Bearer photo-token');
+        deleteCalled = true;
+        return http.Response('', 204);
+      }
+      return http.Response('Not found', 404);
+    });
+    await tester.pumpWidget(MaterialApp(home: CustomerProfilePage(
+      apiBaseUrl: 'https://market.example.test/api/v1',
+      accessToken: 'photo-token', client: client,
+    )));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('customer-profile-photo-pick')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('customer-profile-photo-remove')));
+    await tester.pumpAndSettle();
+    expect(deleteCalled, isTrue);
+    expect(find.text('Profile photo removed.'), findsOneWidget);
+    expect(find.byKey(const Key('customer-profile-photo-remove')), findsNothing);
+    client.close();
+  });

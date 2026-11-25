@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 import '../../l10n/market_strings.dart';
 
@@ -31,6 +32,9 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   String? _marketId;
   String _language = 'am';
   String? _contactPreference;
+  String? _profilePhotoUrl;
+  final _picker = ImagePicker();
+  bool _photoBusy = false;
   bool _loading = true;
   bool _saving = false;
   bool _loggingOut = false;
@@ -86,6 +90,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         _marketId = profile['preferred_market_id'] as String?;
         _language = profile['preferred_language'] as String? ?? 'am';
         _contactPreference = profile['contact_preference'] as String?;
+        _profilePhotoUrl = profile['profile_photo_url'] as String?;
         _locations = locations;
         _markets = markets;
       });
@@ -114,6 +119,52 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
       if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loggingOut = false);
+    }
+  }
+
+
+  Future<void> _pickPhoto() async {
+    if (_photoBusy || _saving || _loggingOut) return;
+    setState(() { _photoBusy = true; _error = null; _notice = null; });
+    try {
+      final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 88, maxWidth: 1200, maxHeight: 1200);
+      if (picked == null) return;
+      final request = http.MultipartRequest('POST', Uri.parse('$_base/customers/me/photo'));
+      request.headers['Authorization'] = 'Bearer \${widget.accessToken}';
+      request.files.add(await http.MultipartFile.fromPath('file', picked.path));
+      final response = await http.Response.fromStream(await widget.client.send(request));
+      if (response.statusCode != 201) {
+        throw Exception(response.statusCode == 401
+          ? marketString(context, en: 'Your session has expired. Sign in again.', am: 'የመግቢያ ጊዜዎ አብቅቷል። እንደገና ይግቡ።', mdy: '')
+          : marketString(context, en: 'Profile photo could not be uploaded (\${response.statusCode}).', am: 'የመገለጫ ፎቶውን መጫን አልተቻለም (\${response.statusCode})።', mdy: ''));
+      }
+      if (mounted) setState(() {
+        _profilePhotoUrl = '/customers/me/photo';
+        _notice = marketString(context, en: 'Profile photo updated.', am: 'የመገለጫ ፎቶው ተዘምኗል።', mdy: '');
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _photoBusy = false);
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    if (_photoBusy || _saving || _loggingOut || _profilePhotoUrl == null) return;
+    setState(() { _photoBusy = true; _error = null; _notice = null; });
+    try {
+      final response = await widget.client.delete(Uri.parse('$_base/customers/me/photo'), headers: _headers);
+      if (response.statusCode != 204) {
+        throw Exception(marketString(context, en: 'Profile photo could not be removed.', am: 'የመገለጫ ፎቶውን ማስወገድ አልተቻለም።', mdy: ''));
+      }
+      if (mounted) setState(() {
+        _profilePhotoUrl = null;
+        _notice = marketString(context, en: 'Profile photo removed.', am: 'የመገለጫ ፎቶው ተወግዷል።', mdy: '');
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _photoBusy = false);
     }
   }
 
@@ -184,6 +235,39 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
             child: ListView(
               padding: const EdgeInsets.all(18),
               children: [
+
+                Row(children: [
+                  CircleAvatar(
+                    radius: 34,
+                    backgroundImage: _profilePhotoUrl == null ? null : NetworkImage(
+                      '$_base$_profilePhotoUrl',
+                      headers: {'Authorization': 'Bearer \${widget.accessToken}'},
+                    ),
+                    child: _profilePhotoUrl == null ? const Icon(Icons.person, size: 34) : null,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(marketString(context, en: 'Profile photo (optional)', am: 'የመገለጫ ፎቶ (አማራጭ)', mdy: ''),
+                      style: Theme.of(context).textTheme.titleMedium),
+                    Text(marketString(context, en: 'Choose a clear photo. It stays private to your account.', am: 'ግልጽ ፎቶ ይምረጡ። ፎቶው በመለያዎ ውስጥ ብቻ ይቆያል።', mdy: '')),
+                    Wrap(spacing: 8, children: [
+                      TextButton.icon(
+                        key: const Key('customer-profile-photo-pick'),
+                        onPressed: _photoBusy || _saving || _loggingOut ? null : _pickPhoto,
+                        icon: _photoBusy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.photo_library_outlined),
+                        label: Text(marketString(context, en: 'Choose photo', am: 'ፎቶ ይምረጡ', mdy: '')),
+                      ),
+                      if (_profilePhotoUrl != null)
+                        TextButton.icon(
+                          key: const Key('customer-profile-photo-remove'),
+                          onPressed: _photoBusy || _saving || _loggingOut ? null : _removePhoto,
+                          icon: const Icon(Icons.delete_outline),
+                          label: Text(marketString(context, en: 'Remove', am: 'አስወግድ', mdy: '')),
+                        ),
+                    ]),
+                  ])),
+                ]),
+                const SizedBox(height: 18),
                 Text(marketString(context, en: 'Your account details', am: 'የመለያዎ መረጃ', mdy: ''),
                   style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 14),
