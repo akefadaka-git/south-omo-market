@@ -1,12 +1,12 @@
 """Add account intent and bilingual market details.
 
-Revision ID: 0019_account_intent_bilingual_markets
+Revision ID: 0019_bilingual_market_roles
 Revises: 0018_seller_business_profiles
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0019_account_intent_bilingual_markets"
+revision = "0019_bilingual_market_roles"
 down_revision = "0018_seller_business_profiles"
 branch_labels = None
 depends_on = None
