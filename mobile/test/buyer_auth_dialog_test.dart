@@ -14,12 +14,12 @@ void main() {
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/locations')) {
         return http.Response(jsonEncode([
-          {'id': 'town-koybe', 'level': 'town', 'name': 'Koybe', 'name_en': 'Koybe'},
+          {'id': 'town-koybe', 'level': 'town', 'name': 'ቆይቤ', 'name_en': 'Koybe', 'name_am': 'ቆይቤ'},
         ]), 200);
       }
       if (request.url.path.endsWith('/markets')) {
         return http.Response(jsonEncode([
-          {'id': 'market-koybe', 'location_id': 'town-koybe', 'name': 'Koybe market'},
+          {'id': 'market-koybe', 'location_id': 'town-koybe', 'name': 'ቆይቤ ገበያ', 'name_en': 'Koybe market', 'name_am': 'ቆይቤ ገበያ'},
         ]), 200);
       }
       if (request.url.path.endsWith('/auth/register')) {
@@ -34,6 +34,8 @@ void main() {
     });
 
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('am'),
+      supportedLocales: const [Locale('am'), Locale('en')],
       home: Scaffold(
         body: Builder(builder: (context) => TextButton(
           onPressed: () => showDialog<String>(
@@ -54,8 +56,11 @@ void main() {
 
     expect(find.byKey(const Key('buyer-preferred-location')), findsOneWidget);
     expect(find.text('የሚመርጡት አካባቢ (አስፈላጊ)'), findsOneWidget);
-    final areaDropdown = tester.widget<DropdownButtonFormField<String>>(
-      find.byKey(const Key('buyer-preferred-location')),
+    final areaDropdown = tester.widget<DropdownButton<String>>(
+      find.descendant(
+        of: find.byKey(const Key('buyer-preferred-location')),
+        matching: find.byType(DropdownButton<String>),
+      ),
     );
     expect(areaDropdown.dropdownColor, Colors.white);
     expect(areaDropdown.style?.color, const Color(0xFF102B2A));
@@ -71,11 +76,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('buyer-preferred-location')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Koybe').last);
+    await tester.tap(find.text('ቆይቤ').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('buyer-preferred-market')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Koybe market').last);
+    await tester.tap(find.text('ቆይቤ ገበያ').last);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Register and continue'));
