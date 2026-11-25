@@ -82,13 +82,13 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
                 'preferred_market_id': 'የሚመርጡት ገበያ',
                 'account_type': 'የመለያ አይነት',
               };
-              return "Field " + field + ": " + first.value.toString();
+              return (labels[field] ?? 'የመረጃ መስክ') + ' ያስተካክሉ።';
             }
-            return '${field}: ${(first.value as List).join('; ')}';
+            return field + ': ' + first.value.toString();
           }
           final message = error['message']?.toString();
           if (response.statusCode == 422 && isAmharic) {
-            return message == null ? 'ያስገቡትን መረጃ ያረጋግጡ።' : 'ያስገቡት መረጃ ትክክል አይደለም። $message';
+            return 'ያስገቡት መረጃ ትክክል አይደለም። እባክዎ የተጠቆሙትን መስኮች ያስተካክሉ።';
           }
           if (message != null && message.isNotEmpty) return message;
         }
