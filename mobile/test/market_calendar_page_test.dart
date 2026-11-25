@@ -152,7 +152,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ቆይቤ ዋና መንገድ'), findsOneWidget);
     expect(find.text('የአካባቢ ካርታ'), findsOneWidget);
-    expect(find.text('6.0, 36.5'), findsOneWidget);
+    expect(find.byWidgetPredicate((widget) => widget is SelectableText && widget.data == '6.0, 36.5'), findsOneWidget);
     client.close();
   });
 }
