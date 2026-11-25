@@ -119,6 +119,24 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     return isAmharic ? 'ምዝገባው አልተሳካም (${response.statusCode})።' : 'Registration failed (${response.statusCode}).';
   }
 
+
+  String _registrationTitle(BuildContext context) {
+    switch (_accountType) {
+      case 'merchant':
+        return marketString(context, en: 'Create merchant account', am: 'የነጋዴ መለያ ይፍጠሩ', mdy: '');
+      case 'bulk_distributor':
+        return marketString(context, en: 'Create bulk distributor account', am: 'የጅምላ አከፋፋይ መለያ ይፍጠሩ', mdy: '');
+      case 'producer':
+        return marketString(context, en: 'Create producer account', am: 'የአምራች መለያ ይፍጠሩ', mdy: '');
+      case 'service_provider':
+        return marketString(context, en: 'Create service provider account', am: 'የአገልግሎት ሰጪ መለያ ይፍጠሩ', mdy: '');
+      case 'other':
+        return marketString(context, en: 'Create participant account', am: 'የተሳታፊ መለያ ይፍጠሩ', mdy: '');
+      default:
+        return marketString(context, en: 'Create buyer account', am: 'የገዢ መለያ ይፍጠሩ', mdy: '');
+    }
+  }
+
   Future<void> _authenticate() async {
     if (_phone.text.trim().length < 7 || _password.text.length < 6 ||
         (_register && (_name.text.trim().isEmpty || _preferredLocationId == null))) {
@@ -170,12 +188,14 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
     title: Row(children: [
       const MarketBrandMark(size: 34),
       const SizedBox(width: 10),
-      Expanded(child: Text(_register ? marketString(context, en: 'Create buyer account', am: 'የገዢ መለያ ይፍጠሩ', mdy: '') : marketString(context, en: 'Buyer sign in', am: 'የገዢ መግቢያ', mdy: ''))),
+      Expanded(child: Text(_register ? _registrationTitle(context) : marketString(context, en: 'Sign in', am: 'መግቢያ', mdy: ''))),
     ]),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text(_register
-        ? marketString(context, en: 'Create an account to contact sellers and follow up on your inquiries.', am: 'ሻጮችን ለማነጋገርና የላኩትን ጥያቄ ለመከታተል መለያ ይፍጠሩ።', mdy: '')
-        : marketString(context, en: 'Sign in to contact this seller. Your registered phone number is shared with the seller.', am: 'ይህን ሻጭ ለማነጋገር ይግቡ። የተመዘገበው ስልክ ቁጥርዎ ለሻጩ ይታያል።', mdy: '')),
+        ? (_accountType == 'buyer'
+            ? marketString(context, en: 'Create an account to contact sellers and follow up on your inquiries.', am: 'ሻጮችን ለማነጋገርና የላኩትን ጥያቄ ለመከታተል መለያ ይፍጠሩ።', mdy: '')
+            : marketString(context, en: 'Business privileges and verification are handled separately after registration.', am: 'የንግድ ፈቃዶችና ማረጋገጫ ከምዝገባ በኋላ በተለየ ሂደት ይከናወናሉ።', mdy: ''))
+        : marketString(context, en: 'Sign in to continue. Your registered phone number is used for account access.', am: 'ለመቀጠል ይግቡ። የተመዘገበው ስልክ ቁጥርዎ ለመለያ መግቢያ ይጠቀማል።', mdy: '')),
       const SizedBox(height: 14),
       if (_register) DropdownButtonFormField<String>(
         key: const Key('buyer-account-type'),
