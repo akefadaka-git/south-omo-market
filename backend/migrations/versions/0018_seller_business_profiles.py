@@ -20,7 +20,7 @@ def upgrade() -> None:
         batch.add_column(sa.Column("operating_location_id", sa.String(36), nullable=True))
         batch.add_column(sa.Column("service_area", sa.JSON(), nullable=False, server_default=sa.text("'[]'")))
         batch.add_column(sa.Column("operating_hours", sa.JSON(), nullable=False, server_default=sa.text("'{}'")))
-        batch.add_column(sa.Column("supported_languages", sa.JSON(), nullable=False, server_default=sa.text("'[\\"am\\",\\"en\\"]'")))
+        batch.add_column(sa.Column("supported_languages", sa.JSON(), nullable=False, server_default=sa.text("""'["am","en"]'""")))
         batch.add_column(sa.Column("public_contact_phone", sa.String(32), nullable=True))
         batch.add_column(sa.Column("public_contact_email", sa.String(254), nullable=True))
         batch.add_column(sa.Column("public_contact_method", sa.String(16), nullable=True))
