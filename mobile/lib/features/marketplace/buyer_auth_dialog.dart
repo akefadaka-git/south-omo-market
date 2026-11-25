@@ -211,7 +211,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
           decoration: InputDecoration(labelText: marketString(context, en: 'Preferred area (required)', am: 'የሚመርጡት አካባቢ (አስፈላጊ)', mdy: '')),
           items: _locations.map((row) => DropdownMenuItem<String>(
             value: row['id'] as String,
-            child: Text((row['name'] ?? row['name_en'] ?? '') as String, overflow: TextOverflow.ellipsis),
+            child: Text((Localizations.localeOf(context).languageCode == 'am' ? (row['name_am'] ?? 'የአማርኛ ስም ይጠበቃል') : (row['name_en'] ?? '')) as String, overflow: TextOverflow.ellipsis),
           )).toList(),
           onChanged: _loadingOptions ? null : (value) => setState(() {
             _preferredLocationId = value;
@@ -233,7 +233,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
               row['location_id'] == null || row['location_id'] == _preferredLocationId)
             .map((row) => DropdownMenuItem<String>(
               value: row['id'] as String,
-              child: Text(row['name'] as String, overflow: TextOverflow.ellipsis),
+              child: Text((Localizations.localeOf(context).languageCode == 'am' ? (row['name_am'] ?? 'የአማርኛ ስም ይጠበቃል') : (row['name_en'] ?? '')) as String, overflow: TextOverflow.ellipsis),
             )).toList(),
           onChanged: (value) => setState(() => _preferredMarketId = value),
         ),
