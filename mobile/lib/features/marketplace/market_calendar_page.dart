@@ -35,11 +35,20 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
   String? _error;
   String _search = '';
   int? _weekdayFilter;
+  bool _started = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      unawaited(_load());
+    }
   }
 
   @override
@@ -243,11 +252,20 @@ class _MarketDetailPageState extends State<MarketDetailPage> {
   late Map<String, dynamic> _market = Map<String, dynamic>.from(widget.initialMarket);
   bool _loading = true;
   String? _error;
+  bool _started = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      unawaited(_load());
+    }
   }
 
   Future<void> _load() async {
