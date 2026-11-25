@@ -239,11 +239,19 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                 Row(children: [
                   CircleAvatar(
                     radius: 34,
-                    backgroundImage: _profilePhotoUrl == null ? null : NetworkImage(
-                      '$_base$_profilePhotoUrl',
-                      headers: {'Authorization': 'Bearer ${widget.accessToken}'},
-                    ),
-                    child: _profilePhotoUrl == null ? const Icon(Icons.person, size: 34) : null,
+                    child: _profilePhotoUrl == null
+                        ? const Icon(Icons.person, size: 34)
+                        : ClipOval(
+                            child: Image.network(
+                              '$_base$_profilePhotoUrl',
+                              width: 68,
+                              height: 68,
+                              fit: BoxFit.cover,
+                              headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.person, size: 34),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

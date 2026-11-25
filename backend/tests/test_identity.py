@@ -1602,17 +1602,21 @@ def test_legacy_seller_profile_can_be_upgraded_to_governed_business() -> None:
 
 
 def test_customer_profile_photo_upload_read_replace_delete_and_isolation(tmp_path) -> None:
+    unique_phone = f"+2519{uuid4().int % 100_000_000:08d}"
+    other_phone = f"+2519{uuid4().int % 100_000_000:08d}"
+    while other_phone == unique_phone:
+        other_phone = f"+2519{uuid4().int % 100_000_000:08d}"
     storage = LocalImageStorage(tmp_path / "private-photos")
     app.dependency_overrides[get_image_storage] = lambda: storage
     try:
         registered = client.post("/api/v1/auth/register", json={
-            "phone_number": "+251911111811",
+            "phone_number": unique_phone,
             "display_name": "Photo Buyer",
             "password": "synthetic-photo-password",
         })
         assert registered.status_code == 201
         token = client.post("/api/v1/auth/login", json={
-            "phone_number": "+251911111811",
+            "phone_number": unique_phone,
             "password": "synthetic-photo-password",
         }).json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -1645,13 +1649,13 @@ def test_customer_profile_photo_upload_read_replace_delete_and_isolation(tmp_pat
         assert client.get("/api/v1/customers/me/photo", headers=headers).status_code == 200
 
         other = client.post("/api/v1/auth/register", json={
-            "phone_number": "+251911111812",
+            "phone_number": other_phone,
             "display_name": "Other Buyer",
             "password": "synthetic-photo-password",
         })
         assert other.status_code == 201
         other_token = client.post("/api/v1/auth/login", json={
-            "phone_number": "+251911111812",
+            "phone_number": other_phone,
             "password": "synthetic-photo-password",
         }).json()["access_token"]
         other_headers = {"Authorization": f"Bearer {other_token}"}
