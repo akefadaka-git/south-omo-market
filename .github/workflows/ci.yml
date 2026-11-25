@@ -61,6 +61,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.14.0"
+      # Node 22 bundles npm 10, whose Arborist can crash while resolving
+      # optional peer sets (edgesOut null dereference). Pin the fixed npm 11 line.
+      - run: npm install --global npm@11.21.2
       - run: npm install --install-strategy=nested --no-audit --no-fund
       - name: Audit admin dependencies
         run: npm audit --audit-level=high
