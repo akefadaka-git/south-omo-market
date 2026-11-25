@@ -57,7 +57,7 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
         throw Exception('The market schedule service is not configured.');
       }
       final response = await widget.client.get(
-        Uri.parse('${widget.apiBaseUrl}/markets/schedule'),
+        Uri.parse('${widget.apiBaseUrl}/markets/schedule?lang=${Localizations.localeOf(context).languageCode}'),
       );
       if (response.statusCode != 200) {
         throw Exception('The market schedule could not be loaded.');
@@ -191,8 +191,21 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 6,
-                                  children: markets.map((market) => Chip(
+                                  children: markets.map((market) => ActionChip(
                                     label: Text(market['name'] as String? ?? ''),
+                                    avatar: const Icon(Icons.storefront_outlined, size: 18),
+                                    onPressed: () {
+                                      final marketId = market['id'] as String?;
+                                      if (marketId == null || marketId.isEmpty) return;
+                                      Navigator.of(context).push(MaterialPageRoute<void>(
+                                        builder: (_) => MarketDetailPage(
+                                          apiBaseUrl: widget.apiBaseUrl,
+                                          client: widget.client,
+                                          marketId: marketId,
+                                          initialMarket: market,
+                                        ),
+                                      ));
+                                    },
                                   )).toList(),
                                 ),
                             ],
@@ -202,6 +215,165 @@ class _MarketCalendarPageState extends State<MarketCalendarPage> {
                     },
                   )),
                 ]),
+    );
+  }
+}
+
+
+
+class MarketDetailPage extends StatefulWidget {
+  const MarketDetailPage({
+    super.key,
+    required this.apiBaseUrl,
+    required this.client,
+    required this.marketId,
+    required this.initialMarket,
+  });
+
+  final String apiBaseUrl;
+  final http.Client client;
+  final String marketId;
+  final Map<String, dynamic> initialMarket;
+
+  @override
+  State<MarketDetailPage> createState() => _MarketDetailPageState();
+}
+
+class _MarketDetailPageState extends State<MarketDetailPage> {
+  late Map<String, dynamic> _market = Map<String, dynamic>.from(widget.initialMarket);
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final language = Localizations.localeOf(context).languageCode;
+      final response = await widget.client.get(Uri.parse(
+        '${widget.apiBaseUrl}/markets/${widget.marketId}?lang=$language',
+      ));
+      if (response.statusCode != 200) {
+        throw Exception(marketString(context,
+          en: 'Market details could not be loaded.',
+          am: 'የገበያውን ዝርዝር መረጃ ማምጣት አልተቻለም።', mdy: ''));
+      }
+      if (mounted) setState(() => _market = jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final language = Localizations.localeOf(context).languageCode;
+    final name = (_market['name'] ?? (language == 'am' ? _market['name_am'] : _market['name_en']) ?? '').toString();
+    final location = _market['location'] is Map<String, dynamic>
+        ? _market['location'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final address = (_market['address'] ?? (language == 'am' ? _market['address_am'] : _market['address_en']))?.toString();
+    final description = (_market['description'] ?? '').toString();
+    final days = (_market['schedule_days'] as List<dynamic>? ?? const []).cast<int>();
+    final latitude = (_market['latitude'] as num?)?.toDouble();
+    final longitude = (_market['longitude'] as num?)?.toDouble();
+    return Scaffold(
+      appBar: AppBar(title: Text(name.isEmpty
+          ? marketString(context, en: 'Market details', am: 'የገበያ ዝርዝር', mdy: '')
+          : name)),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_error != null)
+                  MaterialBanner(
+                    content: Text(_error!),
+                    actions: [
+                      TextButton(onPressed: _load, child: Text(
+                        marketString(context, en: 'Retry', am: 'እንደገና ይሞክሩ', mdy: ''),
+                      )),
+                    ],
+                  ),
+                Text(name, style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 8),
+                if (_market['name_en'] != null || _market['name_am'] != null)
+                  Text(
+                    '${_market['name_en'] ?? 'English name pending'} • ${_market['name_am'] ?? 'የአማርኛ ስም ይጠበቃል'}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                const SizedBox(height: 16),
+                _detailRow(context, Icons.location_on_outlined,
+                  marketString(context, en: 'Town / locality', am: 'ከተማ / አካባቢ', mdy: ''),
+                  (location['name'] ?? location['name_en'] ?? '').toString()),
+                _detailRow(context, Icons.place_outlined,
+                  marketString(context, en: 'Address', am: 'አድራሻ', mdy: ''),
+                  address ?? marketString(context, en: 'Address not yet verified', am: 'አድራሻው ገና አልተረጋገጠም', mdy: '')),
+                _detailRow(context, Icons.calendar_month_outlined,
+                  marketString(context, en: 'Market day', am: 'የገበያ ቀን', mdy: ''),
+                  days.isEmpty ? marketString(context, en: 'Not scheduled', am: 'አልተመደበም', mdy: '') : days.map((day) => marketWeekdayLabel(context, day)).join(', ')),
+                if (description.isNotEmpty)
+                  _detailRow(context, Icons.info_outline,
+                    marketString(context, en: 'About this market', am: 'ስለዚህ ገበያ', mdy: ''),
+                    description),
+                const SizedBox(height: 16),
+                Text(marketString(context, en: 'Location map', am: 'የአካባቢ ካርታ', mdy: ''),
+                  style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                if (latitude != null && longitude != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      'https://staticmap.openstreetmap.de/staticmap.php?center=$latitude,$longitude&zoom=14&size=640x360&markers=$latitude,$longitude,red-pushpin',
+                      height: 220,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _mapFallback(context, latitude, longitude),
+                    ),
+                  )
+                else
+                  _mapFallback(context, null, null),
+              ],
+            ),
+    );
+  }
+
+  Widget _detailRow(BuildContext context, IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 3),
+          Text(value, style: Theme.of(context).textTheme.bodyLarge),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _mapFallback(BuildContext context, double? latitude, double? longitude) {
+    final hasCoordinates = latitude != null && longitude != null;
+    return Container(
+      height: 150,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.map_outlined, size: 34),
+        const SizedBox(height: 8),
+        Text(hasCoordinates
+            ? '$latitude, $longitude'
+            : marketString(context, en: 'Map coordinates are awaiting local verification.',
+                am: 'የካርታ መጋጠሚያዎች የአካባቢ ማረጋገጫ ይጠብቃሉ።', mdy: ''),
+          textAlign: TextAlign.center),
+      ]),
     );
   }
 }
