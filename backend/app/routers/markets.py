@@ -120,8 +120,9 @@ def _serialize_market(market: Market, db: Session, lang: str = "en", admin_view:
     if location is not None:
         localized = location.name_am if lang == "am" else location.name_mdy if lang == "mdy" else location.name_en
         location_payload = {
-            "id": location.id, "name": localized or location.name_en,
+            "id": location.id, "name": localized,
             "name_en": location.name_en, "name_am": location.name_am,
+            "translation_complete": bool(location.name_en and location.name_am),
             "name_mdy": location.name_mdy,
         }
     return {
