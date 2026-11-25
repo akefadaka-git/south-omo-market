@@ -13,6 +13,17 @@ type QueueItem = {
   seller_name: string;
 };
 
+type ListingEditQueueItem = {
+  edit_id: string;
+  listing_id: string;
+  listing_status: string;
+  seller_name: string;
+  current: Record<string, unknown>;
+  proposed_values: Record<string, unknown>;
+  changed_fields: string[];
+  submitted_at: string;
+};
+
 type Evidence = { summary: string; reference?: string };
 type ReportItem = {
   id: string;
@@ -52,6 +63,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [listingEdits, setListingEdits] = useState<ListingEditQueueItem[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [note, setNote] = useState('');
@@ -66,6 +78,14 @@ export default function App() {
     });
     if (!response.ok) throw new Error(response.status === 403 ? 'Administrator access required.' : 'Could not load moderation queue.');
     setQueue(await response.json() as QueueItem[]);
+  }, []);
+
+  const loadListingEdits = useCallback(async (accessToken: string) => {
+    const response = await fetch(`${API_BASE}/admin/moderation/listing-edits`, {
+      headers: authHeaders(accessToken),
+    });
+    if (!response.ok) throw new Error(response.status === 403 ? 'Administrator access required.' : 'Could not load listing edit queue.');
+    setListingEdits(await response.json() as ListingEditQueueItem[]);
   }, []);
 
   const loadReports = useCallback(async (accessToken: string) => {
@@ -91,7 +111,7 @@ export default function App() {
   }, []);
 
   async function refreshAdminData(accessToken: string) {
-    await Promise.all([loadQueue(accessToken), loadReports(accessToken), loadAudit(accessToken)]);
+    await Promise.all([loadQueue(accessToken), loadListingEdits(accessToken), loadReports(accessToken), loadAudit(accessToken)]);
     setAdminAuthorized(true);
   }
 
@@ -139,6 +159,30 @@ export default function App() {
     }
   }
 
+  async function decideListingEdit(editId: string, decision: 'approve' | 'reject') {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/admin/moderation/listing-edits/${editId}/decision`, {
+        method: 'POST',
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, note: note || null }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(body.detail ?? 'Listing edit moderation failed.');
+      }
+      await refreshAdminData(token);
+      setNote('');
+      setMessage(decision === 'approve' ? 'Listing edit approved; the new version is now public.' : 'Listing edit rejected; the approved version was preserved.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unexpected listing edit moderation error.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function decideReport(reportId: string, decision: string) {
     setBusy(true);
     setError('');
@@ -166,7 +210,7 @@ export default function App() {
   useEffect(() => {
     if (!token) return;
     setAdminAuthorized(null);
-    Promise.all([loadQueue(token), loadReports(token), loadAudit(token)])
+    Promise.all([loadQueue(token), loadListingEdits(token), loadReports(token), loadAudit(token)])
       .then(() => setAdminAuthorized(true))
       .catch((reason: unknown) => {
         setAdminAuthorized(false);
@@ -174,7 +218,7 @@ export default function App() {
           setError(reason instanceof Error ? reason.message : 'Could not refresh administration data.');
         }
       });
-  }, [token, loadQueue, loadReports, loadAudit]);
+  }, [token, loadQueue, loadListingEdits, loadReports, loadAudit]);
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', margin: '2rem auto', maxWidth: 960, padding: 24 }}>
@@ -206,6 +250,26 @@ export default function App() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button disabled={busy} onClick={() => decide(item.id, 'approve')}>Approve and publish</button>
                   <button disabled={busy} onClick={() => decide(item.id, 'reject')}>Reject</button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <h2>Published listing edits awaiting review ({listingEdits.length})</h2>
+          {listingEdits.length === 0 && <p>No published-listing edits are awaiting review.</p>}
+          <div style={{ display: 'grid', gap: 16 }}>
+            {listingEdits.map((edit) => (
+              <article key={edit.edit_id} aria-labelledby={`listing-edit-${edit.edit_id}`} style={{ border: '1px solid #ddd', borderRadius: 12, padding: 18 }}>
+                <h3 id={`listing-edit-${edit.edit_id}`}>Edit request · {edit.listing_id}</h3>
+                <p>Seller: {edit.seller_name} · Submitted: {new Date(edit.submitted_at).toLocaleString()}</p>
+                <p><strong>Changed fields:</strong> {edit.changed_fields.join(', ')}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+                  <section><h4>Currently published version</h4><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(edit.current, null, 2)}</pre></section>
+                  <section><h4>Proposed version changes</h4><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(edit.proposed_values, null, 2)}</pre></section>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button disabled={busy} onClick={() => decideListingEdit(edit.edit_id, 'approve')}>Approve edit</button>
+                  <button disabled={busy} onClick={() => decideListingEdit(edit.edit_id, 'reject')}>Reject edit</button>
                 </div>
               </article>
             ))}

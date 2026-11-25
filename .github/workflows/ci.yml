@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.14.0"
-      - run: npm install
+      - run: npm install --install-strategy=nested --no-audit --no-fund
       - name: Audit admin dependencies
         run: npm audit --audit-level=high
       - name: Upload generated npm lockfile for review
