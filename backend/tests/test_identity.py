@@ -1458,3 +1458,141 @@ def test_logout_revokes_existing_access_token() -> None:
     logged_out = client.post("/api/v1/auth/logout", headers=headers)
     assert logged_out.status_code == 204
     assert client.get("/api/v1/customers/me", headers=headers).status_code == 401
+
+
+def _create_business_test_account(phone: str) -> dict[str, str]:
+    registration = client.post("/api/v1/auth/register", json={
+        "phone_number": phone,
+        "display_name": "Synthetic Business Owner",
+        "password": "synthetic-business-password",
+    })
+    assert registration.status_code == 201
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": phone,
+        "password": "synthetic-business-password",
+    }).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_seller_onboarding_creates_business_and_pending_owner_membership() -> None:
+    category_id = "00000000-0000-4000-8000-000000000071"
+    location_id = "10000000-0000-4000-8000-000000000003"
+    db = TestingSession()
+    if db.get(Category, category_id) is None:
+        db.add(Category(id=category_id, slug="test-local-produce", name_en="Local produce", is_active=True))
+    if db.get(Location, location_id) is None:
+        db.add(Location(
+            id=location_id, parent_id="10000000-0000-4000-8000-000000000002",
+            code="ET-SO-MAALE-KOYBE", level="locality", name_en="Koybe",
+            name_am="ቆይቤ", is_active=True,
+        ))
+    db.commit()
+    db.close()
+
+    headers = _create_business_test_account("+251900000971")
+    created = client.post("/api/v1/sellers/me", headers=headers, json={
+        "public_name": "Koybe Produce",
+        "business_type": "producer",
+        "description": "Synthetic local produce business",
+        "primary_category_id": category_id,
+        "location_label": "Koybe",
+        "operating_location_id": location_id,
+        "service_area": ["Koybe", "Jinka"],
+        "operating_hours": {"public_note": "Mon-Sat, 08:00-18:00"},
+        "supported_languages": ["am", "en"],
+        "contact_phone": "+251900000971",
+        "publish_contact_phone": False,
+    })
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body["business_id"]
+    assert body["business_type"] == "producer"
+    assert body["verification_status"] == "pending"
+    assert body["membership_status"] == "pending"
+    assert body["public_contact_phone"] is None
+    assert body["contact_phone"] == "+251900000971"
+    assert body["primary_category_id"] == category_id
+    assert body["operating_location_id"] == location_id
+
+    db = TestingSession()
+    business = db.get(models.BusinessProfile, body["business_id"])
+    membership = db.query(models.BusinessMembership).filter_by(
+        business_id=body["business_id"], user_id=body["id"] if "user_id" in body else None,
+    ).one_or_none()
+    assert business is not None
+    assert business.legal_name == "Koybe Produce"
+    assert business.public_location_visibility == "hidden"
+    assert business.latitude is None and business.longitude is None
+    assert membership is None  # The API response intentionally does not expose owner user identifiers.
+    db.close()
+
+    loaded = client.get("/api/v1/sellers/me", headers=headers)
+    assert loaded.status_code == 200
+    assert loaded.json()["business_id"] == body["business_id"]
+    assert loaded.json()["service_area"] == ["Koybe", "Jinka"]
+
+
+def test_seller_can_edit_business_profile_and_must_consent_to_exact_location() -> None:
+    headers = _create_business_test_account("+251900000972")
+    created = client.post("/api/v1/sellers/me", headers=headers, json={
+        "public_name": "Synthetic Jinka Shop",
+        "location_label": "Jinka",
+        "business_type": "shop",
+    })
+    assert created.status_code == 201, created.text
+
+    denied = client.patch("/api/v1/sellers/me", headers=headers, json={
+        "public_location_visibility": "exact",
+        "latitude": 6.0,
+        "longitude": 36.5,
+        "confirm_exact_location": False,
+    })
+    assert denied.status_code == 422
+
+    updated = client.patch("/api/v1/sellers/me", headers=headers, json={
+        "public_name": "Updated Jinka Shop",
+        "description": "Updated synthetic business description",
+        "contact_email": "shop@example.test",
+        "publish_contact_email": True,
+        "public_contact_method": "email",
+        "service_area": ["Jinka", "Koybe"],
+        "public_location_visibility": "exact",
+        "latitude": 6.0,
+        "longitude": 36.5,
+        "confirm_exact_location": True,
+    })
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["public_name"] == "Updated Jinka Shop"
+    assert updated.json()["public_contact_email"] == "shop@example.test"
+    assert updated.json()["public_contact_method"] == "email"
+    assert updated.json()["public_location_visibility"] == "exact"
+
+    db = TestingSession()
+    business = db.get(models.BusinessProfile, updated.json()["business_id"])
+    assert business.location_consent_at is not None
+    assert business.latitude == 6.0 and business.longitude == 36.5
+    db.close()
+
+
+def test_legacy_seller_profile_can_be_upgraded_to_governed_business() -> None:
+    headers = _create_business_test_account("+251900000973")
+    user = client.get("/api/v1/customers/me", headers=headers)
+    assert user.status_code == 200
+    db = TestingSession()
+    legacy = SellerProfile(
+        user_id=user.json()["user_id"],
+        public_name="Legacy Seller",
+        location_label="Koybe",
+    )
+    db.add(legacy)
+    db.commit()
+    db.close()
+
+    upgraded = client.post("/api/v1/sellers/me", headers=headers, json={
+        "public_name": "Legacy Seller Updated",
+        "location_label": "Koybe",
+        "business_type": "individual",
+    })
+    assert upgraded.status_code == 201, upgraded.text
+    assert upgraded.json()["business_id"]
+    assert upgraded.json()["membership_status"] == "pending"
