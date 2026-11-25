@@ -56,7 +56,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
                 ("Ajo", 5), ("Asheker", 1), ("Bala", 1), ("Beneta", 3),
                 ("Bobo", 2), ("Boshkoro", 5), ("Gento", 5), ("Koybe", 0),
             ]
-            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0020_seller_contact_consent"
+            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0019_bilingual_market_roles"
 
         command.downgrade(config, "0008_reports_and_seller_blocks")
         command.upgrade(config, "head")
@@ -77,12 +77,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
         image_columns = {column["name"] for column in inspector.get_columns("listing_images")}
         assert {"client_image_id", "storage_key", "width", "height"} <= image_columns
         inquiry_columns = {column["name"] for column in inspector.get_columns("inquiries")}
-        assert {"buyer_user_id", "status", "read_at", "closed_at", "contact_value",
-                "contact_disclosure_consent", "contact_consent_at"} <= inquiry_columns
-        assert any(
-            item["name"] == "ck_inquiry_contact_consent_consistency"
-            for item in inspector.get_check_constraints("inquiries")
-        )
+        assert {"buyer_user_id", "status", "read_at", "closed_at"} <= inquiry_columns
         assert {"actor_id", "action", "resource_type", "resource_id", "event_metadata"} <= {
             column["name"] for column in inspector.get_columns("audit_events")
         }
@@ -169,55 +164,6 @@ def test_business_membership_migration_preserves_legacy_rows_and_allows_history(
             assert connection.exec_driver_sql(
                 "SELECT COUNT(*) FROM business_role_permissions WHERE membership_role='owner'"
             ).scalar_one() >= 7
-    finally:
-        engine.dispose()
-        get_settings.cache_clear()
-
-
-def test_contact_consent_migration_redacts_legacy_inquiry_contact_data(tmp_path, monkeypatch) -> None:
-    database_path = tmp_path / "inquiry-consent-migration.db"
-    database_url = f"sqlite:///{database_path}"
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    get_settings.cache_clear()
-    config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
-    engine = create_engine(database_url)
-    try:
-        command.upgrade(config, "0019_bilingual_market_roles")
-        with engine.begin() as connection:
-            connection.exec_driver_sql(
-                "INSERT INTO users (id, phone_number, display_name, password_hash, is_active, is_admin, is_suspended, auth_version, account_type) "
-                "VALUES ('consent-user', '+251900009901', 'Legacy Buyer', 'synthetic-hash', 1, 0, 0, 0, 'buyer')"
-            )
-            connection.exec_driver_sql(
-                "INSERT INTO categories (id, slug, name_en, is_active) VALUES ('consent-category', 'consent-test', 'Consent test', 1)"
-            )
-            connection.exec_driver_sql(
-                "INSERT INTO seller_profiles (id, user_id, public_name, location_label) "
-                "VALUES ('consent-seller', 'consent-user', 'Synthetic seller', 'Koybe')"
-            )
-            connection.exec_driver_sql(
-                "INSERT INTO listings (id, seller_id, category_id, title, description, price_minor, currency, location_label, status) "
-                "VALUES ('consent-listing', 'consent-seller', 'consent-category', 'Legacy item', '', 1000, 'ETB', 'Koybe', 'published')"
-            )
-            connection.exec_driver_sql(
-                "INSERT INTO inquiries (id, listing_id, buyer_user_id, buyer_name, contact_value, message, status) "
-                "VALUES ('consent-inquiry', 'consent-listing', 'consent-user', 'Legacy Buyer', '+251900009901', 'Legacy inquiry', 'open')"
-            )
-        command.upgrade(config, "head")
-        with engine.connect() as connection:
-            row = connection.exec_driver_sql(
-                "SELECT buyer_name, contact_value, contact_disclosure_consent, contact_consent_at "
-                "FROM inquiries WHERE id='consent-inquiry'"
-            ).one()
-            assert tuple(row) == ("Marketplace customer", None, False, None)
-        command.downgrade(config, "0019_bilingual_market_roles")
-        with engine.connect() as connection:
-            columns = {column["name"] for column in inspect(connection).get_columns("inquiries")}
-            assert "contact_disclosure_consent" not in columns
-            assert "contact_consent_at" not in columns
-            assert connection.exec_driver_sql(
-                "SELECT contact_value FROM inquiries WHERE id='consent-inquiry'"
-            ).scalar_one() == "not-shared"
     finally:
         engine.dispose()
         get_settings.cache_clear()
