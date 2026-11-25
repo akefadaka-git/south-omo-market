@@ -102,7 +102,7 @@ def _market_query(active_only: bool):
     statement = select(Market).options(selectinload(Market.schedule_days))
     if active_only:
         statement = statement.where(Market.is_active.is_(True))
-    return statement.order_by(Market.name, Market.code)
+    return statement.order_by(Market.name_en, Market.name, Market.code)
 
 
 def _schedule_day_is_effective(day: MarketScheduleDay, on_date: date | None = None) -> bool:
@@ -127,7 +127,7 @@ def _serialize_market(market: Market, db: Session, lang: str = "en", admin_view:
         }
     return {
         "id": market.id, "code": market.code,
-        "name": (market.name_am if lang == "am" else (market.name_en or market.name)) or market.name,
+        "name": market.name_am if lang == "am" else (market.name_en or market.name),
         "name_en": market.name_en or market.name, "name_am": market.name_am,
         "translation_complete": bool(market.name_am and (market.name_en or market.name)),
         "description": (market.description_am if lang == "am" else (market.description_en or market.description)),
@@ -172,8 +172,10 @@ def list_markets(
     needle = q.strip().casefold() if q else ""
     return [
         _serialize_market(row, db, lang) for row in markets
-        if (not needle or needle in row.name.casefold() or needle in row.code.casefold()
-            or needle in (row.description or "").casefold())
+        if (not needle or needle in (row.name_en or row.name).casefold()
+            or needle in (row.name_am or "").casefold() or needle in row.code.casefold()
+            or needle in (row.description_en or row.description or "").casefold()
+            or needle in (row.description_am or "").casefold())
         and (weekday is None or any(day.weekday == weekday and _schedule_day_is_effective(day) for day in row.schedule_days))
     ]
 
