@@ -61,7 +61,7 @@ Existing regression tests also cover successful approval application and audit l
 - Downloaded ZIP digest independently matched GitHub's digest.
 - ZIP contains one `app-debug.apk`, size **146,514,575 bytes**.
 - Extracted APK SHA-256: `264a6b141b90030814a7d7007649175d35d5598b9b20f74cb1703311a9b22c40`.
-- [Download verified staging debug APK](sandbox:/mnt/data/south-omo-market-universal-staging-debug-596ecaa.apk).
+- The GitHub Actions artifact link above is the durable repository-hosted download reference; the extracted APK checksum is recorded for integrity verification.
 
 This is a staging/debug APK, not a signed production release. No physical-device installation test is claimed.
 
