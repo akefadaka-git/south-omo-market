@@ -41,15 +41,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: ruff check app tests --select E9,F63,F7,F82
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.9.9"
+      - name: Verify backend dependency lock
+        run: uv lock --check
+      - name: Install backend dependencies from lock
+        run: uv sync --locked --extra dev
+      - name: Run complete backend lint
+        run: uv run --locked ruff check app tests
       - name: Validate backup and restore script syntax
         run: bash -n scripts/backup_restore.sh
-      - run: pytest
+      - name: Run backend regression suite
+        run: uv run --locked pytest -q
       - name: Run PostgreSQL migration and audit-trigger integration tests
-        run: pytest -q tests/test_postgres_integration.py
+        run: uv run --locked pytest -q tests/test_postgres_integration.py
       - name: Run S3-compatible object-storage integration tests
-        run: pytest -q tests/test_s3_storage.py
+        run: uv run --locked pytest -q tests/test_s3_storage.py
 
   admin:
     runs-on: ubuntu-latest
@@ -61,19 +69,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.14.0"
-      # Node 22 bundles npm 10, whose Arborist can crash while resolving
-      # optional peer sets (edgesOut null dereference). Pin the fixed npm 11 line.
+      # Pin npm because package-lock.json was generated with npm 11.
       - run: npm install --global npm@11.21.2
-      - run: npm install --install-strategy=nested --no-audit --no-fund
+      - name: Install admin dependencies from committed lock
+        run: npm ci --install-strategy=nested --no-audit --no-fund
       - name: Audit admin dependencies
         run: npm audit --audit-level=high
-      - name: Upload generated npm lockfile for review
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: admin-package-lock
-          path: admin/package-lock.json
-          if-no-files-found: warn
       - run: npm run build
       - run: npm test
 
@@ -85,7 +86,7 @@ jobs:
         with:
           flutter-version: '3.35.7'
       - working-directory: mobile
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - working-directory: mobile
         run: flutter analyze --no-fatal-infos
       - working-directory: mobile
@@ -106,10 +107,10 @@ jobs:
           flutter-version: '3.35.7'
       - name: Generate Android platform scaffold
         working-directory: mobile
-        run: flutter create --platforms=android --org=et.southomomarket .
-      - name: Resolve Flutter dependencies
+        run: flutter create --platforms=android --org=et.southomomarket --no-pub .
+      - name: Resolve Flutter dependencies from committed lock
         working-directory: mobile
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: Build release APK
         if: ${{ vars.PRODUCTION_RELEASE_ENABLED == 'true' && vars.API_BASE_URL != '' }}
         working-directory: mobile
