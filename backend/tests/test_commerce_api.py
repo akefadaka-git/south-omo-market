@@ -556,6 +556,19 @@ def test_admin_edit_queue_and_approval_fail_closed_after_authority_revocation(
     from app.routers import listings as listings_router
 
     api = commerce_api
+    # Each parameterized revocation scenario must begin from an independent,
+    # known-good authority state so one case cannot make another pass falsely.
+    with api.engine.begin() as connection:
+        connection.execute(text("""
+            UPDATE business_profiles
+            SET verification_status='verified', is_active=1
+            WHERE id='commerce-business'
+        """))
+        connection.execute(text("""
+            UPDATE business_memberships
+            SET status='active'
+            WHERE id='commerce-membership-owner'
+        """))
     listing_id = str(uuid4())
     _seed_published_listing_for_edit(api, listing_id)
     api.as_user("commerce-owner")
