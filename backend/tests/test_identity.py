@@ -1836,6 +1836,15 @@ def test_admin_can_create_and_edit_bilingual_location_with_tags() -> None:
         "phone_number": phone, "password": password,
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
+    with TestingSession() as db:
+        zone_id = "10000000-0000-4000-8000-000000000001"
+        if db.get(Location, zone_id) is None:
+            db.add(Location(
+                id=zone_id, parent_id=None, code="ET-SO-CI-ROOT",
+                level="zone", name_en="South Omo", name_am="ደቡብ ኦሞ",
+                is_active=True,
+            ))
+            db.commit()
 
     created = client.post("/api/v1/admin/locations", headers=headers, json={
         "code": f"ET-SO-CI-{uuid4().hex[:8].upper()}",
