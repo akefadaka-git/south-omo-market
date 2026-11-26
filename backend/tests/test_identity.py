@@ -93,6 +93,24 @@ def test_ethiopian_mobile_number_formats_normalize_for_registration_and_login() 
     assert duplicate.status_code == 409
 
 
+def test_safaricom_mobile_number_formats_normalize_for_registration_and_login() -> None:
+    variants = ["0716546488", "716546488", "251716546488", "+251716546488"]
+    created = client.post("/api/v1/auth/register", json={
+        "phone_number": variants[0],
+        "display_name": "Synthetic Safaricom User",
+        "password": "synthetic-safaricom-password",
+    })
+    assert created.status_code == 201
+    assert created.json()["phone_number"] == "+251716546488"
+    for variant in variants:
+        response = client.post("/api/v1/auth/login", json={
+            "phone_number": variant,
+            "password": "synthetic-safaricom-password",
+        })
+        assert response.status_code == 200, variant
+        assert response.json()["access_token"]
+
+
 def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
     db = TestingSession()
     category_id = "00000000-0000-4000-8000-000000000001"
