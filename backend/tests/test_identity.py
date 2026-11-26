@@ -69,6 +69,30 @@ def test_register_and_login_with_synthetic_account() -> None:
     assert login.json()["access_token"]
 
 
+def test_ethiopian_mobile_number_formats_normalize_for_registration_and_login() -> None:
+    variants = ["0916546488", "916546488", "25916546488", "+251916546488"]
+    created = client.post("/api/v1/auth/register", json={
+        "phone_number": variants[0],
+        "display_name": "Synthetic Phone Format User",
+        "password": "synthetic-phone-format-password",
+    })
+    assert created.status_code == 201
+    assert created.json()["phone_number"] == "+251916546488"
+    for variant in variants:
+        response = client.post("/api/v1/auth/login", json={
+            "phone_number": variant,
+            "password": "synthetic-phone-format-password",
+        })
+        assert response.status_code == 200, variant
+        assert response.json()["access_token"]
+    duplicate = client.post("/api/v1/auth/register", json={
+        "phone_number": variants[2],
+        "display_name": "Duplicate Normalized Number",
+        "password": "synthetic-another-password",
+    })
+    assert duplicate.status_code == 409
+
+
 def test_seller_can_manage_only_own_draft_and_submit_for_review() -> None:
     db = TestingSession()
     category_id = "00000000-0000-4000-8000-000000000001"
@@ -605,7 +629,7 @@ def test_localized_category_and_hierarchical_location_catalog() -> None:
     if db.get(Location, location_id) is None:
         db.add(Location(
             id=location_id, parent_id=parent_id, code="TEST-KOYBE", level="locality",
-            name_en="Koybe", name_am="ቆይቤ", name_mdy=None, is_active=True,
+            name_en="Koybe", name_am="ኮይቤ", name_mdy=None, is_active=True,
         ))
     db.commit()
     db.close()
@@ -623,11 +647,19 @@ def test_localized_category_and_hierarchical_location_catalog() -> None:
         "parent_id": parent_id,
         "code": "ET-SO-MAALE-KOYBE",
         "level": "locality",
-        "name": "ቆይቤ",
+        "name": "ኮይቤ",
         "translation_complete": True,
         "name_en": "Koybe",
-        "name_am": "ቆይቤ",
+        "name_am": "ኮይቤ",
         "name_mdy": None,
+        "description_en": None,
+        "description_am": None,
+        "address_en": None,
+        "address_am": None,
+        "latitude": None,
+        "longitude": None,
+        "tags": [],
+        "is_active": True,
     }]
 
 
