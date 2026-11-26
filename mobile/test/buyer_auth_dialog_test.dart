@@ -119,8 +119,6 @@ void main() {
     expect(find.text('Create buyer account'), findsNothing);
     client.close();
   });
-}
-
 
   testWidgets('buyer can register when no bilingual location catalogue is available', (tester) async {
     Map<String, dynamic>? registrationBody;
@@ -178,3 +176,4 @@ void main() {
     expect(loginRequested, isTrue);
     client.close();
   });
+}
