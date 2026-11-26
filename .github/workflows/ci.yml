@@ -149,7 +149,7 @@ jobs:
             "$build_tools/apksigner" verify --verbose --print-certs "$signed"
             mv "$signed" "$apk"
           done
-      - name: Upload installable APK
+      - name: Upload installable APKs by ABI
         if: ${{ vars.API_BASE_URL != '' }}
         uses: actions/upload-artifact@v4
         with:
@@ -159,8 +159,8 @@ jobs:
           retention-days: 14
 
   android-staging-build:
-    name: Android staging test APK (automatic, non-production)
-    # Only build an acceptance APK from the active P1 branch; never use production release settings.
+    name: Android staging test APKs (split by ABI, non-production)
+    # Only build acceptance APKs from the active P1 branch; never use production release settings.
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feat/customer-platform-foundation' && vars.STAGING_API_BASE_URL != '' }}
     runs-on: ubuntu-latest
     steps:
@@ -204,18 +204,32 @@ jobs:
       - name: Resolve Flutter dependencies from committed lock
         working-directory: mobile
         run: flutter pub get --enforce-lockfile
-      - name: Build staging debug APK
+      - name: Build split staging debug APKs
         working-directory: mobile
         env:
           STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
         run: |
           set -euo pipefail
-          flutter build apk --debug \
+          flutter build apk --debug --split-per-abi \
             --dart-define=API_BASE_URL="${STAGING_API_BASE_URL%/}/api/v1"
-      - name: Upload single universal staging APK
+      - name: Upload ARM64 staging APK (most modern Android phones)
         uses: actions/upload-artifact@v4
         with:
-          name: south-omo-market-android-staging-universal-apk
-          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          name: south-omo-market-android-staging-arm64-v8a
+          path: mobile/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload ARM 32-bit staging APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: south-omo-market-android-staging-armeabi-v7a
+          path: mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload x86-64 staging APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: south-omo-market-android-staging-x86-64
+          path: mobile/build/app/outputs/flutter-apk/app-x86_64-debug.apk
           if-no-files-found: error
           retention-days: 14
