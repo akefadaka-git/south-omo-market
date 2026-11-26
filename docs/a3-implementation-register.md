@@ -1,3 +1,19 @@
+## A3.4 Engineering Verification closure addendum — 2026-11-26
+
+This addendum supersedes the older exact-head CI snapshot below for the A3.4 engineering-verification work item. It does not rewrite the historical entries or close the overall A3 register.
+
+- **A3.4 status:** VERIFIED-CLOSED — engineering-verification scope only.
+- **Approved scope:** stronger regression tests, reproducible dependency resolution, broader linting, and exact-head CI evidence.
+- **Verified application/code head:** `6221e790f2faf4fcd61b1950d8950c4a26002716`.
+- **GitHub Actions run #1129:** SUCCESS — https://github.com/akefadaka-git/south-omo-market/actions/runs/45830363627.
+- **Exact-head backend:** lock check/install PASS; Ruff PASS; 98 backend tests passed; PostgreSQL integration 2 passed; S3 integration 3 passed.
+- **Admin:** locked `npm ci`, dependency audit, build PASS; 2 test files / 4 tests passed.
+- **Mobile:** enforced Flutter lock, analysis PASS; 44 tests passed.
+- **Android staging:** HTTPS staging readiness and database readiness PASS; universal debug APK built and uploaded. Artifact ID `15122113305`; ZIP SHA-256 `127e51da0c56e3728c79a037cd33c25d96c477922dad0dfc2717790cc18ff57d`; APK SHA-256 `e8dfb9ded45c1da3c944af0387ca8153fa94a6522ba3c59b66ad9ac6c4cde690`.
+- **Production release:** SKIPPED by configuration gate. Physical-device acceptance NOT RUN.
+- Detailed evidence: [A3.4 implementation record](product/SOM-P3-A3.4-IMPLEMENTATION-001.md) and [A3.4 verification closure](product/SOM-P3-A3.4-VERIFICATION-CLOSURE-001.md).
+- **A3 overall:** IN PROGRESS / OPEN. **A4:** NOT STARTED. **A5:** NOT AUTHORIZED / NOT STARTED. No merge, main modification, shared database migration, deployment, production release, or commercial activation.
+
 # A3 implementation register — South Omo Market
 
 ## Latest exact-head automated verification
