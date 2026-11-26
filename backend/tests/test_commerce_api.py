@@ -361,7 +361,6 @@ def test_agreement_decision_is_counterparty_only_and_audited(commerce_api):
 
 
 def _seed_published_listing_for_edit(api, listing_id: str) -> str:
-    from uuid import uuid4
 
     with api.engine.begin() as connection:
         seller_id = "seller-edit-test"
@@ -480,7 +479,7 @@ def test_admin_approval_applies_pending_material_edit_and_audits(commerce_api, m
 def test_location_id_only_edit_updates_location_label(commerce_api, monkeypatch):
     from sqlalchemy.orm import Session
 
-    from app.models import Listing, ListingEdit, User
+    from app.models import ListingEdit, User
     from app.routers import listings as listings_router
 
     api = commerce_api
@@ -510,7 +509,6 @@ def test_location_id_only_edit_updates_location_label(commerce_api, monkeypatch)
 
 
 def test_minor_description_correction_is_published_through_authenticated_api(commerce_api, monkeypatch):
-    from app.models import Listing
     from app.routers import listings as listings_router
 
     api = commerce_api
@@ -552,7 +550,6 @@ def test_admin_edit_queue_and_approval_fail_closed_after_authority_revocation(
     commerce_api, monkeypatch, revocation_sql
 ):
     from app.dependencies import require_admin
-    from app.models import Listing, ListingEdit
     from app.routers import listings as listings_router
 
     api = commerce_api

@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.governance import require_permission
 from app.models import Category
-from app.core.database import Base
 from app.routers.listings import _require_leaf_category
 
 

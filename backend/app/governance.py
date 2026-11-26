@@ -6,7 +6,6 @@ from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
 
-
 OWNER_ONLY_PERMISSIONS = {
     "employment.advertisement.manage", "employment.advertisement.publish",
     "employment.payment.verify", "employment.provider.verify",

@@ -8,8 +8,17 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies import require_admin
-from app.models import AuditEvent, Category, Listing, ListingEdit, Location, Report, SellerProfile, User
 from app.governance_models import BusinessMembership, BusinessProfile
+from app.models import (
+    AuditEvent,
+    Category,
+    Listing,
+    ListingEdit,
+    Location,
+    Report,
+    SellerProfile,
+    User,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

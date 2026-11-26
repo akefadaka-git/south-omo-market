@@ -1,11 +1,19 @@
 from types import SimpleNamespace
+
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from app.governance import require_business_permission, require_permission
-from app.routers.businesses import MembershipInvite, VerificationDecision, invite_member, accept_invite, revoke_member, verify_business
+from app.routers.businesses import (
+    MembershipInvite,
+    VerificationDecision,
+    accept_invite,
+    invite_member,
+    revoke_member,
+    verify_business,
+)
 
 
 def db_fixture():

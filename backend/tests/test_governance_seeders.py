@@ -6,8 +6,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.seeders.system_reference import seed_system_reference_data
 from app.policy_engine import evaluate_policy
+from app.seeders.system_reference import seed_system_reference_data
 
 
 def test_governance_migration_and_reference_seeder_are_repeatable(tmp_path, monkeypatch) -> None:

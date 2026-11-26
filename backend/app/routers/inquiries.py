@@ -7,9 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.dependencies import get_current_user
 from app.models import Inquiry, Listing, SellerProfile, User
-from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/inquiries")
 

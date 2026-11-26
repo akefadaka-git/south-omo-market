@@ -156,27 +156,27 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
 def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatch):
     database_url = os.environ["TEST_POSTGRES_URL"]
     monkeypatch.setenv("DATABASE_URL", database_url)
-    from app.core.config import get_settings
-    from sqlalchemy.orm import Session
     from fastapi import HTTPException
+    from sqlalchemy.orm import Session
+
+    from app.core.config import get_settings
     from app.models import User
-    from app.seeders.system_reference import seed_system_reference_data
     from app.routers.employment import (
         AgreementAcceptance,
         CandidateConsentRequest,
         OwnerAdvertisementCreate,
         PaymentSubmission,
         PaymentVerification,
-        ProviderRequest,
         ProviderRejection,
+        ProviderRequest,
         accept_advertising_agreement,
         apply_to_published_opportunity,
         create_human_review_candidate_referral,
         create_owner_managed_advertisement,
         grant_candidate_sharing_consent,
+        list_consented_candidates,
         list_employment_provider_requests,
         list_owner_managed_advertisements,
-        list_consented_candidates,
         list_published_employment_advertisements,
         publish_employment_advertisement,
         reject_employment_provider,
@@ -187,6 +187,7 @@ def test_postgresql_owner_controlled_employment_advertising_lifecycle(monkeypatc
         verify_employment_provider,
         withdraw_candidate_sharing_consent,
     )
+    from app.seeders.system_reference import seed_system_reference_data
 
     get_settings.cache_clear()
     config = Config(str(Path(__file__).parents[1] / "alembic.ini"))

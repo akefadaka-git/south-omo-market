@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.dependencies import get_current_user
 from app.models import CustomerProfile, Location, Market, User
 from app.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.security import hash_password, issue_access_token, verify_password
-from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/auth")
 

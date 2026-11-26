@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.governance import require_permission
-from app.policy_engine import evaluate_policy
 from app.models import User
+from app.policy_engine import evaluate_policy
 
 router = APIRouter(prefix="/employment")
 

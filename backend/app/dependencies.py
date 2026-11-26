@@ -2,6 +2,7 @@ import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import User

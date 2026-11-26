@@ -5,7 +5,6 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from app.core.config import get_settings
 from app.core.database import get_engine
 from app.core.image_storage import LocalImageStorage, S3ImageStorage, get_image_storage
 from app.models import ListingImage

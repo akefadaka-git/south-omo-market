@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+
 class RegisterRequest(BaseModel):
     phone_number: str = Field(min_length=7, max_length=32)
     display_name: str = Field(min_length=1, max_length=120)

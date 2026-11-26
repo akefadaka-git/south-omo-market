@@ -1,20 +1,20 @@
 from io import BytesIO
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
-import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import models  # noqa: F401
 from app.core.database import Base, get_db
 from app.core.image_storage import LocalImageStorage, get_image_storage
 from app.core.rate_limit import limiter
-from app.main import app
-from app import models  # noqa: F401
-from app.models import Category, Listing, Location, Market, MarketScheduleDay, SellerProfile, User
 from app.governance_models import BusinessMembership, BusinessProfile
+from app.main import app
+from app.models import Category, Listing, Location, Market, MarketScheduleDay, SellerProfile, User
 from app.seeders.system_reference import seed_system_reference_data
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -762,7 +762,6 @@ def test_public_discovery_searches_descriptions_and_sorts_prices() -> None:
 
 
 def test_category_hierarchy_and_category_specific_listing_attributes() -> None:
-    from app.models import SellerProfile, User
 
     root_id = "00000000-0000-4000-8000-000000000001"
     child_id = "40000000-0000-4000-8000-000000000001"
@@ -946,6 +945,7 @@ def test_expanded_category_catalogue_and_listing_attribute_contract() -> None:
 
 def test_category_attribute_validator_rejects_malformed_schema_and_non_finite_values() -> None:
     from fastapi import HTTPException
+
     from app.routers.listings import _validated_attributes
 
     category = Category(
@@ -968,7 +968,7 @@ def test_category_attribute_validator_rejects_malformed_schema_and_non_finite_va
 
 def test_listing_and_seller_reports_evidence_review_blocks_and_audit() -> None:
     from app.admin_cli import set_admin_role
-    from app.models import AuditEvent, Report, SellerProfile, User
+    from app.models import AuditEvent, Report, User
 
     category_id = "70000000-0000-4000-8000-000000000001"
     db = TestingSession()

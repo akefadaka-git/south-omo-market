@@ -1,6 +1,7 @@
 """Out-of-band, one-time Owner-role assignment. Never exposed as an HTTP endpoint."""
 import argparse
 from uuid import uuid4
+
 from sqlalchemy import JSON, bindparam, text
 from sqlalchemy.orm import Session
 

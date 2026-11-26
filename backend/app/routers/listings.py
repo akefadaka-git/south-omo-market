@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import exists, func, inspect as sqlalchemy_inspect, select, text
+from sqlalchemy import exists, func, select, text
+from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,9 +15,21 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.image_storage import ListingImageStorage, get_image_storage
 from app.dependencies import get_current_user
-from app.governance import require_marketplace_listing_policy, require_seller_business_listing_access
-from app.models import AuditEvent, Category, Listing, ListingEdit, ListingImage, Location, SellerProfile, User
+from app.governance import (
+    require_marketplace_listing_policy,
+    require_seller_business_listing_access,
+)
 from app.governance_models import BusinessMembership, BusinessProfile
+from app.models import (
+    AuditEvent,
+    Category,
+    Listing,
+    ListingEdit,
+    ListingImage,
+    Location,
+    SellerProfile,
+    User,
+)
 
 router = APIRouter(prefix="/listings")
 
