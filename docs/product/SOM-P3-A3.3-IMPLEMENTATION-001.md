@@ -1,63 +1,82 @@
 # A3.3 — Versioned Listing Edits and Material-Change Moderation
 
 **Record:** SOM-P3-A3.3-001  
-**Status:** IMPLEMENTED — CI VERIFIED; targeted route-level verification remains before A3.3 VERIFIED-CLOSED  
+**Status:** VERIFIED-CLOSED — A3.3 implementation and scoped verification complete  
 **Branch:** `feat/customer-platform-foundation`  
-**Verification head:** `bc8c3e3811787ea4be9999bb04ec702941a4cfa8`
+**Implementation and verification commit:** `596ecaa4508da130b60d3348ab0e7b558c8d5405`  
+**CI:** [Workflow run #45820413019](https://github.com/akefadaka-git/south-omo-market/actions/runs/45820413019) — SUCCESS
 
-## Behavior
+## Behavior delivered
 
 - Draft listings retain the existing direct-edit workflow.
 - Published listing edits are stored as proposed values in a separate `listing_edits` record; the public listing remains unchanged while review is pending.
 - Only description formatting changes that preserve the exact Unicode word-token sequence (case, whitespace, and punctuation normalization) publish directly. These are audit-logged. Wording, claims, prices, identity, category, attributes, and location changes require moderation.
 - A database uniqueness constraint permits at most one pending edit per listing, including concurrent submissions.
-- Admins receive a dedicated pending edit queue and approve/reject endpoint. Approval rechecks active verified business and seller membership, plus active category/location references and proposed category/attribute validity. Rejection leaves the currently published listing unchanged.
+- Admins receive a dedicated pending edit queue and approve/reject endpoint. Approval rechecks active verified business and seller membership, plus active category/location references and proposed category/attribute validity.
+- Rejection leaves the currently published listing unchanged.
 - Every approval, rejection, and direct minor correction creates an audit event.
 - A location-ID-only proposed edit also derives the corresponding location label when the caller omits it.
 
-## Verification evidence
+## Latest CI evidence
 
-### GitHub Actions
+- Run ID: `45820413019`; run number: **1118**; attempt: **1**.
+- Head branch: `feat/customer-platform-foundation`.
+- Head SHA: `596ecaa4508da130b60d3348ab0e7b558c8d5405`.
+- Started: 2026-11-26 12:31:16 UTC; completed: 2026-11-26 12:37:10 UTC.
+- Overall workflow conclusion: **SUCCESS**.
 
-- Workflow: [CI run #45754206229](https://github.com/akefadaka-git/south-omo-market/actions/runs/45754206229) — **SUCCESS**, attempt 1.
-- Branch: `feat/customer-platform-foundation`.
-- Workflow head and verified branch head: `bc8c3e3811787ea4be9999bb04ec702941a4cfa8`.
-- Run completed 2026-11-26 04:21:55 UTC.
-- Backend job `139688878143`: SUCCESS — Ruff passed; pytest **94 passed**; PostgreSQL migration/audit-trigger integration **2 passed**; S3-compatible object-storage integration **3 passed**.
-- Mobile job `139688878270`: SUCCESS — `flutter analyze --no-fatal-infos` and `flutter test` passed.
-- Admin job `139688878054`: SUCCESS — dependency audit, `npm run build`, and `npm test` passed.
-- Android staging job `139688877698`: SUCCESS — HTTPS staging origin validation and live `/ready` check passed (`status=ready`, `database=ok`); Flutter 3.35.7 generated all three split-ABI debug APKs and uploaded them.
-- Android release job `139688879500`: SKIPPED because the release API URL is not configured. This is an intentional configuration gate, not a failed job.
+| Job / check | Result |
+|---|---|
+| Backend Ruff | PASS |
+| Backend pytest | **98 passed, 23 warnings, 0 failures** |
+| PostgreSQL migration and append-only audit-trigger integration | **2 passed, 4 warnings** |
+| S3-compatible storage integration | **3 passed** |
+| Admin dependency audit, build and tests | PASS |
+| Flutter analysis and tests | PASS |
+| Android staging readiness, universal debug APK build and upload | PASS |
+| Android production release APK | SKIPPED — release API URL not configured; expected configuration gate |
 
-### Staging APK artifact
+The backend job log confirms the exact pytest and integration counts. The PostgreSQL test used the CI service database only. No shared, staging, or production database migration was applied.
 
-- Artifact: [south-omo-market-android-staging-test-apk](https://github.com/akefadaka-git/south-omo-market/actions/runs/45754206229/artifacts/15087500919)
-- Artifact ID: `15087500919`; archive size: **123,820,700 bytes**; retention expiry: **2026-12-10 04:21:45 UTC**.
-- GitHub artifact archive digest: `sha256:03b4ad98d9e0f42da102aa46517427b3382d5dc0fc589ffdfb0ea3116b3828cb`.
-- The archive was downloaded and inspected; its SHA-256 matched GitHub's published digest and it contains exactly these APK files:
-  - `app-armeabi-v7a-debug.apk` — 57,615,849 bytes.
-  - `app-arm64-v8a-debug.apk` — 77,912,569 bytes.
-  - `app-x86_64-debug.apk` — 64,217,359 bytes.
-- The digest above is for the ZIP artifact, not an individual APK. No individual APK checksum or device-install test is asserted here.
+## A3.3 route and regression coverage
 
-### A3.3 regression coverage
+The four new test cases introduced in `backend/tests/test_commerce_api.py` passed in the 98-test backend suite:
 
-- `test_published_listing_material_edit_stays_private_until_admin_rejects`: verifies pending edits do not alter public listing output, duplicate pending submissions are rejected, rejection preserves published price/status, and an audit event is written.
-- `test_admin_approval_applies_pending_material_edit_and_audits`: verifies approval applies proposed values, preserves published status, clears the pending key, and writes an audit event.
-- `test_location_id_only_edit_updates_location_label`: verifies a location-ID-only proposal receives the matching location label.
-- Existing classifier coverage verifies the narrow direct-publish rule for formatting-only description changes.
-- The public visibility assertion uses the test client. Seller-update and admin-decision regression cases exercise the handler functions directly with the commerce fixture; they do not constitute full authenticated HTTP end-to-end coverage of every seller/admin route.
+1. `test_minor_description_correction_is_published_through_authenticated_api` — API PATCH path, minor-correction response, published description and audit event.
+2. `test_admin_edit_queue_and_approval_fail_closed_after_authority_revocation[business-verification-revoked]` — queue route, post-submission business verification revocation, approval returns 409, published listing unchanged, edit remains pending.
+3. `test_admin_edit_queue_and_approval_fail_closed_after_authority_revocation[seller-membership-revoked]` — independently resets the synthetic business and membership before the case, then verifies membership revocation after submission causes approval to return 409 without changing the published listing.
+4. `test_admin_edit_rejection_route_preserves_published_values_and_records_audit` — queue and decision routes, rejection response, published values preserved, rejection audit event recorded.
 
-### Migration
+Existing regression tests also cover successful approval application and audit logging, pending edit visibility, duplicate pending-edit rejection, and location label derivation.
 
-- Migration `0021_listing_edit_versions` is present in the branch and passed the PostgreSQL CI migration-chain integration test. No shared, staging, or production database migration was applied as part of this work.
+**Test-boundary note:** These route tests use the commerce API fixture and test dependency overrides to isolate moderation behavior. Seller authorization dependencies are stubbed in the relevant route tests and the admin dependency is overridden for the admin cases; this is not a production identity-provider or full RBAC end-to-end test. The underlying seller/business authorization controls were separately verified and closed in A3.1. A4 remains responsible for broader integrated/system-level verification.
 
-## Remaining verification before A3.3 closure
+## Staging artifact
 
-- Add/confirm authenticated route-level coverage for the minor-correction direct-publish path and the admin pending-edit queue/decision routes.
-- Add an A3.3-specific fail-closed approval regression for business verification or seller membership being revoked after edit submission but before approval.
-- Then record the resulting verification evidence and explicitly close A3.3. The successful workflow and artifact do not, by themselves, close these remaining acceptance gaps.
+- Artifact name: `south-omo-market-android-staging-universal-apk`.
+- Artifact ID: `15118356711`.
+- [Download from GitHub Actions](https://github.com/akefadaka-git/south-omo-market/actions/runs/45820413019/artifacts/15118356711).
+- ZIP size: **70,993,828 bytes**.
+- GitHub artifact digest: `sha256:c29a48c7ff42e99cfbc9831d477d1a2607b33f97754ade6e760530ff015d3bef`.
+- Downloaded ZIP digest independently matched GitHub's digest.
+- ZIP contains one `app-debug.apk`, size **146,514,575 bytes**.
+- Extracted APK SHA-256: `264a6b141b90030814a7d7007649175d35d5598b9b20f74cb1703311a9b22c40`.
+- [Download verified staging debug APK](sandbox:/mnt/data/south-omo-market-universal-staging-debug-596ecaa.apk).
 
-## Scope boundaries
+This is a staging/debug APK, not a signed production release. No physical-device installation test is claimed.
 
-No chat, payments, delivery, subscriptions, paid promotion, analytics expansion, deployment, merge, release APK publication, or shared database migration is included. Migration is CI-tested only. PR #1 remains unmerged; A4 and A5 remain separate stages.
+## Migration and scope boundaries
+
+- Migration `0021_listing_edit_versions` passed the PostgreSQL CI migration-chain integration check.
+- No shared, staging, or production database was migrated.
+- No merge, deployment, release publication, commercial activation, or production configuration change was performed.
+- PR #1 remains separate and unmerged.
+- A3.1 and A3.2 remain VERIFIED-CLOSED under their existing closure record.
+- A3.3 is VERIFIED-CLOSED for its approved implementation scope.
+- A3.4 onward remains subject to its own implementation and evidence.
+- A4 is NOT STARTED.
+- A5 is NOT AUTHORIZED / NOT STARTED.
+
+## Closure basis
+
+A3.3 acceptance gaps recorded in the earlier version of this document are addressed by the four passing route-level test cases above and the complete successful CI run. The successful approval business logic, rejection behavior, pending visibility, duplicate prevention, and audit behavior are covered by the existing regression suite. Closure is limited to A3.3; it does not imply full platform readiness or waive A4/A5 stage gates.
