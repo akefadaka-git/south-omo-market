@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Float,
     Integer,
     String,
     Text,
@@ -77,6 +78,13 @@ class Location(Base):
     name_en: Mapped[str] = mapped_column(String(120))
     name_am: Mapped[str | None] = mapped_column(String(120), nullable=True)
     name_mdy: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_am: Mapped[str | None] = mapped_column(Text, nullable=True)
+    address_en: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    address_am: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
