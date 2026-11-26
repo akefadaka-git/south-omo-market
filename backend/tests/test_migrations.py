@@ -56,7 +56,7 @@ def test_migrations_upgrade_and_downgrade_on_sqlite(tmp_path, monkeypatch) -> No
                 ("Ajo", 5), ("Asheker", 1), ("Bala", 1), ("Beneta", 3),
                 ("Bobo", 2), ("Boshkoro", 5), ("Gento", 5), ("Koybe", 0),
             ]
-            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0021_listing_edit_versions"
+            assert connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one() == "0022_location_admin_metadata"
 
         command.downgrade(config, "0008_reports_and_seller_blocks")
         command.upgrade(config, "head")
