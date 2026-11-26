@@ -103,6 +103,7 @@ app.include_router(identity.router, prefix=settings.api_v1_prefix, tags=["identi
 app.include_router(customers.router, prefix=settings.api_v1_prefix, tags=["customers"])
 app.include_router(categories.router, prefix=settings.api_v1_prefix, tags=["categories"])
 app.include_router(locations.router, prefix=settings.api_v1_prefix, tags=["locations"])
+app.include_router(locations.admin_router, prefix=settings.api_v1_prefix, tags=["admin-locations"])
 app.include_router(markets.router, prefix=settings.api_v1_prefix, tags=["markets"])
 app.include_router(markets.admin_router, prefix=settings.api_v1_prefix, tags=["admin-markets"])
 app.include_router(sellers.router, prefix=settings.api_v1_prefix, tags=["sellers"])
