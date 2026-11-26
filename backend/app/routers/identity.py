@@ -28,13 +28,13 @@ def normalize_phone_number(value: str) -> str:
     digits = compact[1:] if compact.startswith("+") else compact
     if digits.startswith("00"):
         digits = digits[2:]
-    if len(digits) == 10 and digits.startswith("09"):
+    if len(digits) == 10 and digits[0] in {"0"} and digits[1] in {"7", "9"}:
         digits = "251" + digits[1:]
-    elif len(digits) == 9 and digits.startswith("9"):
+    elif len(digits) == 9 and digits[0] in {"7", "9"}:
         digits = "251" + digits
     elif len(digits) == 11 and digits.startswith("25"):
         digits = "251" + digits[2:]
-    if len(digits) != 12 or not digits.startswith("2519"):
+    if len(digits) != 12 or not digits.startswith(("2517", "2519")):
         raise HTTPException(status_code=422, detail="Phone number format is invalid")
     return "+" + digits
 
