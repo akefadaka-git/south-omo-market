@@ -488,6 +488,8 @@ def update_my_listing(
             location = db.get(Location, location_id)
             if location is None or not location.is_active:
                 raise HTTPException(status_code=404, detail="Location not found")
+            if "location_label" not in changes:
+                changes["location_label"] = location.name_en
         changes["location_id"] = location_id
     if "category_id" in changes or "attributes" in changes:
         candidate_attributes = changes.get("attributes", listing.attributes or {})

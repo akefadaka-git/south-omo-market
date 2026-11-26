@@ -180,10 +180,22 @@ def decide_listing_edit(
         proposed = edit.proposed_values
         if not isinstance(proposed, dict) or not proposed or not set(proposed).issubset(allowed):
             raise HTTPException(status_code=409, detail="The proposed listing edit is invalid")
-        if "category_id" in proposed:
-            category = db.get(Category, proposed["category_id"])
+        if "category_id" in proposed or "attributes" in proposed:
+            from app.routers.listings import _require_leaf_category, _validated_attributes
+
+            category = db.get(Category, proposed.get("category_id", listing.category_id))
             if category is None or not category.is_active:
                 raise HTTPException(status_code=409, detail="The proposed category is no longer active")
+            try:
+                _require_leaf_category(db, category)
+                proposed["attributes"] = _validated_attributes(
+                    category, proposed.get("attributes", listing.attributes or {})
+                )
+            except HTTPException as exc:
+                raise HTTPException(
+                    status_code=409,
+                    detail="The proposed category or attributes are no longer valid",
+                ) from exc
         if proposed.get("location_id") is not None:
             location = db.get(Location, proposed["location_id"])
             if location is None or not location.is_active:

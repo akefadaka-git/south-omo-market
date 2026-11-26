@@ -357,3 +357,152 @@ def test_agreement_decision_is_counterparty_only_and_audited(commerce_api):
         """), {"agreement": agreement_id}).scalars().all()
     assert set(events) == {"offered", "accepted"}
     assert len(events) == 2
+
+
+
+def _seed_published_listing_for_edit(api, listing_id: str) -> str:
+    from uuid import uuid4
+
+    with api.engine.begin() as connection:
+        seller_id = "seller-edit-test"
+        connection.exec_driver_sql(
+            """INSERT OR IGNORE INTO seller_profiles
+               (id,user_id,business_id,public_name,location_label)
+               VALUES (?,'commerce-owner','commerce-business','Edit Test Seller','Koybe')""",
+            (seller_id,),
+        )
+        category_id = connection.execute(text("""
+            SELECT c.id FROM categories c
+            WHERE c.is_active = TRUE
+              AND NOT EXISTS (
+                SELECT 1 FROM categories child
+                WHERE child.parent_id = c.id AND child.is_active = TRUE
+              )
+            ORDER BY c.id LIMIT 1
+        """)).scalar_one()
+        connection.exec_driver_sql(
+            """INSERT INTO listings
+               (id,seller_id,category_id,title,description,attributes,price_minor,currency,
+                location_label,status)
+               VALUES (?,?,?,?,?,'{}',?,'ETB','Koybe','published')""",
+            (listing_id, seller_id, category_id, "Fresh tomatoes", "Fresh tomatoes from Koybe", 10000),
+        )
+    return category_id
+
+
+def test_published_listing_material_edit_stays_private_until_admin_rejects(commerce_api, monkeypatch):
+    from fastapi import HTTPException
+    from sqlalchemy import select
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from app.models import AuditEvent, Listing, ListingEdit, User
+    from app.routers import admin as admin_router
+    from app.routers import listings as listings_router
+
+    api = commerce_api
+    listing_id = str(uuid4())
+    _seed_published_listing_for_edit(api, listing_id)
+    api.as_user("commerce-owner")
+    monkeypatch.setattr(listings_router, "require_seller_business_listing_access", lambda *args, **kwargs: None)
+    monkeypatch.setattr(listings_router, "require_marketplace_listing_policy", lambda *args, **kwargs: None)
+
+    with Session(api.engine, expire_on_commit=False) as db:
+        seller = db.get(User, "commerce-owner")
+        submitted = listings_router.update_my_listing(
+            listing_id, listings_router.ListingUpdate(price_minor=12500), user=seller, db=db
+        )
+        assert submitted["edit_status"] == "pending_review"
+        assert submitted["changed_fields"] == ["price_minor"]
+        public_before = api.client.get(f"/api/v1/listings/{listing_id}")
+        assert public_before.status_code == 200, public_before.text
+        assert public_before.json()["price_minor"] == 10000
+
+        with pytest.raises(HTTPException) as duplicate:
+            listings_router.update_my_listing(
+                listing_id, listings_router.ListingUpdate(title="New tomato claim"), user=seller, db=db
+            )
+        assert duplicate.value.status_code == 409
+
+        edit = db.get(ListingEdit, submitted["edit_id"])
+        admin = db.get(User, "commerce-owner")
+        rejected = admin_router.decide_listing_edit(
+            edit.id, admin_router.ListingEditDecision(decision="reject", note="Not supported"),
+            admin=admin, db=db,
+        )
+        assert rejected["status"] == "rejected"
+        db.refresh(db.get(Listing, listing_id))
+        current = db.get(Listing, listing_id)
+        assert current.status == "published"
+        assert current.price_minor == 10000
+        assert db.scalar(select(ListingEdit.status).where(ListingEdit.id == edit.id)) == "rejected"
+        assert db.scalar(select(AuditEvent.action).where(
+            AuditEvent.resource_id == listing_id,
+            AuditEvent.action == "listing.edit.rejected",
+        )) == "listing.edit.rejected"
+
+
+def test_admin_approval_applies_pending_material_edit_and_audits(commerce_api, monkeypatch):
+    from sqlalchemy.orm import Session
+
+    from app.models import AuditEvent, Listing, ListingEdit, User
+    from app.routers import admin as admin_router
+    from app.routers import listings as listings_router
+
+    api = commerce_api
+    listing_id = str(uuid4())
+    _seed_published_listing_for_edit(api, listing_id)
+    api.as_user("commerce-owner")
+    monkeypatch.setattr(listings_router, "require_seller_business_listing_access", lambda *args, **kwargs: None)
+    monkeypatch.setattr(listings_router, "require_marketplace_listing_policy", lambda *args, **kwargs: None)
+
+    with Session(api.engine, expire_on_commit=False) as db:
+        seller = db.get(User, "commerce-owner")
+        submitted = listings_router.update_my_listing(
+            listing_id, listings_router.ListingUpdate(price_minor=15000), user=seller, db=db
+        )
+        edit = db.get(ListingEdit, submitted["edit_id"])
+        approved = admin_router.decide_listing_edit(
+            edit.id, admin_router.ListingEditDecision(decision="approve", note="Price evidence reviewed"),
+            admin=seller, db=db,
+        )
+        assert approved["status"] == "approved"
+        current = db.get(Listing, listing_id)
+        assert current.status == "published"
+        assert current.price_minor == 15000
+        assert db.scalar(select(ListingEdit.pending_key).where(ListingEdit.id == edit.id)) is None
+        assert db.scalar(select(AuditEvent.action).where(
+            AuditEvent.resource_id == listing_id,
+            AuditEvent.action == "listing.edit.approved",
+        )) == "listing.edit.approved"
+
+
+def test_location_id_only_edit_updates_location_label(commerce_api, monkeypatch):
+    from sqlalchemy.orm import Session
+
+    from app.models import Listing, ListingEdit, User
+    from app.routers import listings as listings_router
+
+    api = commerce_api
+    listing_id = str(uuid4())
+    _seed_published_listing_for_edit(api, listing_id)
+    location_id = str(uuid4())
+    with api.engine.begin() as connection:
+        connection.exec_driver_sql(
+            """INSERT INTO locations (id,code,level,name_en,is_active)
+               VALUES (?,'EDIT-LOCATION','woreda','Wolaita Sodo',1)""",
+            (location_id,),
+        )
+    api.as_user("commerce-owner")
+    monkeypatch.setattr(listings_router, "require_seller_business_listing_access", lambda *args, **kwargs: None)
+    monkeypatch.setattr(listings_router, "require_marketplace_listing_policy", lambda *args, **kwargs: None)
+
+    with Session(api.engine, expire_on_commit=False) as db:
+        seller = db.get(User, "commerce-owner")
+        submitted = listings_router.update_my_listing(
+            listing_id, listings_router.ListingUpdate(location_id=location_id), user=seller, db=db
+        )
+        assert submitted["edit_status"] == "pending_review"
+        edit = db.get(ListingEdit, submitted["edit_id"])
+        assert edit.proposed_values["location_id"] == location_id
+        assert edit.proposed_values["location_label"] == "Wolaita Sodo"
