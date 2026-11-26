@@ -51,7 +51,11 @@ def test_postgresql_full_migration_chain_and_append_only_audit_trigger(monkeypat
                 "width", "height"} <= {
             column["name"] for column in inspector.get_columns("listing_images")
         }
-        assert {"parent_id", "code", "level", "name_en", "name_am", "name_mdy"} <= {
+        assert {
+            "parent_id", "code", "level", "name_en", "name_am", "name_mdy",
+            "description_en", "description_am", "address_en", "address_am",
+            "latitude", "longitude", "tags",
+        } <= {
             column["name"] for column in inspector.get_columns("locations")
         }
         assert "location_id" in {
