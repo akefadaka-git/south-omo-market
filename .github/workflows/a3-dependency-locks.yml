@@ -7,7 +7,7 @@ on:
       - .github/workflows/a3-dependency-locks.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate-lockfiles:
@@ -55,3 +55,17 @@ jobs:
             mobile/pubspec.lock
           if-no-files-found: error
           retention-days: 7
+
+      - name: Commit resolved lockfiles to the feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/uv.lock admin/package-lock.json mobile/pubspec.lock
+          if git diff --cached --quiet; then
+            echo "Dependency lockfiles are already current."
+            exit 0
+          fi
+          git commit -m "build(a3.4): pin backend admin and mobile dependencies"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
