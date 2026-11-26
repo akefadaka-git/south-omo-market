@@ -200,10 +200,10 @@ jobs:
           echo "$response" | jq -e '.status == "ready" and .database == "ok"'
       - name: Generate Android platform scaffold
         working-directory: mobile
-        run: flutter create --platforms=android --org=et.southomomarket .
-      - name: Resolve Flutter dependencies
+        run: flutter create --platforms=android --org=et.southomomarket --no-pub .
+      - name: Resolve Flutter dependencies from committed lock
         working-directory: mobile
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: Build staging debug APK
         working-directory: mobile
         env:
