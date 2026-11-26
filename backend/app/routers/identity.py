@@ -14,13 +14,29 @@ router = APIRouter(prefix="/auth")
 
 
 def normalize_phone_number(value: str) -> str:
-    """Normalize presentation punctuation without guessing country-code equivalence."""
-    normalized = "".join(char for char in value.strip() if char not in " -().")
-    if not normalized or any(not (char.isdigit() or char == "+") for char in normalized):
+    """Normalize Ethiopian mobile-number variants to the E.164 +251 format.
+
+    Accepts 0916546488, 916546488, 25916546488, +251916546488,
+    and 00251916546488. Validation is provider-neutral for Ethiopian
+    mobile lines, including Safaricom numbers.
+    """
+    compact = "".join(char for char in value.strip() if char not in " -().")
+    if not compact or any(not (char.isdigit() or char == "+") for char in compact):
         raise HTTPException(status_code=422, detail="Phone number format is invalid")
-    if normalized.count("+") > 1 or ("+" in normalized and not normalized.startswith("+")):
+    if compact.count("+") > 1 or ("+" in compact and not compact.startswith("+")):
         raise HTTPException(status_code=422, detail="Phone number format is invalid")
-    return normalized
+    digits = compact[1:] if compact.startswith("+") else compact
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if len(digits) == 10 and digits.startswith("09"):
+        digits = "251" + digits[1:]
+    elif len(digits) == 9 and digits.startswith("9"):
+        digits = "251" + digits
+    elif len(digits) == 11 and digits.startswith("25"):
+        digits = "251" + digits[2:]
+    if len(digits) != 12 or not digits.startswith("2519"):
+        raise HTTPException(status_code=422, detail="Phone number format is invalid")
+    return "+" + digits
 
 
 def validate_preferred_references(db: Session, location_id: str | None, market_id: str | None) -> None:
