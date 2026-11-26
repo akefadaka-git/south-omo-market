@@ -54,9 +54,6 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
           .cast<Map<String, dynamic>>()
           .where((row) => row['name_en'] != null && row['name_am'] != null)
           .toList();
-      if (locations.isEmpty) {
-        throw Exception(marketString(context, en: 'No fully bilingual towns or localities are available yet. Contact the administrator to complete the geographic names.', am: 'ሙሉ በሙሉ በአማርኛና በእንግሊዝኛ የተመዘገቡ ከተሞች ወይም አካባቢዎች አልተገኙም። እባክዎ አስተዳዳሪውን ያነጋግሩ።', mdy: ''));
-      }
       if (!mounted) return;
       setState(() { _locations = locations; _markets = markets; });
     } catch (error) {
@@ -144,8 +141,8 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
 
   Future<void> _authenticate() async {
     if (_phone.text.trim().length < 7 || _password.text.length < 6 ||
-        (_register && (_name.text.trim().isEmpty || _preferredLocationId == null))) {
-      setState(() => _error = marketString(context, en: 'Enter a valid phone number, password (at least 6 characters), and display name when registering.', am: 'ትክክለኛ ስልክ ቁጥር፣ ቢያንስ 6 ፊደላት ያለው የይለፍ ቃል እና ሲመዘገቡ የሚታይ ስም ያስገቡ።', mdy: ''));
+        (_register && _name.text.trim().isEmpty)) {
+      setState(() => _error = marketString(context, en: 'Enter a valid phone number, password (at least 6 characters), and display name when registering. Area selection is optional.', am: 'ትክክለኛ ስልክ ቁጥር፣ ቢያንስ 6 ፊደላት ያለው የይለፍ ቃል እና ሲመዘገቡ የሚታይ ስም ያስገቡ። አካባቢ መምረጥ አማራጭ ነው።', mdy: ''));
       return;
     }
     setState(() { _busy = true; _error = null; });
@@ -237,7 +234,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
           menuMaxHeight: 360,
           style: const TextStyle(color: MarketPalette.ink, fontSize: 16, fontWeight: FontWeight.w600),
           iconEnabledColor: MarketPalette.forest,
-          decoration: InputDecoration(labelText: marketString(context, en: 'Preferred area (required)', am: 'የሚመርጡት አካባቢ (አስፈላጊ)', mdy: '')),
+          decoration: InputDecoration(labelText: marketString(context, en: 'Preferred area (optional)', am: 'የሚመርጡት አካባቢ (አማራጭ)', mdy: '')),
           items: _locations.map((row) => DropdownMenuItem<String>(
             key: ValueKey('buyer-location-option-${row['id']}'),
             value: row['id'] as String,
@@ -247,7 +244,7 @@ class _BuyerAuthDialogState extends State<BuyerAuthDialog> {
             _preferredLocationId = value;
             _preferredMarketId = null;
           }),
-          validator: (value) => value == null ? marketString(context, en: 'Select your preferred area.', am: 'የሚመርጡትን አካባቢ ይምረጡ።', mdy: '') : null,
+
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
