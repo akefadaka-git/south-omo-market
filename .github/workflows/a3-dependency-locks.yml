@@ -1,0 +1,57 @@
+name: A3 dependency lock generation
+
+on:
+  push:
+    branches: [feat/customer-platform-foundation]
+    paths:
+      - .github/workflows/a3-dependency-locks.yml
+
+permissions:
+  contents: read
+
+jobs:
+  generate-lockfiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.9.9"
+          python-version: "3.12"
+
+      - name: Resolve backend dependency lock
+        working-directory: backend
+        run: uv lock
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+
+      - name: Resolve admin dependency lock
+        working-directory: admin
+        run: |
+          npm install --global npm@11.21.2
+          npm install --package-lock-only --install-strategy=nested --ignore-scripts --no-audit --no-fund
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.7"
+
+      - name: Resolve mobile dependency lock
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Upload resolved dependency lockfiles
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-dependency-lockfiles
+          path: |
+            backend/uv.lock
+            admin/package-lock.json
+            mobile/pubspec.lock
+          if-no-files-found: error
+          retention-days: 7
