@@ -393,7 +393,6 @@ def _seed_published_listing_for_edit(api, listing_id: str) -> str:
 def test_published_listing_material_edit_stays_private_until_admin_rejects(commerce_api, monkeypatch):
     from fastapi import HTTPException
     from sqlalchemy import select
-    from sqlalchemy import select
     from sqlalchemy.orm import Session
 
     from app.models import AuditEvent, Listing, ListingEdit, User
@@ -443,6 +442,7 @@ def test_published_listing_material_edit_stays_private_until_admin_rejects(comme
 
 
 def test_admin_approval_applies_pending_material_edit_and_audits(commerce_api, monkeypatch):
+    from sqlalchemy import select
     from sqlalchemy.orm import Session
 
     from app.models import AuditEvent, Listing, ListingEdit, User
