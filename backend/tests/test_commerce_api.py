@@ -506,3 +506,152 @@ def test_location_id_only_edit_updates_location_label(commerce_api, monkeypatch)
         edit = db.get(ListingEdit, submitted["edit_id"])
         assert edit.proposed_values["location_id"] == location_id
         assert edit.proposed_values["location_label"] == "Wolaita Sodo"
+
+
+
+def test_minor_description_correction_is_published_through_authenticated_api(commerce_api, monkeypatch):
+    from app.models import Listing
+    from app.routers import listings as listings_router
+
+    api = commerce_api
+    listing_id = str(uuid4())
+    _seed_published_listing_for_edit(api, listing_id)
+    api.as_user("commerce-owner")
+    monkeypatch.setattr(listings_router, "require_seller_business_listing_access", lambda *args, **kwargs: None)
+    monkeypatch.setattr(listings_router, "require_marketplace_listing_policy", lambda *args, **kwargs: None)
+
+    response = api.client.patch(
+        f"/api/v1/listings/{listing_id}",
+        json={"description": "Fresh tomatoes, from Koybe!"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["edit_status"] == "published_minor_correction"
+    with api.engine.connect() as connection:
+        row = connection.execute(
+            text("SELECT description,status FROM listings WHERE id=:id"),
+            {"id": listing_id},
+        ).one()
+        events = connection.execute(
+            text("""SELECT action FROM audit_events
+                    WHERE resource_id=:id AND action='listing.minor_correction.published'"""),
+            {"id": listing_id},
+        ).scalars().all()
+    assert tuple(row) == ("Fresh tomatoes, from Koybe!", "published")
+    assert len(events) == 1
+
+
+@pytest.mark.parametrize(
+    "revocation_sql",
+    [
+        "UPDATE business_profiles SET verification_status='suspended',is_active=0 WHERE id='commerce-business'",
+        "UPDATE business_memberships SET status='revoked' WHERE id='commerce-membership-owner'",
+    ],
+    ids=["business-verification-revoked", "seller-membership-revoked"],
+)
+def test_admin_edit_queue_and_approval_fail_closed_after_authority_revocation(
+    commerce_api, monkeypatch, revocation_sql
+):
+    from app.dependencies import require_admin
+    from app.models import Listing, ListingEdit
+    from app.routers import listings as listings_router
+
+    api = commerce_api
+    listing_id = str(uuid4())
+    _seed_published_listing_for_edit(api, listing_id)
+    api.as_user("commerce-owner")
+    monkeypatch.setattr(listings_router, "require_seller_business_listing_access", lambda *args, **kwargs: None)
+    monkeypatch.setattr(listings_router, "require_marketplace_listing_policy", lambda *args, **kwargs: None)
+
+    submitted = api.client.patch(
+        f"/api/v1/listings/{listing_id}",
+        json={"price_minor": 14500},
+    )
+    assert submitted.status_code == 200, submitted.text
+    edit_id = submitted.json()["edit_id"]
+
+    previous_override = app.dependency_overrides.get(require_admin)
+    app.dependency_overrides[require_admin] = lambda: SimpleNamespace(id="commerce-owner")
+    try:
+        queue = api.client.get("/api/v1/admin/moderation/listing-edits")
+        assert queue.status_code == 200, queue.text
+        queued = [item for item in queue.json() if item["edit_id"] == edit_id]
+        assert len(queued) == 1
+        assert queued[0]["proposed_values"]["price_minor"] == 14500
+
+        with api.engine.begin() as connection:
+            connection.exec_driver_sql(revocation_sql)
+
+        decision = api.client.post(
+            f"/api/v1/admin/moderation/listing-edits/{edit_id}/decision",
+            json={"decision": "approve", "note": "Must fail closed after revocation"},
+        )
+        assert decision.status_code == 409, decision.text
+    finally:
+        if previous_override is None:
+            app.dependency_overrides.pop(require_admin, None)
+        else:
+            app.dependency_overrides[require_admin] = previous_override
+
+    with api.engine.connect() as connection:
+        listing = connection.execute(
+            text("SELECT price_minor,status FROM listings WHERE id=:id"),
+            {"id": listing_id},
+        ).one()
+        edit_status = connection.execute(
+            text("SELECT status FROM listing_edits WHERE id=:id"),
+            {"id": edit_id},
+        ).scalar_one()
+    assert tuple(listing) == (10000, "published")
+    assert edit_status == "pending_review"
+
+
+def test_admin_edit_rejection_route_preserves_published_values_and_records_audit(
+    commerce_api, monkeypatch
+):
+    from app.dependencies import require_admin
+    from app.routers import listings as listings_router
+
+    api = commerce_api
+    listing_id = str(uuid4())
+    _seed_published_listing_for_edit(api, listing_id)
+    api.as_user("commerce-owner")
+    monkeypatch.setattr(listings_router, "require_seller_business_listing_access", lambda *args, **kwargs: None)
+    monkeypatch.setattr(listings_router, "require_marketplace_listing_policy", lambda *args, **kwargs: None)
+
+    submitted = api.client.patch(
+        f"/api/v1/listings/{listing_id}",
+        json={"price_minor": 15500},
+    )
+    assert submitted.status_code == 200, submitted.text
+    edit_id = submitted.json()["edit_id"]
+
+    previous_override = app.dependency_overrides.get(require_admin)
+    app.dependency_overrides[require_admin] = lambda: SimpleNamespace(id="commerce-owner")
+    try:
+        queue = api.client.get("/api/v1/admin/moderation/listing-edits")
+        assert queue.status_code == 200, queue.text
+        assert any(item["edit_id"] == edit_id for item in queue.json())
+        rejected = api.client.post(
+            f"/api/v1/admin/moderation/listing-edits/{edit_id}/decision",
+            json={"decision": "reject", "note": "Synthetic evidence was insufficient"},
+        )
+        assert rejected.status_code == 200, rejected.text
+        assert rejected.json()["status"] == "rejected"
+    finally:
+        if previous_override is None:
+            app.dependency_overrides.pop(require_admin, None)
+        else:
+            app.dependency_overrides[require_admin] = previous_override
+
+    with api.engine.connect() as connection:
+        listing = connection.execute(
+            text("SELECT price_minor,status FROM listings WHERE id=:id"),
+            {"id": listing_id},
+        ).one()
+        audit = connection.execute(
+            text("""SELECT action FROM audit_events
+                    WHERE resource_id=:id AND action='listing.edit.rejected'"""),
+            {"id": listing_id},
+        ).scalars().all()
+    assert tuple(listing) == (10000, "published")
+    assert len(audit) == 1
