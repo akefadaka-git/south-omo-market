@@ -101,14 +101,14 @@ export default function LocationManagement({ accessToken }: { accessToken: strin
     finally { setBusy(false); }
   }
 
-  function fields(draft: Draft, onChange: (key: keyof Draft, value: unknown) => void, lockedCode = false) {
+  function fields(draft: Draft, onChange: (key: keyof Draft, value: unknown) => void, lockedCode = false, excludeId?: string) {
     return <>
       <label>Location level<select value={draft.level} onChange={(e) => onChange('level', e.target.value)}>
         {['zone', 'woreda', 'town', 'locality'].map((level) => <option key={level} value={level}>{level}</option>)}
       </select></label>
       <label>Parent location<select value={draft.parent_id ?? ''} onChange={(e) => onChange('parent_id', e.target.value || null)}>
         <option value="">No parent (zone only)</option>
-        {rows.filter((item) => item.is_active && item.id !== (draft as Draft & { id?: string }).id).map((item) =>
+        {rows.filter((item) => item.is_active && item.id !== excludeId).map((item) =>
           <option key={item.id} value={item.id}>{item.name_en} / {item.name_am} · {item.level}</option>)}
       </select></label>
       <label>Code<input required disabled={lockedCode} value={draft.code} onChange={(e) => onChange('code', e.target.value.toUpperCase())} maxLength={80} /></label>
@@ -150,7 +150,7 @@ export default function LocationManagement({ accessToken }: { accessToken: strin
             <span>{row.is_active ? 'Active' : 'Inactive'}</span>
           </div>
           <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', marginTop: 12 }}>
-            {fields(draft, (key, value) => changeDraft(row.id, key, value), true)}
+            {fields(draft, (key, value) => changeDraft(row.id, key, value), true, row.id)}
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button disabled={busy} onClick={() => save(row)}>Save changes</button>
