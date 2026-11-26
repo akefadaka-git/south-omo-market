@@ -1816,3 +1816,57 @@ def test_registration_contract_reproduces_and_explains_422_with_synthetic_geogra
     assert invalid_type.status_code == 422
     assert invalid_type.json()["error"]["code"] == "validation_error"
     assert "account_type" in invalid_type.json()["error"]["field_errors"]
+
+
+
+def test_admin_can_create_and_edit_bilingual_location_with_tags() -> None:
+    phone = f"+2519{uuid4().int % 10**8:08d}"
+    password = "synthetic-location-admin-123"
+    registered = client.post("/api/v1/auth/register", json={
+        "phone_number": phone,
+        "display_name": "Synthetic Location Admin",
+        "password": password,
+    })
+    assert registered.status_code == 201
+    with TestingSession() as db:
+        user = db.query(User).filter(User.phone_number == phone).one()
+        user.is_admin = True
+        db.commit()
+    token = client.post("/api/v1/auth/login", json={
+        "phone_number": phone, "password": password,
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    created = client.post("/api/v1/admin/locations", headers=headers, json={
+        "code": f"ET-SO-CI-{uuid4().hex[:8].upper()}",
+        "level": "town",
+        "parent_id": "10000000-0000-4000-8000-000000000001",
+        "name_en": "Synthetic Test Town",
+        "name_am": "የሙከራ ከተማ",
+        "description_en": "Synthetic location fixture",
+        "description_am": "ሰው ሰራሽ የሙከራ አካባቢ",
+        "address_en": "Test address",
+        "address_am": "የሙከራ አድራሻ",
+        "latitude": 5.6,
+        "longitude": 36.7,
+        "tags": ["product", "service"],
+    })
+    assert created.status_code == 201
+    location_id = created.json()["id"]
+    assert created.json()["tags"] == ["product", "service"]
+    assert created.json()["name_am"] == "የሙከራ ከተማ"
+
+    updated = client.patch(f"/api/v1/admin/locations/{location_id}", headers=headers, json={
+        "name_en": "Updated Synthetic Town",
+        "name_am": "የተሻሻለ የሙከራ ከተማ",
+        "tags": ["market", "transport"],
+    })
+    assert updated.status_code == 200
+    assert updated.json()["name_en"] == "Updated Synthetic Town"
+    assert updated.json()["tags"] == ["market", "transport"]
+
+    public = client.get("/api/v1/locations?lang=am")
+    assert public.status_code == 200
+    visible = next(row for row in public.json() if row["id"] == location_id)
+    assert visible["name"] == "የተሻሻለ የሙከራ ከተማ"
+    assert visible["latitude"] == 5.6
