@@ -5,8 +5,9 @@
 - **Status:** VERIFIED-CLOSED (A3.1 and A3.2 only)
 - **Repository:** `akefadaka-git/south-omo-market`
 - **Branch:** `feat/customer-platform-foundation`
-- **Verified implementation commit:** `3ba78adeb54f9be3bc843901f2aaa6e34beaaa41`
-- **Workflow:** [GitHub Actions run #45568219124](https://github.com/akefadaka-git/south-omo-market/actions/runs/45568219124)
+- **Verified A3.1/A3.2 implementation commit:** `3ba78adeb54f9be3bc843901f2aaa6e34beaaa41`
+- **Latest re-verification head:** `486f67439c93d9dd6ad751f1e622014b389744c4`
+- **Latest full CI verification:** [GitHub Actions run #45717182912](https://github.com/akefadaka-git/south-omo-market/actions/runs/45717182912)
 - **Verification date:** 2026-11-26
 
 ## 1. Closure scope
@@ -31,7 +32,7 @@ Migration `0020_seller_contact_consent` adds the consent fields and consistency 
 
 ## 4. CI evidence
 
-Workflow run #45568219124 completed all jobs. Required verification jobs passed:
+Workflow run #45717182912 completed all required jobs on the current branch head. Required verification jobs passed:
 
 | Job | Result |
 |---|---|
@@ -46,7 +47,7 @@ The release job is an optional/configuration-gated job; its skip does not indica
 ### Backend and migration evidence
 
 - Ruff: `All checks passed!`
-- Backend pytest: **82 passed, 23 warnings, 0 failures**.
+- Backend pytest on the latest head: **91 passed, 23 warnings, 0 failures** (includes A3.3 regression tests).
 - PostgreSQL full migration-chain and append-only audit-trigger integration: **2 passed, 4 warnings**.
 - S3-compatible storage integration: **3 passed**.
 - The PostgreSQL migration integration step completed successfully against the CI test database. This is CI verification only; no shared or production database was migrated.
@@ -54,11 +55,11 @@ The release job is an optional/configuration-gated job; its skip does not indica
 ### Android staging artifact
 
 - Artifact: `south-omo-market-android-staging-test-apk`
-- Artifact ID: `15001850156`
+- Artifact ID: `15070058466`
 - Contents: 3 debug APK files
 - Size: 123,820,695 bytes
-- SHA-256: `17b99be5ec94e2f5d4f8b8720385b43257874edd2b913de4f195086c87386c59`
-- [Download artifact from GitHub Actions](https://github.com/akefadaka-git/south-omo-market/actions/runs/45568219124/artifacts/15001850156)
+- SHA-256: `8b5ea478a84355ac6f3d5ac751016f7ff3c8cba2d13b0a06d0b1004cc8b6a1b9`
+- [Download artifact from GitHub Actions](https://github.com/akefadaka-git/south-omo-market/actions/runs/45717182912/artifacts/15070058466)
 - Artifact retention expiry reported by GitHub: 2026-12-09.
 
 ## 5. Files and migration covered
@@ -76,7 +77,7 @@ Implementation and test evidence at the verified commit includes:
 - `backend/tests/test_seller_security_consent.py`
 - `backend/tests/test_commerce_migrations.py`
 
-The migration head asserted by the commerce migration test is `0020_seller_contact_consent`.
+The latest full migration-chain CI check includes `0021_listing_edit_versions`; no shared or production database was migrated.
 
 ## 6. Boundaries and remaining work
 
