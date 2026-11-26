@@ -9,7 +9,7 @@ import 'package:http/testing.dart';
 import 'package:south_omo_market/features/marketplace/buyer_auth_dialog.dart';
 
 void main() {
-  testWidgets('buyer registration requires locality and sends preferences to API', (tester) async {
+  testWidgets('buyer registration accepts an optional area and sends selected preferences to API', (tester) async {
     Map<String, dynamic>? registrationBody;
     var loginRequested = false;
     final client = MockClient((request) async {
@@ -64,7 +64,7 @@ void main() {
     expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.byKey(const Key('buyer-account-type')), findsOneWidget);
     expect(find.byKey(const Key('buyer-preferred-location')), findsOneWidget);
-    expect(find.text('የሚመርጡት አካባቢ (አስፈላጊ)'), findsOneWidget);
+    expect(find.text('የሚመርጡት አካባቢ (አማራጭ)'), findsOneWidget);
     final areaDropdown = tester.widget<DropdownButton<String>>(
       find.descendant(
         of: find.byKey(const Key('buyer-preferred-location')),
@@ -81,11 +81,6 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic Buyer');
     await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000901');
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-password-901');
-
-    await tester.tap(find.byKey(const Key('buyer-register-submit')));
-    await tester.pumpAndSettle();
-    expect(registrationBody, isNull,
-        reason: 'Registration must be blocked until a preferred locality is selected');
 
     tester.testTextInput.hide();
     await tester.pumpAndSettle();
@@ -125,3 +120,61 @@ void main() {
     client.close();
   });
 }
+
+
+  testWidgets('buyer can register when no bilingual location catalogue is available', (tester) async {
+    Map<String, dynamic>? registrationBody;
+    var loginRequested = false;
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/locations') || request.url.path.endsWith('/markets')) {
+        return http.Response('[]', 200, headers: {'content-type': 'application/json'});
+      }
+      if (request.url.path.endsWith('/auth/register')) {
+        registrationBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response('{"id":"synthetic-user"}', 201);
+      }
+      if (request.url.path.endsWith('/auth/login')) {
+        loginRequested = true;
+        return http.Response('{"access_token":"synthetic-token","token_type":"bearer"}', 200);
+      }
+      return http.Response('Not found', 404);
+    });
+
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('en'),
+      supportedLocales: const [Locale('am'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      home: Scaffold(
+        body: Builder(builder: (context) => TextButton(
+          onPressed: () => showDialog<String>(
+            context: context,
+            builder: (_) => BuyerAuthDialog(
+              apiBaseUrl: 'https://market.example.test/api/v1',
+              client: client,
+            ),
+          ),
+          child: const Text('Open buyer sign in'),
+        )),
+      ),
+    ));
+    await tester.tap(find.text('Open buyer sign in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('buyer-registration-toggle')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('buyer-display-name')), 'Synthetic Buyer');
+    await tester.enterText(find.byKey(const Key('buyer-phone')), '+251900000902');
+    await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-password-902');
+    await tester.tap(find.byKey(const Key('buyer-register-submit')));
+    await tester.pumpAndSettle();
+
+    expect(registrationBody, isNotNull);
+    expect(registrationBody?['preferred_location_id'], isNull);
+    expect(registrationBody?['preferred_market_id'], isNull);
+    expect(loginRequested, isTrue);
+    client.close();
+  });
