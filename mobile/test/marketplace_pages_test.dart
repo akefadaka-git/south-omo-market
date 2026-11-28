@@ -143,7 +143,7 @@ void main() {
       if (request.url.path.endsWith('/inquiries') && request.method == 'POST') {
         authHeaderPresent = request.headers.entries.any((entry) => entry.key.toLowerCase() == 'authorization' && entry.value == 'Bearer buyer-token');
         final body = jsonDecode(request.body) as Map<String, dynamic>;
-        sent = body['listing_id'] == 'listing-2' && body['message'] == 'Is this available?';
+        sent = body['listing_id'] == 'listing-2' && body['message'] == 'Is this available?' && body['contact_disclosure_consent'] == false;
         return http.Response('{"id":"inquiry-1","status":"open"}', 201);
       }
       return http.Response('Not found', 404);
@@ -153,6 +153,8 @@ void main() {
     )));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('buyer-inquiry-message')), 'Is this available?');
+    await tester.tap(find.byKey(const Key('buyer-contact-consent-no')));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Send inquiry'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('buyer-registration-toggle')));
