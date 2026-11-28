@@ -28,6 +28,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   String? _loadError;
   String? _notice;
   bool _sending = false;
+  bool? _contactDisclosureConsent;
 
   @override
   void initState() { super.initState(); _load(); }
@@ -39,6 +40,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     // Dismiss the input keyboard before opening the authentication/report dialog.
     FocusManager.instance.primaryFocus?.unfocus();
     final message = _messageController.text.trim();
+    if (_contactDisclosureConsent == null) {
+      setState(() => _error = marketString(context,
+        en: 'Choose whether to share your registered phone number with the seller.',
+        am: 'የተመዘገበውን ስልክ ቁጥርዎን ለሻጩ ማጋራት እንደሚፈልጉ ይምረጡ።', mdy: ''));
+      return;
+    }
     if (message.isEmpty || message.length > 2000) {
       setState(() => _error = marketString(context, en: 'Enter a message of up to 2,000 characters.', am: 'እስከ 2,000 ፊደላት ያለው መልዕክት ያስገቡ።', mdy: ''));
       return;
@@ -59,7 +66,11 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'listing_id': widget.listingId, 'message': message}),
+        body: jsonEncode({
+          'listing_id': widget.listingId,
+          'message': message,
+          'contact_disclosure_consent': _contactDisclosureConsent,
+        }),
       );
       if (response.statusCode == 409) {
         throw Exception(marketString(context, en: 'You cannot inquire about your own listing.', am: 'ስለ ራስዎ ዝርዝር ጥያቄ መላክ አይችሉም።', mdy: ''));
@@ -214,7 +225,35 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               ]),
               const SizedBox(height: 24),
               Text(marketString(context, en: 'Contact seller', am: 'ሻጩን ያነጋግሩ', mdy: ''), style: Theme.of(context).textTheme.titleLarge),
-              Text(marketString(context, en: 'Sign in or create a buyer account to send your inquiry. Your registered phone number is shared with the seller.', am: 'ጥያቄዎን ለመላክ ይግቡ ወይም የገዢ መለያ ይፍጠሩ። የተመዘገበው ስልክ ቁጥርዎ ለሻጩ ይታያል።', mdy: '')),
+              Text(marketString(context, en: 'Sign in or create an account to send an inquiry. Choose whether the seller may see your registered phone number.', am: 'ጥያቄ ለመላክ ይግቡ ወይም መለያ ይፍጠሩ። ሻጩ የተመዘገበውን ስልክ ቁጥርዎን ማየት እንዲችል ወይም እንዳይችል ይምረጡ።', mdy: '')),
+              const SizedBox(height: 12),
+              Text(marketString(context,
+                en: 'Phone-number sharing choice (required)',
+                am: 'የስልክ ቁጥር ማጋራት ምርጫ (አስፈላጊ)', mdy: ''),
+                style: Theme.of(context).textTheme.titleSmall),
+              RadioListTile<bool>(
+                key: const Key('buyer-contact-consent-no'),
+                value: false,
+                groupValue: _contactDisclosureConsent,
+                onChanged: _sending ? null : (value) => setState(() => _contactDisclosureConsent = value),
+                title: Text(marketString(context,
+                  en: 'Do not share my phone number',
+                  am: 'ስልክ ቁጥሬን አታጋሩ', mdy: '')),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              RadioListTile<bool>(
+                key: const Key('buyer-contact-consent-yes'),
+                value: true,
+                groupValue: _contactDisclosureConsent,
+                onChanged: _sending ? null : (value) => setState(() => _contactDisclosureConsent = value),
+                title: Text(marketString(context,
+                  en: 'Share my registered phone number with this seller',
+                  am: 'የተመዘገበውን ስልክ ቁጥሬን ከዚህ ሻጭ ጋር አጋራ', mdy: '')),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 8),
               TextField(
                 key: const Key('buyer-inquiry-message'),
                 controller: _messageController,
