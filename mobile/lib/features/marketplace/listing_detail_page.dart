@@ -332,6 +332,7 @@ class _ReportComposeDialogState extends State<_ReportComposeDialog> {
         ),
         const SizedBox(height: 12),
         TextFormField(
+          key: const Key('report-description'),
           controller: _description,
           minLines: 3,
           maxLines: 5,
