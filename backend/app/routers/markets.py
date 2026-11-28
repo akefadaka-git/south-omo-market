@@ -271,11 +271,23 @@ def update_market(
     next_longitude = changes.get("longitude", market.longitude)
     if (next_latitude is None) != (next_longitude is None):
         raise HTTPException(status_code=422, detail="Latitude and longitude must be supplied together")
-    before = {"name_en": market.name_en or market.name, "name_am": market.name_am, "address_en": market.address_en, "address_am": market.address_am, "location_id": market.location_id}
+    before = {
+        "name_en": market.name_en or market.name,
+        "name_am": market.name_am,
+        "description_en": market.description_en or market.description,
+        "description_am": market.description_am,
+        "address_en": market.address_en,
+        "address_am": market.address_am,
+        "latitude": market.latitude,
+        "longitude": market.longitude,
+        "location_id": market.location_id,
+    }
     for key, value in changes.items():
         if key == "name" and value is not None:
             value = value.strip()
             market.name_en = value
+        if key == "description":
+            market.description_en = value
         setattr(market, key, value)
     if changes:
         db.add(AuditEvent(
