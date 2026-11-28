@@ -631,9 +631,9 @@ def test_login_endpoint_enforces_ip_rate_limit() -> None:
 
 def test_localized_category_and_hierarchical_location_catalog() -> None:
     db = TestingSession()
-    category_id = "00000000-0000-4000-8000-000000000006"
-    location_id = "10000000-0000-4000-8000-000000000003"
-    parent_id = "10000000-0000-4000-8000-000000000002"
+    category_id = str(uuid4())
+    location_id = str(uuid4())
+    parent_id = str(uuid4())
     if db.get(Category, category_id) is None:
         db.add(Category(
             id=category_id, slug="test-rentals", name_en="Property and rentals",
@@ -663,7 +663,7 @@ def test_localized_category_and_hierarchical_location_catalog() -> None:
     assert locations.json() == [{
         "id": location_id,
         "parent_id": parent_id,
-        "code": "ET-SO-MAALE-KOYBE",
+        "code": "TEST-KOYBE",
         "level": "locality",
         "name": "ኮይቤ",
         "translation_complete": True,
