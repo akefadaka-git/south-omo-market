@@ -1929,3 +1929,37 @@ def test_admin_can_create_and_edit_bilingual_location_with_tags() -> None:
     visible = next(row for row in public.json() if row["id"] == location_id)
     assert visible["name"] == "የተሻሻለ የሙከራ ከተማ"
     assert visible["latitude"] == 5.6
+
+
+
+def test_admin_market_english_description_update_keeps_localized_payload_current() -> None:
+    from app.routers.markets import MarketUpdate, update_market
+
+    with TestingSession() as db:
+        admin = User(
+            phone_number=f"+2519{uuid4().int % 10**8:08d}",
+            display_name="Synthetic Market Admin",
+            password_hash="synthetic-test-hash",
+            is_admin=True,
+        )
+        market = Market(
+            code=f"TEST-MARKET-{uuid4().hex[:8].upper()}",
+            name="Original Market",
+            name_en="Original Market",
+            name_am="የመጀመሪያ ገበያ",
+            description="Original English description",
+            description_en="Original English description",
+            description_am="የመጀመሪያ መግለጫ",
+            is_active=True,
+        )
+        db.add_all([admin, market])
+        db.commit()
+        result = update_market(
+            market.id,
+            MarketUpdate(description="Updated English description"),
+            admin=admin,
+            db=db,
+        )
+        assert result["description"] == "Updated English description"
+        assert result["description_en"] == "Updated English description"
+        assert result["description_am"] == "የመጀመሪያ መግለጫ"
