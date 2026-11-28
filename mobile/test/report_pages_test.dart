@@ -99,6 +99,7 @@ void main() {
   });
 
   testWidgets('report submission errors do not hide listing details', (tester) async {
+    var reportPostSent = false;
     final client = MockClient((request) async {
       if (request.url.path.endsWith('/listings/listing-error')) {
         return http.Response(jsonEncode({
@@ -111,6 +112,7 @@ void main() {
         return http.Response('{"access_token":"synthetic-report-token"}', 200);
       }
       if (request.url.path.endsWith('/reports') && request.method == 'POST') {
+        reportPostSent = true;
         return http.Response(jsonEncode({'detail': 'Report service temporarily unavailable.'}), 503);
       }
       return http.Response('Not found', 404);
@@ -128,11 +130,12 @@ void main() {
     await tester.enterText(find.byKey(const Key('buyer-password')), 'synthetic-report-password-802');
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).first,
+    await tester.enterText(find.byKey(const Key('report-description')),
       'The listing contains a materially false claim about the item.');
     await tester.tap(find.text('Submit report'));
     await tester.pumpAndSettle();
 
+    expect(reportPostSent, isTrue, reason: 'The report form must submit before the simulated API failure is asserted.');
     expect(find.text('Synthetic listing remains visible'), findsOneWidget);
     final errorFinder = find.textContaining('Report service temporarily unavailable.');
     expect(errorFinder, findsOneWidget);
